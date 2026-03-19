@@ -1,0 +1,19 @@
+#ABUTTON LAYER FOR RES custom/cheese_out//
+#String pr
+customclient/menugrid/OtherScriptsAndTools
+#uint16 pver
+4
+#String name
+Refill Cheese Trays
+#String preq
+
+#uint16 hk
+0
+#uint16 ad length
+3
+#String ad[0]
+@
+#String ad[1]
+OtherScriptsAndTools
+#String ad[2]
+RefillCheeseTrays

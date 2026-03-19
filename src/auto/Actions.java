@@ -12,6 +12,7 @@ import java.util.stream.Stream;
 
 import static auto.GobHelper.*;
 import static auto.InvHelper.*;
+import me.ender.ItemHelpers;
 
 public class Actions {
     public static void fuelGob(GameUI gui, String name, String fuel, int count) {
@@ -288,5 +289,66 @@ public class Actions {
 		}
 	    }
 	};
+    }
+
+    public static void fillCheeseTray(GameUI gui) {
+	Bot.execute((target, bot) -> {
+	    while (true) {
+		bot.checkCancelled();
+
+		Optional<WItem> curd = ItemHelpers.find(gui.ui, w -> {
+		    String res = w.item.resname();
+		    return res != null && res.contains("gfx/invobjs/curd");
+		});
+
+		boolean handEmpty = gui.hand() == null;
+
+		if(!curd.isPresent() && handEmpty) {
+		    break;
+		}
+
+		WItem tray = findCheeseTray(gui);
+
+		if(tray == null) {
+		    if(!handEmpty) {
+			gui.maininv.wdgmsg("drop", Coord.z);
+			BotUtil.waitHeldChanged(gui);
+		    }
+		    bot.cancel("No cheese tray found in any open window");
+		    return;
+		}
+
+		if(handEmpty) {
+		    if(!curd.isPresent()) { break; }
+		    curd.get().item.wdgmsg("take", Coord.z);
+		    if(!BotUtil.waitHeld(gui, "Curd")) {
+			bot.cancel("Failed to pick up curd");
+			return;
+		    }
+		} else {
+		    tray.item.wdgmsg("itemact", 1);
+		    BotUtil.pause(100);
+		}
+	    }
+	}).start(gui.ui);
+    }
+
+    private static WItem findCheeseTray(GameUI gui) {
+	for (Widget w = gui.lchild; w != null; w = w.prev) {
+	    if(w instanceof Window) {
+		for (Widget wdg = w.lchild; wdg != null; wdg = wdg.prev) {
+		    Inventory inv = ExtInventory.inventory(wdg);
+		    if(inv != null) {
+			for (WItem item : inv.children(WItem.class)) {
+			    String res = item.item.resname();
+			    if(res != null && res.contains("gfx/invobjs/cheesetray")) {
+				return item;
+			    }
+			}
+		    }
+		}
+	    }
+	}
+	return null;
     }
 }

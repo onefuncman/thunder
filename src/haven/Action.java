@@ -43,6 +43,7 @@ public enum Action {
     AGGRO_ONE_PVE(Actions::aggroOnePVE, "Aggro closest non-player to cursor", "Will try to aggro (or switch target to) one non-player target closest to cursor"),
     AGGRO_ONE_PVP(Actions::aggroOnePVP, "Aggro closest player to cursor", "Will try to aggro (or switch target to) one player closest to cursor"),
     AGGRO_ALL(Actions::aggroAll, "Aggro all creatures near player", "Will try to aggro all creatures near player that are not in party"),
+    FILL_CHEESE_TRAY(Actions::fillCheeseTray, "Fill cheese tray", "Automatically fills an open cheese tray with curds from your inventories."),
     
     EQUIP_BOW(gui -> Equip.twoHanded(gui, Equip.BOW), "Equip Bow"),
     EQUIP_SPEAR(gui -> Equip.twoHanded(gui, Equip.SPEAR), "Equip Boar Spear"),
