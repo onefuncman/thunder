@@ -64,6 +64,7 @@ public class MapWnd extends WindowX implements Console.Directory {
     private Comparator<ListMarker> mcmp = namecmp;
     private List<ListMarker> markers = Collections.emptyList();
     private int markerseq = -1;
+    private Marker mrefocus = null;
     public boolean domark = false;
     private int olalpha = 64;
     protected final Collection<Runnable> deferred = new LinkedList<>();
@@ -440,27 +441,52 @@ public class MapWnd extends WindowX implements Console.Directory {
 	    }
 	}
 	view.markobjs();
-	if(visible && (markerseq != view.file.markerseq)) {
-	    if(view.file.lock.readLock().tryLock()) {
-		try {
-		    Map<Marker, ListMarker> prev = new HashMap<>();
-		    for(ListMarker pm : this.markers)
-			prev.put(pm.mark, pm);
-		    List<ListMarker> markers = new ArrayList<>();
-		    for(Marker mark : view.file.markers) {
-			if(!mflt.test(mark))
-			    continue;
-			ListMarker lm = prev.get(mark);
-			if(lm == null)
-			    lm = new ListMarker(mark);
-			else
-			    lm.type = MarkerType.of(lm.mark);
-			markers.add(lm);
+	if(visible) {
+	    if(mrefocus != null) {
+		for(Predicate<Marker> filter : Arrays.asList(pmarkers, smarkers)) {
+		    if(filter.test(mrefocus)) {
+			if(filter != mflt) {
+			    mflt = filter;
+			    markerseq = -1;
+			}
+			break;
 		    }
-		    markers.sort(mcmp);
-		    this.markers = markers;
-		} finally {
-		    view.file.lock.readLock().unlock();
+		}
+	    }
+	    if(markerseq != view.file.markerseq) {
+		int markerseq = view.file.markerseq;
+		if(view.file.lock.readLock().tryLock()) {
+		    try {
+			Map<Marker, ListMarker> prev = new HashMap<>();
+			for(ListMarker pm : this.markers)
+			    prev.put(pm.mark, pm);
+			List<ListMarker> markers = new ArrayList<>();
+			for(Marker mark : view.file.markers) {
+			    if(!mflt.test(mark))
+				continue;
+			    ListMarker lm = prev.get(mark);
+			    if(lm == null)
+				lm = new ListMarker(mark);
+			    else
+				lm.type = MarkerType.of(lm.mark);
+			    markers.add(lm);
+			}
+			markers.sort(mcmp);
+			this.markers = markers;
+			this.markerseq = markerseq;
+		    } finally {
+			view.file.lock.readLock().unlock();
+		    }
+		}
+	    }
+	    if(mrefocus != null) {
+		for(ListMarker lm : markers) {
+		    if(lm.mark == mrefocus) {
+			tool.list.change2(lm);
+			tool.list.display(lm);
+			mrefocus = null;
+			break;
+		    }
 		}
 	    }
 	}

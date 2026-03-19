@@ -76,15 +76,15 @@ public class SkillWnd extends Widget {
 	    this.sortkey = nm;
 	}
 
-	public String rendertext() {
+	public RichText.Document rendertext() {
 	    StringBuilder buf = new StringBuilder();
 	    Resource res = this.res.get();
-	    buf.append("$img[" + res.name + "]\n\n");
+	    buf.append("$img[self]\n\n");
 	    buf.append("$b{$font[serif,16]{" + res.flayer(Resource.tooltip).t + "}}\n\n\n");
 	    if(cost > 0)
 		buf.append("Cost: " + cost + "\n\n");
 	    buf.append(res.flayer(Resource.pagina).text);
-	    return(buf.toString());
+	    return(resdoc(res, buf.toString()));
 	}
 
 	private Text tooltip = null;
@@ -113,7 +113,7 @@ public class SkillWnd extends Widget {
 	public String rendertext(CredoGrid credoGrid) {
 	    StringBuilder buf = new StringBuilder();
 	    Resource res = this.res.get();
-	    buf.append("$img[" + res.name + "]\n\n");
+	    buf.append("$img[self]\n\n");
 	    buf.append("$b{$font[serif,16]{" + res.flayer(Resource.tooltip).t + "}}\n\n\n");
 	    buf.append(format(res.flayer(Resource.pagina).text, credoGrid));
 	    return(buf.toString());
@@ -171,15 +171,15 @@ public class SkillWnd extends Widget {
 	    this.score = score;
 	}
 
-	public String rendertext() {
+	public RichText.Document rendertext() {
 	    StringBuilder buf = new StringBuilder();
 	    Resource res = this.res.get();
-	    buf.append("$img[" + res.name + "]\n\n");
+	    buf.append("$img[self]\n\n");
 	    buf.append("$b{$font[serif,16]{" + res.flayer(Resource.tooltip).t + "}}\n\n\n");
 	    if(score > 0)
 		buf.append("Experience points: " + Utils.thformat(score) + "\n\n");
 	    buf.append(res.flayer(Resource.pagina).text);
-	    return(buf.toString());
+	    return(resdoc(res, buf.toString()));
 	}
 
 	private Text tooltip = null;
@@ -459,9 +459,9 @@ public class SkillWnd extends Widget {
 			SkillWnd.this.exps.sel = null;
 			SkillWnd.this.credos.sel = null;
 			if (sk != null)
-			    info.settext(sk::rendertext);
+			    info.set(sk::rendertext);
 			else if (p != null)
-			    info.settext("");
+			    info.set(() -> null);
 		    }
 		});
 	    Widget bf = sktab.adda(new Frame(new Coord(f.sz.x, UI.scale(44)), false), f.c.x, gh, 0.0, 1.0);
@@ -488,7 +488,7 @@ public class SkillWnd extends Widget {
 			if (cr != null)
 			    info.settext(() -> cr.rendertext(this));
 			else if (p != null)
-			    info.settext("");
+			    info.set(() -> null);
 		    }
 		});
 	}
@@ -503,9 +503,9 @@ public class SkillWnd extends Widget {
 			SkillWnd.this.skg.sel = null;
 			SkillWnd.this.credos.sel = null;
 			if (exp != null)
-			    info.settext(exp::rendertext);
+			    info.set(exp::rendertext);
 			else if (p != null)
-			    info.settext("");
+			    info.set(() -> null);
 		    }
 		});
 	}

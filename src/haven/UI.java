@@ -1052,7 +1052,12 @@ public class UI {
 	    }
 	}
     }
-    
+
+    public Resource.Pool pool() {
+	return(Resource.remote());
+    }
+
+
     public static double scale(double v) {
 	return(v * scalef);
     }
