@@ -54,6 +54,7 @@ public class MCache implements MapSource {
     Map<Coord, Grid> grids = new HashMap<Coord, Grid>();
     Session sess;
     final Set<Overlay> ols = new HashSet<Overlay>();
+    Set<LocalOverlay> lols = new HashSet<>();
     public int olseq = 0, chseq = 0;
     public long lastupdate = 0;
     Map<Integer, Defrag> fragbufs = new TreeMap<Integer, Defrag>();
@@ -277,6 +278,23 @@ public class MCache implements MapSource {
 	public RectOverlay(OverlayInfo id, Area a) {
 	    super(a, id);
 	}
+    }
+
+    public static interface LocalOverlay {
+	public OverlayInfo id();
+	public void fill(Area a, boolean[] buf);
+	public default boolean filter(Area a) {return(false);}
+	public default void tick() {}
+    }
+
+    public void add(LocalOverlay ol) {
+	lols.add(ol);
+	olseq++;
+    }
+
+    public void remove(LocalOverlay ol) {
+	lols.remove(ol);
+	olseq++;
     }
 
     public void add(Overlay ol) {}
@@ -870,6 +888,8 @@ public class MCache implements MapSource {
 	}
 	for(Grid g : copy)
 	    g.tick(dt);
+	for(LocalOverlay lol : new ArrayList<>(lols))
+	    lol.tick();
     }
     
     public void gtick(Render g) {
@@ -1031,6 +1051,10 @@ public class MCache implements MapSource {
 		    ret.add(lol.id);
 	    }
 	}
+	for(LocalOverlay lol : lols) {
+	    if(!lol.filter(a) && !ret.contains(lol.id()))
+		ret.add(lol.id());
+	}
 	return(ret);
     }
     
@@ -1059,6 +1083,11 @@ public class MCache implements MapSource {
 			if(lol.mask(lc)) {buf[a.ri(lc)] = true;}
 		}
 	    }
+	}
+	for(LocalOverlay lol : lols) {
+	    if(lol.id() != id)
+		continue;
+	    lol.fill(a, buf);
 	}
     }
     
