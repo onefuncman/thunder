@@ -46,7 +46,7 @@ public class Config {
     public static final String LINE_SEPARATOR = System.lineSeparator();
     public static final Properties jarprops = getjarprops();
     public static final File HOMEDIR = getHomeDir();
-    public static final String confid = get().getprop("config.client-id", "KamiClient");
+    public static final String confid = get().getprop("config.client-id", "ThunderClient");
     public static final Variable<Boolean> par = Variable.def(() -> true);
     public final Properties localprops = getlocalprops();
 
@@ -97,7 +97,7 @@ public class Config {
     private static File getHomeDir() {
 	String dir = get().getprop("config.homedir", "workdir");
 	if("hashdir".equals(dir)) {
-	    File file = new File(HashDirCache.findbase().getParent() + File.separator + "kami-client");
+	    File file = new File(HashDirCache.findbase().getParent() + File.separator + "thunder-client");
 	    file.mkdirs();
 	    return file.getAbsoluteFile();
 	}
