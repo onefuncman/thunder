@@ -189,6 +189,40 @@ public class WorkshopLauncher {
 	    spec.start();
 	    return(true);
 	} else if((desc = cl.props.getProperty("main-class")) != null) {
+	    String jvmargs = cl.props.getProperty("jvm-args");
+	    if(jvmargs != null) {
+		List<String> args = new ArrayList<>();
+		args.add(findjvm().toFile().toString());
+		for(String arg : jvmargs.split("\\s+")) {
+		    if(!arg.isEmpty())
+			args.add(arg);
+		}
+		for(Map.Entry<Object, Object> ent : cl.props.entrySet()) {
+		    String k = (String)ent.getKey();
+		    if(k.startsWith("sysprop."))
+			args.add("-D" + k.substring(8) + "=" + (String)ent.getValue());
+		}
+		args.add("-DrunningThroughSteam=true");
+		StringBuilder cp = new StringBuilder();
+		for(String js : cl.props.getProperty("class-path", "").split(":")) {
+		    Path cpp = cl.path.resolve(js);
+		    if(!Files.isRegularFile(cpp))
+			throw(new MessageException(cl.name() + " is misconfigured; the specified Jar file (" + cpp + ") does not exist."));
+		    if(cp.length() > 0)
+			cp.append(File.pathSeparator);
+		    cp.append(cpp.toFile().toString());
+		}
+		if(cp.length() == 0)
+		    throw(new MessageException(cl.name() + " is misconfigured; it has a main-class, but no class-path."));
+		args.add("-cp");
+		args.add(cp.toString());
+		args.add(desc);
+		ProcessBuilder spec = new ProcessBuilder(args);
+		spec.directory(cl.path.toFile());
+		spec.inheritIO();
+		spec.start();
+		return(true);
+	    }
 	    Collection<URL> classpath = new ArrayList<>();
 	    for(String js : cl.props.getProperty("class-path", "").split(":")) {
 		Path cp = cl.path.resolve(js);
