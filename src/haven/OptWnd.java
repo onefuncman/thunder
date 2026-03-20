@@ -1205,6 +1205,9 @@ public class OptWnd extends WindowX {
 	panel.add(new CFGBox("Show trough radius", CFG.SHOW_TROUGH_RADIUS, "Shows effective radius of troughs."), x, y);
 
 	y += STEP;
+	panel.add(new CFGBox("Show mound bed radius", CFG.SHOW_MOUNDBED_RADIUS, "Shows effective radius of mound beds."), x, y);
+
+	y += STEP;
 	panel.add(new Button(UI.scale(150), "Show as buffs", false) {
 	    @Override
 	    public void click() {

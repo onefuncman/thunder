@@ -44,6 +44,7 @@ public class GobRadius {
     public static CFG<Boolean> toggleFor(String resname) {
 	if(resname.contains("beehive")) return CFG.SHOW_BEEHIVE_RADIUS;
 	if(resname.contains("trough")) return CFG.SHOW_TROUGH_RADIUS;
+	if(resname.contains("moundbed")) return CFG.SHOW_MOUNDBED_RADIUS;
 	if(resname.contains("minesupport") || resname.contains("column") ||
 	   resname.contains("ladder") || resname.contains("minebeam") ||
 	   resname.contains("naturalminesupport") || resname.contains("towercap"))

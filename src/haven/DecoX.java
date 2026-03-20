@@ -181,11 +181,8 @@ public class DecoX extends Window.DefaultDeco {
 	private static final int capo = UI.scale(2), capio = UI.scale(1);
 	private static final Coord mrgn = UI.scale(1, 1);
 	private static final double cay = 0.5;
-	private static final Text.Furnace cf = new Text.Imager(new PUtils.TexFurn(new Text.Foundry(Text.serif.deriveFont(Font.BOLD, UI.scale(14))).aa(true), WindowX.ctex)) {
-	    protected BufferedImage proc(Text text) {
-		return (rasterimg(blurmask2(text.img.getRaster(), UI.rscale(0.75), UI.rscale(1.0), Color.BLACK)));
-	    }
-	};
+	public static final Text.Forge cf = new PUtils.BlurFurn(new PUtils.TexFurn(new Text.Foundry(Text.serif, 14).aa(true), WindowX.ctex),
+	    UI.rscale(0.75), UI.rscale(1.0), Color.BLACK);
 	
 	public static final BufferedImage[] cbtni = new BufferedImage[]{
 	    Resource.loadsimg("gfx/hud/btn-close"),

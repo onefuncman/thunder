@@ -40,6 +40,7 @@ public class CFG<T> {
     public static final CFG<Boolean> SHOW_GOB_RADIUS = new CFG<>("display.show_gob_radius", false);
     public static final CFG<Boolean> SHOW_BEEHIVE_RADIUS = new CFG<>("display.show_beehive_radius", false);
     public static final CFG<Boolean> SHOW_TROUGH_RADIUS = new CFG<>("display.show_trough_radius", false);
+    public static final CFG<Boolean> SHOW_MOUNDBED_RADIUS = new CFG<>("display.show_moundbed_radius", false);
     public static final CFG<Boolean> SHOW_MINESWEEPER_OVERLAY = new CFG<>("display.minesweeper_overlay", false);
     public static final CFG<Boolean> SHOW_CONTAINER_FULLNESS = new CFG<>("display.container_status", false);
     public static final CFG<Boolean> SHOW_PROGRESS_COLOR = new CFG<>("display.progress_coloring", false);
