@@ -44,7 +44,6 @@ import haven.render.*;
 import haven.MCache.OverlayInfo;
 import haven.render.sl.Uniform;
 import haven.render.sl.Type;
-import haven.res.gfx.fx.msrad.MSRad;
 import haven.rx.Reactor;
 import me.ender.ChatCommands;
 import me.ender.CustomCursors;
@@ -686,13 +685,9 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	setcanfocus(true);
 	disposables.add(CFG.DISPLAY_GOB_HITBOX.observe(this::updatePlobDrawable));
 	disposables.add(CFG.DISPLAY_GOB_HITBOX_TOP.observe(this::updatePlobDrawable));
-	disposables.add(CFG.SHOW_GOB_RADIUS.observe(this::updateSupportOverlay));
-	disposables.add(CFG.SHOW_MINE_SUPPORT_AS_OVERLAY.observe(this::updateSupportOverlay));
-	disposables.add(CFG.COLOR_MINE_SUPPORT_OVERLAY.observe(this::updateSupportOverlayColor));
 	disposables.add(CFG.COLOR_TILE_GRID.observe(this::updateGridMat));
 	disposables.add(CFG.DISPLAY_FLAVOR.observe(terrain::updateFlavor));
 	disposables.add(CFG.SHOW_MINESWEEPER_OVERLAY.observe(terrain::updateMinesweeper));
-	updateSupportOverlay(null);
 	updateGridMat(null);
     }
     
@@ -707,20 +702,6 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	if(gridlines != null) {
 	    showgrid(false);
 	    showgrid(true);
-	}
-    }
-    
-    private void updateSupportOverlayColor(CFG<Color> cfg) {
-	Overlay o = ols.remove(MSRad.safeol);
-	if(o != null) {o.remove();}
-    }
-    
-    private void updateSupportOverlay(CFG<Boolean> cfg) {
-	boolean show = CFG.SHOW_GOB_RADIUS.get() && CFG.SHOW_MINE_SUPPORT_AS_OVERLAY.get();
-	if(show && !visol(MSRad.OL_TAG)) {
-	    enol(MSRad.OL_TAG);
-	} else if(!show && visol(MSRad.OL_TAG)) {
-	    disol(MSRad.OL_TAG);
 	}
     }
     

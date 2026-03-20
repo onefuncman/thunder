@@ -3,7 +3,6 @@ package haven;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
-import haven.res.gfx.fx.msrad.MSRad;
 import me.ender.ClientUtils;
 
 import java.awt.*;
@@ -15,17 +14,14 @@ public class GobRadius {
     private static final String GOB_RADIUS_JSON = "gob_radius.json";
     public static final Map<String, GobRadius> gobRadiusCfg;
     static final Color DEF_COL = new Color(255, 255, 255, 128);
-    
+
     public String color, color2;
     public float radius;
-    
+
     static {
 	gobRadiusCfg = parseJson(Config.loadFile(GOB_RADIUS_JSON));
-	showDefaultRadii(CFG.SHOW_GOB_RADIUS.get());
-	CFG.SHOW_GOB_RADIUS.observe(GobRadius::showDefaultRadii);
-	CFG.SHOW_MINE_SUPPORT_AS_OVERLAY.observe(GobRadius::updateOverlay);
     }
-    
+
     private static Map<String, GobRadius> parseJson(String json) {
 	Map<String, GobRadius> result = new HashMap<>();
 	if(json != null) {
@@ -41,29 +37,20 @@ public class GobRadius {
 	return result;
     }
 
-    public static void save() {
-	Config.saveFile(GOB_RADIUS_JSON, getGson().toJson(gobRadiusCfg));
-    }
-
     public static GobRadius get(String resname) {
 	return gobRadiusCfg.get(resname);
     }
-    
-    public static void updateOverlay(CFG<Boolean> show) {
-	if(CFG.SHOW_GOB_RADIUS.get()) {
-	    showDefaultRadii(false);
-	    showDefaultRadii(true);
-	}
+
+    public static CFG<Boolean> toggleFor(String resname) {
+	if(resname.contains("beehive")) return CFG.SHOW_BEEHIVE_RADIUS;
+	if(resname.contains("trough")) return CFG.SHOW_TROUGH_RADIUS;
+	if(resname.contains("minesupport") || resname.contains("column") ||
+	   resname.contains("ladder") || resname.contains("minebeam") ||
+	   resname.contains("naturalminesupport") || resname.contains("towercap"))
+	    return CFG.SHOW_GOB_RADIUS;
+	return null;
     }
-    
-    public static void showDefaultRadii(CFG<Boolean> show) {
-	showDefaultRadii(show.get());
-    }
-    
-    public static void showDefaultRadii(boolean show) {
-	MSRad.show(show);
-    }
-    
+
     private static Gson getGson() {
 	GsonBuilder builder = new GsonBuilder();
 	builder.setPrettyPrinting();
@@ -77,7 +64,7 @@ public class GobRadius {
 	}
 	return c;
     }
-    
+
     public Color color2() {
 	Color c = ClientUtils.hex2color(color2, null);
 	if(c == null) {
@@ -86,5 +73,4 @@ public class GobRadius {
 	}
 	return c;
     }
-
 }

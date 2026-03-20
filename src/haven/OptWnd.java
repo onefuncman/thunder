@@ -1196,10 +1196,13 @@ public class OptWnd extends WindowX {
 	}, x + tx + UI.scale(10), y + UI.scale(1));
 	
 	y += 35;
-	panel.add(new CFGBox("Show object radius", CFG.SHOW_GOB_RADIUS, "Shows radius of mine supports, beehives etc.", true), x, y);
-	
+	panel.add(new CFGBox("Show mine support radius", CFG.SHOW_GOB_RADIUS, "Shows radius of mine supports and ladders.", true), x, y);
+
 	y += STEP;
-	panel.add(new CFGBox("Show mine support radius as overlay", CFG.SHOW_MINE_SUPPORT_AS_OVERLAY, "Will highlight tiles covered by mine supports, instead of drawing radius around supports."), x, y);
+	panel.add(new CFGBox("Show beehive radius", CFG.SHOW_BEEHIVE_RADIUS, "Shows effective radius of beehives."), x, y);
+
+	y += STEP;
+	panel.add(new CFGBox("Show trough radius", CFG.SHOW_TROUGH_RADIUS, "Shows effective radius of troughs."), x, y);
 
 	y += STEP;
 	panel.add(new Button(UI.scale(150), "Show as buffs", false) {

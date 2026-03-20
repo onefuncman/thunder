@@ -29,7 +29,6 @@ package haven;
 import auto.BotUtil;
 import haven.bot.AutoDrink;
 import haven.render.*;
-import haven.res.gfx.fx.msrad.MSRad;
 import integrations.mapv4.MappingClient;
 import me.ender.*;
 import me.ender.gob.KinInfo;
@@ -1591,7 +1590,10 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 	    if(res != null) {
 		radius = GobRadius.get(res.name);
 		if(radius != null) {
-		    addol(new MSRad(this, radius.radius, radius.color(), radius.color2()));
+		    CFG<Boolean> toggle = GobRadius.toggleFor(res.name);
+		    if(toggle != null) {
+			addol(new ToggleRadius(this, radius.radius, radius.color(), radius.color2(), toggle));
+		    }
 		}
 	    }
 	}

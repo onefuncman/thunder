@@ -22,12 +22,6 @@ public class CustomOptPanels {
 	
 	x = 0;
 	y = START;
-	panel.add(new CFGColorBtn(CFG.COLOR_MINE_SUPPORT_OVERLAY, "Mine support overlay", false), x, y);
-	
-	y += STEP;
-	panel.add(new CFGColorBtn(CFG.COLOR_MINE_SUPPORT_DAMAGED_OVERLAY, "Damaged mine support overlay", true), x, y);
-	
-	y += STEP;
 	panel.add(new CFGColorBtn(CFG.COLOR_TILE_GRID, "Tile grid", true), x, y);
 	
 	y += STEP;
