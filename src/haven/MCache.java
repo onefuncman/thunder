@@ -907,6 +907,17 @@ public class MCache implements MapSource {
 
     public MCache(Session sess) {
 	this.sess = sess;
+	CFG.NO_TILE_TRANSITION.observe(this::resetMap);
+	CFG.FLAT_TERRAIN.observe(this::resetMap);
+	CFG.DISPLAY_RIDGE_BOX.observe(this::resetMap);
+	CFG.COLOR_RIDGE_BOX.observe(this::resetMap);
+	CFG.COLORIZE_DEEP_WATER.observe(this::resetMap);
+    }
+
+    private void resetMap(CFG<?> cfg) {
+	synchronized (MCache.this) {
+	    trimall();
+	}
     }
 
     public void ctick(double dt) {
