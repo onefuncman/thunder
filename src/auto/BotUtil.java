@@ -20,10 +20,14 @@ public class BotUtil {
     }
     
     static boolean waitHeld(GameUI gui, String what) {
+	return waitHeld(gui, what, 5000);
+    }
+
+    static boolean waitHeld(GameUI gui, String what, long timeout) {
 	if(Boolean.TRUE.equals(doWaitLoad(() -> isHeld(gui, what)))) {
 	    return true;
 	}
-	if(waitHeldChanged(gui)) {
+	if(waitHeldChanged(gui, timeout)) {
 	    return Boolean.TRUE.equals(doWaitLoad(() -> isHeld(gui, what)));
 	}
 	return false;
@@ -35,10 +39,14 @@ public class BotUtil {
     };
     
     static boolean waitHeldChanged(GameUI gui) {
+	return waitHeldChanged(gui, 5000);
+    }
+
+    static boolean waitHeldChanged(GameUI gui, long timeout) {
 	boolean result = true;
 	try {
 	    synchronized (gui.heldNotifier) {
-		gui.heldNotifier.wait(5000);
+		gui.heldNotifier.wait(timeout);
 	    }
 	} catch (InterruptedException e) {
 	    result = false;
