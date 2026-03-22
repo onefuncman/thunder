@@ -326,7 +326,7 @@ public class MapWnd extends WindowX implements Console.Directory {
 		    }
 		    if(img != null) {
 			g.chcolor(255, 255, 255, alpha);
-			g.image(img, ul, UI.scale(img.sz()).mul(dmag));
+			g.image(img, ul, img.sz().mul(dmag));
 		    }
 		} catch(Loading l) {
 		}
