@@ -1,3 +1,3 @@
 #PAGINA LAYER
 #String text
-Will try to equip $img[gfx/invobjs/small/roundshield,c,h=12]Wooden Roundshield and one of:\n$img[gfx/invobjs/small/bronzesword,c,h=12]Bronze Sword\n$img[gfx/invobjs/small/fyrdsword,c,h=12]Fyrdsman's Sword\n$img[gfx/invobjs/small/hirdsword,c,h=12]Hirdsman's Sword.
+Will try to equip Wooden Roundshield and one of:\nBronze Sword\nFyrdsman's Sword\nHirdsman's Sword.
