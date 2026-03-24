@@ -55,6 +55,7 @@ public class OptWnd extends WindowX {
     private final Panel display, general, camera, shortcuts, mapping, uipanel, combat, minimap, experimental;
 	private final Panel color;
 	private final Panel automation;
+	private final Panel debug;
     public final Panel main;
     public static final Text.Foundry LBL_FNT = new Text.Foundry(sans, 14);
     public Panel current;
@@ -805,6 +806,7 @@ public class OptWnd extends WindowX {
 	automation = add(new Panel());
 	minimap = add(new Panel());
 	experimental = add(new Panel());
+	debug = add(new Panel());
 
 	int row = 0, colum = 0, mrow = 1;
     
@@ -834,6 +836,7 @@ public class OptWnd extends WindowX {
 	addPanelButton("Map upload", 'm', mapping, colum, row++);
 	addPanelButton("Automation settings", 't', automation, colum, row++);
 	addPanelButton("Experimental", 'x', experimental, colum, row++);
+	addPanelButton("Debug", 'z', debug, colum, row++);
 
 	int y = 0;
 	mrow = Math.max(mrow, row);
@@ -880,6 +883,7 @@ public class OptWnd extends WindowX {
 	KamiOptPanels.initMinimapPanel(this, minimap);
 	KamiOptPanels.initExperimentalPanel(this, experimental);
 	KamiOptPanels.initAutomationPanel(this, automation);
+	initDebugPanel(debug);
 	main.pack();
 	chpanel(main);
     }
@@ -958,6 +962,40 @@ public class OptWnd extends WindowX {
 	camera.pack();
     }
 
+
+    private void initDebugPanel(Panel panel) {
+	int STEP = UI.scale(25);
+	Widget title = panel.add(new Label("Protocol Debug", LBL_FNT), 0, 0);
+	int y = title.sz.y + UI.scale(10);
+	int x = 0;
+
+	panel.add(new Button(UI.scale(200), "Open Protocol Inspector") {
+	    public void click() {
+		GameUI gui = getparent(GameUI.class);
+		if(gui != null) gui.toggleProtoInspector();
+	    }
+	}, x, y);
+	y += STEP + UI.scale(4);
+
+	panel.add(new Button(UI.scale(200), "Open State Inspector") {
+	    public void click() {
+		GameUI gui = getparent(GameUI.class);
+		if(gui != null) gui.toggleStateInspector();
+	    }
+	}, x, y);
+	y += STEP + UI.scale(4);
+
+	panel.add(new Button(UI.scale(200), "Open Stats Dashboard") {
+	    public void click() {
+		GameUI gui = getparent(GameUI.class);
+		if(gui != null) gui.toggleStatsPanel();
+	    }
+	}, x, y);
+	y += STEP + UI.scale(14);
+
+	panel.add(new PButton(UI.scale(200), "Back", 27, main), 0, y);
+	panel.pack();
+    }
 
     private void initGeneralPanel(Panel panel) {
 	int STEP = UI.scale(25);

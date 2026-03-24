@@ -78,6 +78,7 @@ public class Session implements Resource.Resolver {
     public final CharacterInfo character;
     public UI ui;
     public SignKey sesskey;
+    public haven.proto.ProtoBus protoBus;
     private boolean closed = false;
     private int localCacheId = -1;
 
@@ -280,6 +281,17 @@ public class Session implements Resource.Resolver {
     
     public final Function<Object, Object> resmapper = new ResID.ResolveMapper(this);
     
+    public Map<Integer, String> getResCacheSnapshot() {
+	Map<Integer, String> result = new TreeMap<>();
+	synchronized(rescache) {
+	    for(Map.Entry<Integer, CachedRes> e : rescache.entrySet()) {
+		CachedRes cr = e.getValue();
+		result.put(e.getKey(), cr.resnm != null ? cr.resnm + ":" + cr.resver : "(unresolved)");
+	    }
+	}
+	return result;
+    }
+
     public Indir<Resource> getres2(int id) {
 	synchronized (rescache) {
 	    CachedRes ret = rescache.get(id);
@@ -357,6 +369,9 @@ public class Session implements Resource.Resolver {
 	this.user = user;
 	this.glob = new Glob(this);
 	conn.add(conncb);
+	this.protoBus = new haven.proto.ProtoBus(this);
+	conn.add(protoBus);
+	conn.add(protoBus.recorder);
 	if(record.get() != null) {
 	    try {
 		conn.add(new Transport.Callback.Recorder(java.nio.file.Files.newBufferedWriter(record.get())));

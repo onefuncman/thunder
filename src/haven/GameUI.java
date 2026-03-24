@@ -84,6 +84,9 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
     public BuddyWnd buddies;
     public EquipProxy eqproxyHandBelt, eqproxyPouchBack;
     public FilterWnd filter;
+    public haven.proto.ProtoInspector protoInspector;
+    public haven.proto.StateInspector stateInspector;
+    public haven.proto.StatsPanel statsPanel;
     public Cal calendar;
     private final Zergwnd zerg;
     public final Collection<Polity> polities = new ArrayList<Polity>();
@@ -692,6 +695,27 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	    filter = add(new FilterWnd(), ClientUtils.getScreenCenter(ui));
 	}
 	filter.toggle();
+    }
+
+    public void toggleProtoInspector() {
+	if(protoInspector == null) {
+	    protoInspector = add(new haven.proto.ProtoInspector(ui.sess), ClientUtils.getScreenCenter(ui));
+	}
+	protoInspector.toggle();
+    }
+
+    public void toggleStateInspector() {
+	if(stateInspector == null) {
+	    stateInspector = add(new haven.proto.StateInspector(ui), ClientUtils.getScreenCenter(ui));
+	}
+	stateInspector.toggle();
+    }
+
+    public void toggleStatsPanel() {
+	if(statsPanel == null) {
+	    statsPanel = add(new haven.proto.StatsPanel(ui.sess), ClientUtils.getScreenCenter(ui));
+	}
+	statsPanel.toggle();
     }
     
     public void toggleCraftDB() {
@@ -1596,6 +1620,8 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
     private double lastwndsave = 0;
     public void tick(double dt) {
 	super.tick(dt);
+	if(ui.sess != null && ui.sess.protoBus != null)
+	    ui.sess.protoBus.drainToUI();
 	double now = Utils.rtime();
 	if(now - lastwndsave > 60) {
 	    savewndpos();
@@ -1867,6 +1893,9 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
     public static final KeyBinding kb_hide = KeyBinding.get("ui-toggle", KeyMatch.nil);
     public static final KeyBinding kb_logout = KeyBinding.get("logout", KeyMatch.nil);
     public static final KeyBinding kb_switchchr = KeyBinding.get("logout-cs", KeyMatch.nil);
+    public static final KeyBinding kb_proto = KeyBinding.get("proto-inspector", KeyMatch.nil);
+    public static final KeyBinding kb_state = KeyBinding.get("state-inspector", KeyMatch.nil);
+    public static final KeyBinding kb_stats = KeyBinding.get("proto-stats", KeyMatch.nil);
     public boolean globtype(GlobKeyEvent ev) {
 	if(ev.c == ':') {
 	    entercmd();
@@ -1885,6 +1914,15 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	    return(true);
 	} else if(kb_chat.key().match(ev)) {
 	    toggleChat();
+	    return(true);
+	} else if(kb_proto.key().match(ev)) {
+	    toggleProtoInspector();
+	    return(true);
+	} else if(kb_state.key().match(ev)) {
+	    toggleStateInspector();
+	    return(true);
+	} else if(kb_stats.key().match(ev)) {
+	    toggleStatsPanel();
 	    return(true);
 	} else if((ev.c == 27) && (map != null) && !map.hasfocus) {
 	    setfocus(map);
@@ -2287,6 +2325,62 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 			add(gettype(args[1]).create(ui, wargs), 200, 200);
 		    } catch(RuntimeException e) {
 			e.printStackTrace(Debug.log);
+		    }
+		}
+	    });
+	cmdmap.put("proto", new Console.Command() {
+		public void run(Console cons, String[] args) throws Exception {
+		    if(args.length < 2) throw new Exception("Usage: proto <inspector|stats|pause|resume|clear|record|bookmark>");
+		    switch(args[1]) {
+		    case "inspector": toggleProtoInspector(); break;
+		    case "stats": toggleStatsPanel(); break;
+		    case "pause": if(protoInspector != null) protoInspector.setPaused(true); break;
+		    case "resume": if(protoInspector != null) protoInspector.setPaused(false); break;
+		    case "clear": if(protoInspector != null) protoInspector.clearEvents(); break;
+		    case "record": {
+			if(ui.sess != null && ui.sess.protoBus != null) {
+			    haven.proto.EnhancedRecorder rec = ui.sess.protoBus.recorder;
+			    if(rec.isRecording()) {
+				rec.stop();
+			    } else {
+				ui.sess.protoBus.capturing = true;
+				java.nio.file.Path dir = Debug.somedir("proto-recordings");
+				dir.toFile().mkdirs();
+				String fn = String.format("proto-%tY%<tm%<td-%<tH%<tM%<tS.rec", new java.util.Date());
+				rec.start(dir.resolve(fn));
+			    }
+			}
+			break;
+		    }
+		    case "bookmark": {
+			if(ui.sess != null && ui.sess.protoBus != null) {
+			    String label = args.length >= 3 ? args[2] : "manual";
+			    ui.sess.protoBus.recorder.bookmark(label);
+			}
+			break;
+		    }
+		    default: throw new Exception("Unknown proto command: " + args[1]);
+		    }
+		}
+	    });
+	cmdmap.put("gob", new Console.Command() {
+		public void run(Console cons, String[] args) throws Exception {
+		    if(args.length >= 3 && args[1].equals("inspect")) {
+			long id = Long.parseLong(args[2]);
+			toggleStateInspector();
+			stateInspector.inspectGob(id);
+		    } else {
+			throw new Exception("Usage: gob inspect <id>");
+		    }
+		}
+	    });
+	cmdmap.put("widget", new Console.Command() {
+		public void run(Console cons, String[] args) throws Exception {
+		    if(args.length >= 2 && args[1].equals("tree")) {
+			toggleStateInspector();
+			stateInspector.showWidgetTree();
+		    } else {
+			throw new Exception("Usage: widget tree");
 		    }
 		}
 	    });

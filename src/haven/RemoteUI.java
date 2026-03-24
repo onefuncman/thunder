@@ -42,6 +42,8 @@ public class RemoteUI implements UI.Receiver, UI.Runner {
 	msg.addstring(name);
 	msg.addlist(args);
 	sess.queuemsg(msg);
+	if(sess.protoBus != null && sess.protoBus.capturing)
+	    sess.protoBus.recordOutgoing(id, name, args);
     }
 
     public static class Return extends PMessage {
