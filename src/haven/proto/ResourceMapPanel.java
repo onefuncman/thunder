@@ -35,6 +35,7 @@ public class ResourceMapPanel extends Widget {
 	filterEntry = add(new TextEntry(UI.scale(150), "") {
 	    @Override
 	    public void changed(ReadLine buf) {
+		super.changed(buf);
 		applyFilter();
 	    }
 	}, x, 0);

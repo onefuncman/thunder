@@ -3,18 +3,30 @@ package me.ender;
 import haven.*;
 import me.ender.minimap.Minesweeper;
 
+import java.util.function.Consumer;
+
 import static haven.MCache.*;
 
 public class CustomCursors {
     public static final Resource.Named INSPECT = Resource.local().loadwait("gfx/hud/curs/studyx").indir();
     public static final Resource.Named TRACK = Resource.local().loadwait("gfx/hud/curs/track").indir();
     public static final Resource.Named SWEEPER = Resource.local().loadwait("gfx/hud/curs/minesweep").indir();
+    public static final Resource.Named PICK = Resource.local().loadwait("gfx/hud/curs/studyx").indir();
+    private static Consumer<Gob> pickCallback;
     
     
     public static boolean processHit(MapView map, Coord2d mc, ClickData inf) {
 	UI ui = map.ui;
-	
-	if(isTracking(map)) {
+
+	if(isPicking(map)) {
+	    if(inf != null) {
+		Gob gob = Gob.from(inf.ci);
+		if(gob != null && pickCallback != null)
+		    pickCallback.accept(gob);
+	    }
+	    stopPicking(map);
+	    return true;
+	} else if(isTracking(map)) {
 	    if(inf == null) {return false;}
 	    Gob gob = Gob.from(inf.ci);
 	    if(gob == null) {return false;}
@@ -56,15 +68,18 @@ public class CustomCursors {
 	    } else if(isSweeping(map)) {
 		stopSweeping(map);
 		return true;
+	    } else if(isPicking(map)) {
+		stopPicking(map);
+		return true;
 	    }
-	    
+
 	}
 	return false;
     }
     
     public static void inspect(MapView map, Coord c) {
 	boolean isMining = map.cursor == null && isMining(map.ui);
-	if(map.cursor == INSPECT || map.cursor == TRACK || isMining) {
+	if(map.cursor == INSPECT || map.cursor == TRACK || map.cursor == PICK || isMining) {
 	    map.new Hittest(c) {
 		@Override
 		protected void hit(Coord pc, Coord2d mc, ClickData inf) {
@@ -72,7 +87,7 @@ public class CustomCursors {
 		    if(inf != null && !isMining) {
 			Gob gob = Gob.from(inf.ci);
 			if(gob != null) {
-			    tip = map.cursor == INSPECT ? gob.inspect(map.fullTip) : gob.tooltip();
+			    tip = (map.cursor == INSPECT || map.cursor == PICK) ? gob.inspect(map.fullTip) : gob.tooltip();
 			}
 		    } else if(map.cursor == INSPECT || isMining) {
 			MCache mCache = map.glob.map;
@@ -115,6 +130,7 @@ public class CustomCursors {
 	stopInspecting(map);
 	stopTracking(map);
 	stopSweeping(map);
+	stopPicking(map);
     }
     
     //INSPECTING
@@ -202,5 +218,27 @@ public class CustomCursors {
 	    map.ttip(null);
 	}
     }
-    
+
+    //GOB PICKING
+    public static boolean isPicking(MapView map) {
+	return map.cursor == PICK;
+    }
+
+    public static void startPicking(MapView map, Consumer<Gob> callback) {
+	stopCustomModes(map);
+	if(map.cursor == null) {
+	    pickCallback = callback;
+	    map.cursor = PICK;
+	    inspect(map, map.rootxlate(map.ui.mc));
+	}
+    }
+
+    private static void stopPicking(MapView map) {
+	if(map.cursor == PICK) {
+	    map.cursor = null;
+	    map.ttip(null);
+	    pickCallback = null;
+	}
+    }
+
 }

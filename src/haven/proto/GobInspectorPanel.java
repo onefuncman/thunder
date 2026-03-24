@@ -1,6 +1,9 @@
 package haven.proto;
 
 import haven.*;
+import haven.Composited;
+import me.ender.CustomCursors;
+import me.ender.CustomizeVarMat;
 import java.awt.Color;
 import java.awt.Font;
 import java.util.*;
@@ -35,9 +38,13 @@ public class GobInspectorPanel extends Widget {
 	x += UI.scale(108);
 	pickBtn = add(new Button(UI.scale(50), "Pick") {
 	    public void click() {
-		/* pick-from-map would require MapView interaction hook - for now just use the text entry */
+		MapView map = ui.gui.map;
+		if(map != null) {
+		    CustomCursors.startPicking(map, gob -> setGobId(gob.id));
+		}
 	    }
 	}, x, 0);
+	pickBtn.tooltip = "Click a gob on the map to inspect it (right-click to cancel)";
 	sb = adda(new Scrollbar(sz.y - UI.scale(25), 0, 0), sz.x - UI.scale(1), UI.scale(25), 1, 0);
     }
 
@@ -76,8 +83,60 @@ public class GobInspectorPanel extends Widget {
 		if(kin != null) lines.add("  Kin: " + kin);
 	    } catch(Exception e) {}
 	    GobHealth hp = gob.getattr(GobHealth.class);
-	    if(hp != null) lines.add("  Health: " + hp);
-	    if(gob.drawable != null) lines.add("  Drawable: " + gob.drawable.getClass().getSimpleName());
+	    if(hp != null) lines.add("  Health: " + String.format("%.0f%% (raw: %.4f)", hp.hp * 100, hp.hp));
+	    Speaking speaking = gob.getattr(Speaking.class);
+	    if(speaking != null) lines.add("  Speaking: " + (speaking.text != null ? speaking.text.text : ""));
+	    DrawOffset doff = gob.getattr(DrawOffset.class);
+	    if(doff != null) lines.add("  DrawOffset: " + String.format("(%.1f, %.1f, %.1f)", doff.off.x, doff.off.y, doff.off.z));
+	    if(gob.getattr(Lumin.class) != null) lines.add("  Lumin: yes");
+	    GobIcon icon = gob.getattr(GobIcon.class);
+	    if(icon != null) {
+		try {
+		    lines.add("  Icon: " + icon.res.get().name);
+		} catch(Loading l) {
+		    lines.add("  Icon: (loading...)");
+		}
+	    }
+	    String varMats = CustomizeVarMat.formatMaterials(gob);
+	    if(varMats != null) {
+		for(String line : varMats.split("\n"))
+		    lines.add("  " + line);
+	    }
+	    if(gob.drawable != null) {
+		lines.add("  Drawable: " + gob.drawable.getClass().getSimpleName());
+		if(gob.drawable instanceof Composite) {
+		    Composite comp = (Composite) gob.drawable;
+		    String resId = comp.resId();
+		    if(resId != null) lines.add("    ResID: " + resId);
+		    try {
+			lines.add("--- Materials ---");
+			for(Composited.MD md : comp.comp.cmod) {
+			    try {
+				lines.add("  Model: " + md.mod.get().name);
+			    } catch(Loading l) {
+				lines.add("  Model: (loading...)");
+			    }
+			    for(ResData tex : md.tex) {
+				try {
+				    lines.add("    Tex: " + tex.res.get().name);
+				} catch(Loading l) {
+				    lines.add("    Tex: (loading...)");
+				}
+			    }
+			}
+			lines.add("--- Equipment ---");
+			for(Composited.ED eq : comp.comp.cequ) {
+			    try {
+				lines.add("  " + eq.at + ": " + eq.res.res.get().name);
+			    } catch(Loading l) {
+				lines.add("  " + eq.at + ": (loading...)");
+			    }
+			}
+		    } catch(Exception e) {
+			lines.add("  (composite error: " + e.getMessage() + ")");
+		    }
+		}
+	    }
 	    lines.add("--- Overlays ---");
 	    synchronized(gob.ols) {
 		for(Gob.Overlay ol : gob.ols) {
