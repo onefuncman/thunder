@@ -700,22 +700,28 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
     public void toggleProtoInspector() {
 	if(protoInspector == null) {
 	    protoInspector = add(new haven.proto.ProtoInspector(ui.sess), ClientUtils.getScreenCenter(ui));
+	    protoInspector.raise();
+	} else {
+	    protoInspector.toggle();
 	}
-	protoInspector.toggle();
     }
 
     public void toggleStateInspector() {
 	if(stateInspector == null) {
 	    stateInspector = add(new haven.proto.StateInspector(ui), ClientUtils.getScreenCenter(ui));
+	    stateInspector.raise();
+	} else {
+	    stateInspector.toggle();
 	}
-	stateInspector.toggle();
     }
 
     public void toggleStatsPanel() {
 	if(statsPanel == null) {
 	    statsPanel = add(new haven.proto.StatsPanel(ui.sess), ClientUtils.getScreenCenter(ui));
+	    statsPanel.raise();
+	} else {
+	    statsPanel.toggle();
 	}
-	statsPanel.toggle();
     }
     
     public void toggleCraftDB() {

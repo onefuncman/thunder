@@ -239,7 +239,7 @@ public class BaseFileCache implements ResCache {
 		    fp.close();
 		    try {
 			Files.move(tmp, path, StandardCopyOption.ATOMIC_MOVE);
-		    } catch(AtomicMoveNotSupportedException e) {
+		    } catch(AtomicMoveNotSupportedException | AccessDeniedException e) {
 			Files.move(tmp, path, StandardCopyOption.REPLACE_EXISTING);
 		    }
 		    cleaner.closed = true;

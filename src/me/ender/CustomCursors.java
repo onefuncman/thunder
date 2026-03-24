@@ -13,17 +13,24 @@ public class CustomCursors {
     public static final Resource.Named SWEEPER = Resource.local().loadwait("gfx/hud/curs/minesweep").indir();
     public static final Resource.Named PICK = Resource.local().loadwait("gfx/hud/curs/studyx").indir();
     private static Consumer<Gob> pickCallback;
-    
-    
+    private static boolean pickConsumeEmpty;
+    private static boolean pickShowTooltip;
+
+
     public static boolean processHit(MapView map, Coord2d mc, ClickData inf) {
 	UI ui = map.ui;
 
 	if(isPicking(map)) {
-	    if(inf != null) {
-		Gob gob = Gob.from(inf.ci);
-		if(gob != null && pickCallback != null)
-		    pickCallback.accept(gob);
+	    if(inf == null) {
+		if(pickConsumeEmpty) { stopPicking(map); return true; }
+		return false;
 	    }
+	    Gob gob = Gob.from(inf.ci);
+	    if(gob == null) {
+		if(pickConsumeEmpty) { stopPicking(map); return true; }
+		return false;
+	    }
+	    if(pickCallback != null) pickCallback.accept(gob);
 	    stopPicking(map);
 	    return true;
 	} else if(isTracking(map)) {
@@ -78,8 +85,9 @@ public class CustomCursors {
     }
     
     public static void inspect(MapView map, Coord c) {
+	if(map.cursor == PICK && !pickShowTooltip) return;
 	boolean isMining = map.cursor == null && isMining(map.ui);
-	if(map.cursor == INSPECT || map.cursor == TRACK || map.cursor == PICK || isMining) {
+	if(map.cursor == INSPECT || map.cursor == TRACK || (map.cursor == PICK && pickShowTooltip) || isMining) {
 	    map.new Hittest(c) {
 		@Override
 		protected void hit(Coord pc, Coord2d mc, ClickData inf) {
@@ -225,11 +233,18 @@ public class CustomCursors {
     }
 
     public static void startPicking(MapView map, Consumer<Gob> callback) {
+	startPicking(map, callback, false, false);
+    }
+
+    public static void startPicking(MapView map, Consumer<Gob> callback, boolean consumeEmpty, boolean showTooltip) {
 	stopCustomModes(map);
 	if(map.cursor == null) {
 	    pickCallback = callback;
+	    pickConsumeEmpty = consumeEmpty;
+	    pickShowTooltip = showTooltip;
 	    map.cursor = PICK;
-	    inspect(map, map.rootxlate(map.ui.mc));
+	    if(showTooltip)
+		inspect(map, map.rootxlate(map.ui.mc));
 	}
     }
 

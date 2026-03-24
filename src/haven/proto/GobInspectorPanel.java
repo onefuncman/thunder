@@ -40,7 +40,7 @@ public class GobInspectorPanel extends Widget {
 	    public void click() {
 		MapView map = ui.gui.map;
 		if(map != null) {
-		    CustomCursors.startPicking(map, gob -> setGobId(gob.id));
+		    CustomCursors.startPicking(map, gob -> setGobId(gob.id), true, true);
 		}
 	    }
 	}, x, 0);
