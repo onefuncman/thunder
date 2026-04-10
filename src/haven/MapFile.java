@@ -1776,6 +1776,7 @@ public class MapFile {
 	    lock.readLock().lock();
 	    try {
 		seg = segments.get(sid);
+		if(seg == null) continue;
 		for(Map.Entry<Coord, Long> gd : seg.map.entrySet()) {
 		    if(filter.includegrid(seg, gd.getKey(), gd.getValue()))
 			gridbuf.add(new Pair<>(gd.getKey(), gd.getValue()));
