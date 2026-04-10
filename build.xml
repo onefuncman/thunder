@@ -99,6 +99,7 @@
 	<pathelement path="lib/gson-2.8.6.jar" />
         <pathelement path="lib/rxjava-1.1.5.jar" />
       </classpath>
+      <exclude name="test/**" />
       <compilerarg if:set="explicit-annotations" value="-proc:full" />
       <compilerarg value="-Xlint:unchecked" />
       <compilerarg value="-Xlint:deprecation" />
@@ -251,7 +252,42 @@
     </java>
   </target>
 
-  <target name="clean" depends="clean-assets, clean-code">
+  <target name="compile-tests" depends="hafen-client">
+    <mkdir dir="build/test-classes" />
+    <javac srcdir="src/test/java" destdir="build/test-classes" debug="on"
+	   includeantruntime="no">
+      <classpath>
+	<pathelement path="build/classes" />
+	<pathelement path="lib/junit-platform-console-standalone-1.10.2.jar" />
+	<pathelement path="lib/ext/jogl/jogl-all.jar" />
+	<pathelement path="lib/ext/jogl/gluegen-rt.jar" />
+	<pathelement path="lib/ext/lwjgl/lwjgl-fat.jar" />
+	<pathelement path="lib/ext/lwjgl/lwjgl-awt.jar" />
+	<pathelement path="lib/ext/lwjgl/lwjgl-opengl-fat.jar" />
+	<pathelement path="lib/ext/steamworks/steamworks4j.jar" />
+	<pathelement path="lib/jglob.jar" />
+	<pathelement path="lib/gson-2.8.6.jar" />
+	<pathelement path="lib/rxjava-1.1.5.jar" />
+      </classpath>
+      <compilerarg value="-Xlint:unchecked" />
+      <compilerarg value="-Xlint:-options" />
+    </javac>
+  </target>
+
+  <target name="test" depends="compile-tests">
+    <java jar="lib/junit-platform-console-standalone-1.10.2.jar" fork="true" failonerror="true">
+      <arg value="--class-path" />
+      <arg value="build/test-classes${path.separator}build/classes${path.separator}lib/jglob.jar${path.separator}lib/gson-2.8.6.jar${path.separator}lib/rxjava-1.1.5.jar" />
+      <arg value="--scan-classpath" />
+      <arg value="build/test-classes" />
+    </java>
+  </target>
+
+  <target name="clean-tests">
+    <delete dir="build/test-classes" />
+  </target>
+
+  <target name="clean" depends="clean-assets, clean-code, clean-tests">
     <delete dir="lib/ext" />
     <delete dir="bin" />
   </target>
