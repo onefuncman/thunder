@@ -6,7 +6,7 @@ import java.util.*;
 import java.awt.image.BufferedImage;
 
 /* >tt: Smoke */
-@haven.FromResource(name = "ui/tt/smoked", version = 6)
+@haven.FromResource(name = "ui/tt/smoked", version = 8)
 public class Smoke extends ItemInfo.Tip {
     public final String name;
     public final Double val;
@@ -26,26 +26,24 @@ public class Smoke extends ItemInfo.Tip {
 	String name;
 	if(args[a] instanceof String) {
 	    name = (String)args[a++];
-	} else if(args[a] instanceof Integer) {
-	    Indir<Resource> res = owner.context(Resource.Resolver.class).getres((Integer)args[a++]);
+	} else {
+	    Indir<Resource> res = owner.context(Resource.Resolver.class).getresv(args[a++]);
 	    Message sdt = Message.nil;
 	    if((args.length > a) && (args[a] instanceof byte[]))
 		sdt = new MessageBuf((byte[])args[a++]);
 	    ItemSpec spec = new ItemSpec(owner, new ResData(res, sdt), null);
 	    name = spec.name();
-	} else {
-	    throw(new IllegalArgumentException());
 	}
 	Double val = null;
 	if(args.length > a)
-	    val = (args[a] == null)?null:((Number)args[a]).doubleValue();
+	    val = (args[a] == null) ? null : Utils.dv(args[a]);
 	return(new Smoke(owner, name, val));
     }
 
     public static class Line extends Tip {
 	final List<Smoke> all = new ArrayList<Smoke>();
 
-	Line() {super(null);}
+	Line(Owner owner) {super(owner);}
 
 	public BufferedImage tipimg() {
 	    StringBuilder buf = new StringBuilder();
@@ -65,7 +63,7 @@ public class Smoke extends ItemInfo.Tip {
 	    return(RichText.render(buf.toString(), 250).img);
 	}
     }
-    public static final Layout.ID<Line> id = Line::new;
+    public static final Layout.TipID<Line> id = Line::new;
 
     public void prepare(Layout l) {
 	l.intern(id).all.add(this);

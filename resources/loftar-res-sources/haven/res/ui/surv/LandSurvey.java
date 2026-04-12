@@ -3,237 +3,334 @@ package haven.res.ui.surv;
 
 import haven.*;
 import haven.render.*;
-import java.awt.Color;
+import haven.render.sl.*;
+import java.util.*;
 import java.nio.*;
+import java.awt.Color;
 import static haven.MCache.tilesz;
+import static haven.render.sl.Cons.*;
+import static haven.render.sl.Type.*;
 
-/* >wdg: LandSurvey */
-@haven.FromResource(name = "ui/surv", version = 43)
+@haven.FromResource(name = "ui/surv", version = 46)
 public class LandSurvey extends Window {
-    final Coord ul, br;
-    MapView mv;
-    Display dsp;
-    RenderTree.Slot s_dsp, s_ol;
-    final FastMesh ol;
-    final Location dloc;
-    final Label albl, zdlbl, wlbl, dlbl;
-    final HSlider zset;
-    final float gran;
-    int tz;
+    public final Area area;
+    public final Data data;
+    public final Label zdlbl, wlbl, dlbl;
+    public final CheckBox lock;
+    public Area selection;
+    private boolean inited = false;
+    private MapView mv;
+    private Display dsp;
+    private RenderTree.Slot s_dsp;
 
-    public LandSurvey(Coord ul, Coord br, float gran, int tz) {
+    public LandSurvey(Area area, Data data) {
 	super(Coord.z, "Land survey", true);
-	this.ul = ul;
-	this.br = br;
-	this.gran = gran;
-	this.tz = tz;
-	this.dloc = Location.xlate(new Coord3f(this.ul.x * (float)tilesz.x, -this.ul.y * (float)tilesz.y, 0));
-	VertexBuf.VertexData olv = new VertexBuf.VertexData(FloatBuffer.wrap(new float[] {
-		    0, 0, 0,
-		    (br.x - ul.x) * (float)tilesz.x, 0, 0,
-		    (br.x - ul.x) * (float)tilesz.x, -(br.y - ul.y) * (float)tilesz.y, 0,
-		    0, -(br.y - ul.y) * (float)tilesz.y, 0,
-		}));
-	ol = new FastMesh(new VertexBuf(olv), ShortBuffer.wrap(new short[] {
-		    0, 3, 1,
-		    1, 3, 2,
-		}));
-	albl = add(new Label(String.format("Area: %d m\u00b2", (br.x - ul.x) * (br.y - ul.y))), 0, 0);
-	zdlbl = add(new Label("..."), UI.scale(0, 15));
-	wlbl = add(new Label("..."), UI.scale(0, 30));
-	dlbl = add(new Label("..."), UI.scale(0, 45));
-	zset = add(new HSlider(UI.scale(225), -1, 1, tz) {
-		public void changed() {
-		    LandSurvey.this.tz = val;
-		    upd = true;
-		    sendtz = Utils.rtime() + 0.5;
-		}
-	    }, UI.scale(0, 60));
-	add(new Button(UI.scale(100), "Make level") {
-		public void click() {
-		    LandSurvey.this.wdgmsg("lvl", LandSurvey.this.tz / (gran * 11));
-		}
-	    }, UI.scale(0, 90));
-	add(new Button(UI.scale(100), "Remove") {
-		public void click() {
-		    LandSurvey.this.wdgmsg("rm");
-		}
-	    }, UI.scale(125, 90));
+	this.area = area;
+	this.data = data;
+	Widget prev = add(new Label(String.format("Area: %d m\u00b2", area.area())), 0, 0);
+	zdlbl = add(new Label("..."), prev.pos("bl").adds(0, 1));
+	wlbl = add(new Label("..."), zdlbl.pos("bl").adds(0, 1));
+	dlbl = add(new Label("..."), wlbl.pos("bl").adds(0, 1));
+	lock = add(new CheckBox("Enable editing"), dlbl.pos("bl").adds(0, 20));
+	lock.set(true); lock.changed(this::lock);
+	prev = add(new Button(UI.scale(125), "Ground level", false).action(this::initsurf),
+		   lock.pos("bl").adds(0, 10));
+	add(new Button(UI.scale(125), "Ground plane", false).action(this::initplane),
+	    prev.pos("ur").adds(10, 0));
+	prev = add(new Button(UI.scale(125), "Dig", false).action(() -> wdgmsg("lvl")),
+		   prev.pos("bl").adds(0, 10));
+	add(new Button(UI.scale(125), "Remove", false).action(()-> wdgmsg("rm")),
+	    prev.pos("ur").adds(10, 0));
 	pack();
     }
 
     public static Widget mkwidget(UI ui, Object... args) {
-	Coord ul = (Coord)args[0];
-	Coord br = (Coord)args[1];
-	float gran = ((Number)args[3]).floatValue() / 11;
-	int tz = (args[2] == null) ? Integer.MIN_VALUE : Math.round(((Number)args[2]).floatValue() * gran * 11);
-	return(new LandSurvey(ul, br, gran, tz));
+	Area area = Area.corn((Coord)args[0], (Coord)args[1]);
+	float gran = ((Number)args[2]).floatValue() / 11;
+	Data data = new Data(Area.corni(area.ul, area.br), gran);
+	LandSurvey srv = new LandSurvey(area, data);
+	if(args[3] != null) {
+	    data.decode(Utils.iv(args[3]), (byte[])args[4]);
+	    srv.inited = true;
+	}
+	return(srv);
     }
 
     protected void attached() {
 	super.attached();
 	this.mv = getparent(GameUI.class).map;
-	this.dsp = new Display();
+	this.dsp = new Display(data, mv);
+	s_dsp = mv.drawadd(dsp);
+	select(area);
+	mode(new Idle());
     }
 
-    static final VertexArray.Layout pfmt =
-	new VertexArray.Layout(new VertexArray.Layout.Input(Homo3D.vertex,     new VectorFormat(3, NumberFormat.FLOAT32), 0,  0, 16),
-			       new VertexArray.Layout.Input(VertexColor.color, new VectorFormat(4, NumberFormat.UNORM8),  0, 12, 16));
-    class Display implements Rendered, RenderTree.Node, TickList.Ticking, TickList.TickNode {
-	final Pipe.Op ptsz = new PointSize(3);
-	final MCache map;
-	final int area;
-	final Model model;
-	boolean update = true;
-
-	Display() {
-	    map = mv.ui.sess.glob.map;
-	    area = (br.x - ul.x + 1) * (br.y - ul.y + 1);
-	    VertexArray va = new VertexArray(pfmt, new VertexArray.Buffer(area * pfmt.inputs[0].stride, DataBuffer.Usage.STATIC, this::initfill));
-	    model = new Model(Model.Mode.POINTS, va, null);
-	}
-
-	public void draw(Pipe st, Render g) {
-	    g.draw(st, model);
-	}
-
-	private FillBuffer initfill(VertexArray.Buffer dst, Environment env) {
-	    try {
-		return(fill(dst, env));
-	    } catch(Loading l) {
-		return(DataBuffer.Filler.zero().fill(dst, env));
-	    }
-	}
-
-	private FillBuffer fill(VertexArray.Buffer dst, Environment env) {
-	    float E = 0.001f;
-	    FillBuffer ret = env.fillbuf(dst);
-	    ByteBuffer buf = ret.push();
-	    Coord c = new Coord();
-	    float tz = LandSurvey.this.tz / gran;
-	    for(c.y = ul.y; c.y <= br.y; c.y++) {
-		for(c.x = ul.x; c.x <= br.x; c.x++) {
-		    float z = (float)map.getfz(c);
-		    buf.putFloat((c.x - ul.x) * (float)tilesz.x).putFloat(-(c.y - ul.y) * (float)tilesz.y).putFloat(tz);
-		    if(Math.abs(tz - z) < E) {
-			buf.put((byte)0).put((byte)255).put((byte)0).put((byte)255);
-		    } else if(tz < z) {
-			buf.put((byte)255).put((byte)0).put((byte)255).put((byte)255);
-		    } else {
-			buf.put((byte)0).put((byte)128).put((byte)255).put((byte)255);
-		    }
-		}
-	    }
-	    return(ret);
-	}
-
-	public void autogtick(Render g) {
-	    if(update) {
-		try {
-		    g.update(model.va.bufs[0], this::fill);
-		    update = false;
-		} catch(Loading l) {
-		}
-	    }
-	}
-
-	public TickList.Ticking ticker() {return(this);}
-
-	public void added(RenderTree.Slot slot) {
-	    slot.ostate(Pipe.Op.compose(dloc, ptsz, new States.Depthtest(States.Depthtest.Test.TRUE), Rendered.last, VertexColor.instance));
-	}
+    private void initsurf() {
+	MCache map = mv.ui.sess.glob.map;
+	for(Coord vc : data.varea)
+	    data.wz[data.varea.ridx(vc)] = data.dz[data.varea.ridx(vc)] = (int)Math.round(map.getfz(vc) * data.gran);
+	data.seq++;
+	upd = true;
     }
 
-    private int autoz() {
+    private void initplane() {
 	MCache map = mv.ui.sess.glob.map;
 	double zs = 0;
 	int nv = 0;
-	Coord c = new Coord();
-	for(c.y = ul.y; c.y <= br.y; c.y++) {
-	    for(c.x = ul.x; c.x <= br.x; c.x++) {
-		zs += map.getfz(c);
-		nv++;
-	    }
+	for(Coord vc : data.varea) {
+	    zs += map.getfz(vc);
+	    nv++;
 	}
-	return((int)Math.round(zs / nv));
+	int z = Math.round((float)(zs / nv) * data.gran);
+	for(int i = 0; i < data.wz.length; i++)
+	    data.wz[i] = data.dz[i] = z;
+	data.seq++;
+	upd = true;
     }
 
-    private boolean upd = true;
     private void updmap() {
 	MCache map = mv.ui.sess.glob.map;
-	Coord c = new Coord();
 	int min = Integer.MAX_VALUE, max = Integer.MIN_VALUE;
 	int sd = 0, hn = 0;
-	for(c.y = ul.y; c.y <= br.y; c.y++) {
-	    for(c.x = ul.x; c.x <= br.x; c.x++) {
-		int z = (int)Math.round(map.getfz(c) * gran);
-		min = Math.min(min, z); max = Math.max(max, z);
-		sd += tz - z;
-		if(z > tz)
-		    hn += z - tz;
-	    }
+	for(Coord vc : data.varea) {
+	    int vz = Math.round((float)map.getfz(vc) * data.gran);
+	    int tz = data.dz[data.varea.ridx(vc)];
+	    min = Math.min(min, vz); max = Math.max(max, vz);
+	    sd += tz - vz;
+	    if(vz > tz)
+		hn += vz - tz;
 	}
-	zset.min = min - Math.round(11 * gran); zset.max = max + Math.round(11 * gran);
 	zdlbl.settext(String.format("Peak to trough: %.1f m", (max - min) / 10.0));
 	if(sd >= 0)
 	    wlbl.settext(String.format("Units of soil required: %d", sd));
 	else
 	    wlbl.settext(String.format("Units of soil left over: %d", -sd));
 	dlbl.settext(String.format("Units of soil to dig: %d", hn));
-	dsp.update = true;
     }
 
-    private double sendtz = 0;
-    private static final Pipe.Op olmat = Pipe.Op.compose(new BaseColor(new Color(255, 0, 0, 64)),
-							 Rendered.eyesort,
-							 States.maskdepth, new States.DepthBias(-2, -2));
-    private int olseq = -1;
-    public void tick(double dt) {
-	if(tz == Integer.MIN_VALUE) {
-	    try {
-		zset.val = tz = autoz();
-		olseq = mv.ui.sess.glob.map.olseq;
+    private void lock(boolean enabled) {
+	wdgmsg("lock", enabled ? 0 : 1);
+    }
+
+    private void send() {
+	wdgmsg("data", data.encode());
+    }
+
+    private EventHandler<MouseEvent> mode = null;
+    public void mode(EventHandler<MouseEvent> nmode) {
+	if(mode != null)
+	    mv.deafen(mode);
+	if(nmode != null)
+	    mv.listen(MouseEvent.class, nmode);
+	mode = nmode;
+    }
+
+    public class Idle implements EventHandler<Widget.MouseEvent> {
+	public boolean handle(MouseEvent ev) {
+	    if(ev instanceof MouseMoveEvent) {
+		Coord sel = lock.a ? dsp.mousetest(ev.c, false) : null;
+		if(!Utils.eq(sel, dsp.selected)) {
+		    dsp.selected = sel;
+		    dsp.update = true;
+		}
+	    } else if((ev instanceof MouseDownEvent) && lock.a) {
+		if(((MouseDownEvent)ev).b == 1) {
+		    Coord sel = dsp.mousetest(ev.c, false);
+		    if(sel != null) {
+			if(ui.modshift) {
+			    mode(new Selector(sel));
+			} else {
+			    Area vsel = (selection == null) ? null : Area.corn(selection.ul, selection.br.add(1, 1));
+			    if((selection != null) && (sel.x == selection.ul.x) && (sel.y == selection.ul.y)) {
+				mode(new CMover(sel, vsel, "ul", ev.c));
+			    } else if((selection != null) && (sel.x == selection.br.x) && (sel.y == selection.ul.y)) {
+				mode(new CMover(sel, vsel, "ur", ev.c));
+			    } else if((selection != null) && (sel.x == selection.br.x) && (sel.y == selection.br.y)) {
+				mode(new CMover(sel, vsel, "br", ev.c));
+			    } else if((selection != null) && (sel.x == selection.ul.x) && (sel.y == selection.br.y)) {
+				mode(new CMover(sel, vsel, "bl", ev.c));
+			    } else if((vsel != null) && vsel.contains(sel)) {
+				mode(new Mover(sel, vsel, ev.c));
+			    } else {
+				mode(new Mover(sel, Area.sized(sel, Coord.of(1, 1)), ev.c));
+			    }
+			}
+			return(true);
+		    }
+		}
+	    }
+	    return(false);
+	}
+    }
+
+    public void select(Area area) {
+	dsp.select(this.selection = area);
+    }
+
+    public class Selector implements EventHandler<Widget.MouseEvent> {
+	public final Coord sv;
+	public final UI.Grab grab;
+
+	public Selector(Coord vc) {
+	    this.sv = vc;
+	    dsp.select(Area.sized(vc.min(area.br.sub(1, 1)), Coord.z));
+	    grab = mv.ui.grabmouse(mv);
+	}
+
+	public boolean handle(MouseEvent ev) {
+	    if(ev instanceof MouseMoveEvent) {
+		Coord sel = dsp.mousetest(ev.c, true);
+		dsp.select(Area.corn(sel.min(sv), sel.max(sv)));
+	    } else if(ev instanceof MouseUpEvent) {
+		if(((MouseButtonEvent)ev).b == 1) {
+		    Coord v = dsp.mousetest(ev.c, true);
+		    Area sel = Area.corn(v.min(sv), v.max(sv));
+		    if(sel.area() == 0)
+			select(null);
+		    else
+			select(sel);
+		    grab.remove();
+		    mode(new Idle());
+		    return(true);
+		}
+	    }
+	    return(false);
+	}
+    }
+
+    public class Mover implements EventHandler<Widget.MouseEvent> {
+	public final Coord vc, sc;
+	public final Area area;
+	public final UI.Grab grab;
+	public final float[] sz;
+	public final float zsz;
+
+	public Mover(Coord vc, Area area, Coord sc) {
+	    this.vc = vc;
+	    this.sc = sc;
+	    this.area = area;
+	    this.zsz = dsp.zsize(vc);
+	    this.sz = new float[area.area()];
+	    for(Coord iv : area)
+		this.sz[area.ridx(iv)] = data.wz[data.varea.ridx(iv)];
+	    grab = mv.ui.grabmouse(mv);
+	    dsp.active = true;
+	    dsp.update = true;
+	}
+
+	public boolean handle(MouseEvent ev) {
+	    if(ev instanceof MouseMoveEvent) {
+		float diff = Math.round((sc.y - ev.c.y) / zsz);
+		for(Coord mv : area)
+		    data.wz[data.varea.ridx(mv)] = sz[area.ridx(mv)] + diff;
+		data.dupdate();
+		data.seq++;
 		upd = true;
+	    } else if(ev instanceof MouseUpEvent) {
+		if(((MouseButtonEvent)ev).b == 1) {
+		    dsp.active = false;
+		    dsp.update = true;
+		    grab.remove();
+		    send();
+		    mode(new Idle());
+		    return(true);
+		}
+	    }
+	    return(false);
+	}
+    }
+
+    public class CMover implements EventHandler<Widget.MouseEvent> {
+	public final Coord vc, sc;
+	public final String corn;
+	public final Area area;
+	public final UI.Grab grab;
+	public final float[] sz;
+	public final float zsz;
+
+	public CMover(Coord vc, Area area, String corn, Coord sc) {
+	    this.vc = vc;
+	    this.sc = sc;
+	    this.area = area;
+	    this.corn = corn;
+	    this.zsz = dsp.zsize(vc);
+	    this.sz = new float[area.area()];
+	    for(Coord iv : area)
+		this.sz[area.ridx(iv)] = data.wz[data.varea.ridx(iv)];
+	    grab = mv.ui.grabmouse(mv);
+	    dsp.active = true;
+	    dsp.update = true;
+	}
+
+	public boolean handle(MouseEvent ev) {
+	    if(ev instanceof MouseMoveEvent) {
+		float diff = Math.round((sc.y - ev.c.y) / zsz);
+		float ul = (corn == "ul") ? diff : 0;
+		float ur = (corn == "ur") ? diff : 0;
+		float br = (corn == "br") ? diff : 0;
+		float bl = (corn == "bl") ? diff : 0;
+		float iw = 1f / (area.br.x - 1 - area.ul.x), ih = 1f / (area.br.y - 1 - area.ul.y);
+		for(Coord mv : area) {
+		    float fx = (mv.x - area.ul.x) * iw, fy = (mv.y - area.ul.y) * ih;
+		    float cd = (((ul * (1 - fx)) + (ur * fx)) * (1 - fy)) +
+			       (((bl * (1 - fx)) + (br * fx)) * fy);
+		    data.wz[data.varea.ridx(mv)] = sz[area.ridx(mv)] + cd;
+		}
+		data.dupdate();
+		data.seq++;
+		upd = true;
+	    } else if(ev instanceof MouseUpEvent) {
+		if(((MouseButtonEvent)ev).b == 1) {
+		    dsp.active = false;
+		    dsp.update = true;
+		    grab.remove();
+		    send();
+		    mode(new Idle());
+		    return(true);
+		}
+	    }
+	    return(false);
+	}
+    }
+
+    private boolean upd = true;
+    private int mapseq = -1;
+    public void tick(double dt) {
+	if(!inited) {
+	    try {
+		initplane();
+		send();
+		inited = true;
 	    } catch(Loading l) {}
-	} else {
-	    if(upd || (olseq != mv.ui.sess.glob.map.olseq)) {
+	}
+	if(inited) {
+	    if(upd || (mapseq != mv.ui.sess.glob.map.chseq)) {
 		try {
 		    updmap();
-		    olseq = mv.ui.sess.glob.map.olseq;
+		    mapseq = mv.ui.sess.glob.map.chseq;
 		    upd = false;
 		} catch(Loading l) {
 		}
 	    }
-	    if((s_dsp == null) && (olseq != -1)) {
-		s_dsp = mv.drawadd(dsp);
-		s_ol = mv.drawadd(ol);
-	    }
-	    if(s_ol != null) {
-		s_ol.cstate(Pipe.Op.compose(olmat, Location.xlate(new Coord3f(ul.x * (float)tilesz.x, -ul.y * (float)tilesz.y, tz))));
-	    }
-	}
-	if((sendtz != 0) && (Utils.rtime() > sendtz)) {
-	    wdgmsg("tz", tz / (gran * 11));
-	    sendtz = 0;
 	}
 	super.tick(dt);
     }
 
     public void uimsg(String name, Object... args) {
-	if(name == "tz") {
-	    tz = Math.round(((Number)args[0]).floatValue() * gran);
-	    zset.val = tz;
+	if(name == "data") {
+	    data.decode(Utils.iv(args[0]), (byte[])args[1]);
 	    upd = true;
+	} else if(name == "lock") {
+	    lock.set(!Utils.bv(args[0]));
 	} else {
 	    super.uimsg(name, args);
 	}
     }
 
     public void destroy() {
-	if(s_dsp != null) {
+	mode(null);
+	if(s_dsp != null)
 	    s_dsp.remove();
-	    s_ol.remove();
-	}
 	super.destroy();
     }
 }

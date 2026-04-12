@@ -6,7 +6,7 @@ import haven.CharWnd.LoadingTextBox;
 import java.util.*;
 import java.awt.Color;
 
-@haven.FromResource(name = "ui/r-enact", version = 64)
+@haven.FromResource(name = "ui/r-enact", version = 66)
 public class Enactments extends Widget {
     public static final Tex mpi = Resource.classres(Enactments.class).layer(Resource.imgc, 1).tex();
     public static final Tex ipi = Resource.classres(Enactments.class).layer(Resource.imgc, 0).tex();
@@ -218,9 +218,9 @@ public class Enactments extends Widget {
 	return(new Enactments());
     }
 
-    private static Enactment get(Collection<Enactment> from, int id) {
+    private static Enactment get(Collection<Enactment> from, Object id) {
 	for(Enactment act : from) {
-	    if(act.id == id)
+	    if(Utils.eq(act.id, id))
 		return(act);
 	}
 	return(null);
@@ -228,34 +228,34 @@ public class Enactments extends Widget {
 
     public void uimsg(String nm, Object... args) {
 	if(nm == "pop") {
-	    Collection<Enactment> buf = ((Integer)args[0] != 0) ? new ArrayList<Enactment>() : list.acts;
+	    Collection<Enactment> buf = Utils.bv(args[0]) ? new ArrayList<Enactment>() : list.acts;
 	    int a = 1;
 	    while(a < args.length) {
-		int resid = (Integer)args[a++];
+		Object resid = args[a++];
 		Enactment act = get(buf, resid);
 		if(act == null) {
-		    act = new Enactment(resid, ui.sess.getres(resid));
+		    act = new Enactment(resid, ui.sess.getresv(resid));
 		    buf.add(act);
 		}
-		act.lvl = (Integer)args[a++];
-		act.mlvl = (Integer)args[a++];
-		if(((Integer)args[a++]) != 0)
-		    act.cost = new Cost(((Number)args[a++]).doubleValue(), ((Number)args[a++]).doubleValue(), ((Number)args[a++]).doubleValue(), ((Number)args[a++]).doubleValue());
+		act.lvl = Utils.iv(args[a++]);
+		act.mlvl = Utils.iv(args[a++]);
+		if(Utils.bv(args[a++]))
+		    act.cost = new Cost(Utils.dv(args[a++]), Utils.dv(args[a++]), Utils.dv(args[a++]), Utils.dv(args[a++]));
 		else
 		    act.cost = null;
-		if(((Integer)args[a++]) != 0)
-		    act.dcost = new Cost(((Number)args[a++]).doubleValue(), ((Number)args[a++]).doubleValue(), ((Number)args[a++]).doubleValue(), ((Number)args[a++]).doubleValue());
+		if(Utils.bv(args[a++]))
+		    act.dcost = new Cost(Utils.dv(args[a++]), Utils.dv(args[a++]), Utils.dv(args[a++]), Utils.dv(args[a++]));
 		else
 		    act.dcost = null;
-		if(((Integer)args[a++]) != 0)
-		    act.icost = new Cost(((Number)args[a++]).doubleValue(), ((Number)args[a++]).doubleValue(), ((Number)args[a++]).doubleValue(), ((Number)args[a++]).doubleValue());
+		if(Utils.bv(args[a++]))
+		    act.icost = new Cost(Utils.dv(args[a++]), Utils.dv(args[a++]), Utils.dv(args[a++]), Utils.dv(args[a++]));
 		else
 		    act.icost = null;
 	    }
 	    list.pop(buf);
 	} else if(nm == "cur") {
-	    avail = new Cost(((Number)args[0]).doubleValue(), ((Number)args[2]).doubleValue(), ((Number)args[4]).doubleValue(), ((Number)args[6]).doubleValue());
-	    used  = new Cost(((Number)args[1]).doubleValue(), ((Number)args[3]).doubleValue(), ((Number)args[5]).doubleValue(), ((Number)args[7]).doubleValue());
+	    avail = new Cost(Utils.dv(args[0]), Utils.dv(args[2]), Utils.dv(args[4]), Utils.dv(args[6]));
+	    used  = new Cost(Utils.dv(args[1]), Utils.dv(args[3]), Utils.dv(args[5]), Utils.dv(args[7]));
 	    updcostbox();
 	} else {
 	    super.uimsg(nm, args);

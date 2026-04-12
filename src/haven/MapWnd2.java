@@ -71,7 +71,7 @@ public class MapWnd2 extends MapWnd {
 
     public void addMarker(Coord at, String name) {
 	at = at.add(view.sessloc.tc);
-	Marker nm = new PMarker(view.sessloc.seg.id, at, name, BuddyWnd.gc[new Random().nextInt(BuddyWnd.gc.length)]);
+	Marker nm = new PMarker(view.sessloc.seg.id, at, name, BuddyWnd.gc[new Random().nextInt(BuddyWnd.gc.length)], false);
 	file.add(nm);
 	focus(nm);
 	if(ui.modctrl) {

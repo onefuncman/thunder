@@ -15,32 +15,32 @@ public class Pointer extends Widget {
     public Coord lc;
     public long gobid = -1;
     private Tex licon;
-    
+
     public Pointer(Indir<Resource> icon) {
 	super(Coord.z);
 	this.icon = icon;
     }
-    
+
     public static Widget mkwidget(UI ui, Object... args) {
 	Indir<Resource> icon = ui.sess.getresv(args[0]);
-	return(new haven.res.ui.locptr.Pointer(icon));
+	return(new Pointer(icon));
     }
-    
+	
     public void presize() {
 	resize(parent.sz);
     }
-    
+
     protected void added() {
 	presize();
 	super.added();
     }
-    
+
     private int signum(int a) {
 	if(a < 0) return(-1);
 	if(a > 0) return(1);
 	return(0);
     }
-    
+
     private void drawarrow(GOut g, Coord tc) {
 	Coord hsz = sz.div(2);
 	tc = tc.sub(hsz);
@@ -58,15 +58,15 @@ public class Pointer extends Widget {
 	}
 	Coord ad = sc.sub(tc).norm(UI.scale(30.0));
 	sc = sc.add(hsz);
-	
+
 	// gl.glEnable(GL2.GL_POLYGON_SMOOTH); XXXRENDER
 	g.usestate(col);
 	g.drawp(Model.Mode.TRIANGLES, new float[] {
-	    sc.x, sc.y,
-	    sc.x + ad.x - (ad.y / 3), sc.y + ad.y + (ad.x / 3),
-	    sc.x + ad.x + (ad.y / 3), sc.y + ad.y - (ad.x / 3),
-	});
-	
+		sc.x, sc.y,
+		sc.x + ad.x - (ad.y / 3), sc.y + ad.y + (ad.x / 3),
+		sc.x + ad.x + (ad.y / 3), sc.y + ad.y - (ad.x / 3),
+	    });
+
 	if(icon != null) {
 	    try {
 		if(licon == null)
@@ -77,7 +77,7 @@ public class Pointer extends Widget {
 	}
 	this.lc = sc.add(ad);
     }
-    
+
     public void draw(GOut g) {
 	this.lc = null;
 	if(tc == null)
@@ -100,16 +100,16 @@ public class Pointer extends Widget {
 	}
 	drawarrow(g, new Coord(sl.toview(Area.sized(mv.sz))));
     }
-    
+
     public void update(Coord2d tc, long gobid) {
 	this.tc = tc;
 	this.gobid = gobid;
     }
-    
+
     public boolean checkhit(Coord c) {
 	return((lc != null) && (lc.dist(c) < 20));
     }
-    
+
     public void uimsg(String name, Object... args) {
 	if(name == "upd") {
 	    if(args[0] == null)
@@ -128,7 +128,7 @@ public class Pointer extends Widget {
 	    super.uimsg(name, args);
 	}
     }
-    
+
     public Object tooltip(Coord c, Widget prev) {
 	if((lc != null) && (lc.dist(c) < 20))
 	    return(tooltip);

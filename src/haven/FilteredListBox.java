@@ -69,12 +69,12 @@ public abstract class FilteredListBox<T> extends Listbox<T> {
 	needfilter = true;
 	sb.val = 0;
     }
-    
+
     public void filter(String filter) {
 	this.filter.setline(filter);
 	needfilter();
     }
-    
+
     @Override
     public void tick(double dt) {
 	super.tick(dt);

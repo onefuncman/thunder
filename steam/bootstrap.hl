@@ -1,0 +1,9 @@
+validate always
+
+title "Haven & Hearth"
+icon "https://game.havenandhearth.com/java/icon.gif"
+splash-image "https://game.havenandhearth.com/java/splash.gif"
+
+validate always 
+include https://enderwiggin.github.io/hafen-steam/hafen.hl
+

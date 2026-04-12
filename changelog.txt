@@ -97,6 +97,630 @@ $size[14]{$u{update on 04.06.2024:}
   * maybe fixed a login crash with quest helper.. Can't reproduce on will
 `
 $size[14]{$u{update on 03.06.2024:}
+  * (merged with ender content below)
+`
+$size[14]{$u{Update for 03.04.26:}
+   * merged loftar's changes
+ 
+$size[14]{$u{Update for 28.03.26:}
+   * merged loftar's changes
+ 
+$size[14]{$u{Update for 22.03.26:}
+  * fixed flat terrain and similar options not applying immediately upon change
+  * fixed minimap overlays (tile highlight, province areas) being shifted when UI scale is not 1
+ 
+$size[14]{$u{Update for 18.03.26:}
+ * merged loftar's changes
+ * fixed smelting timer related crash
+ 
+$size[14]{$u{Update for 06.03.26:}
+  * fixed beehive and troughs not showing their radius
+ 
+$size[14]{$u{Update for 05.03.26 (part 2):}
+  * fixed minimap grid
+  * fixed view box on minimap
+  * fixed some loading crashes
+  * allow customizing the overlay color of the single mine support
+  * allow customizing alpha of the mine support overlays
+ 
+$size[14]{$u{Update for 05.03.26:}
+  * merged loftar's changes
+  * removed "Show mine support radius as overlay" option in favor of loftar's implementation
+  * added option to set hp threshold for mine support to be considered dangerous
+  * added color option for mine support preview
+  * mine support area will be shown when either "Show gob radius" or loftar's mine support toggle is on 
+ 
+$size[14]{$u{Update for 04.03.26:}
+  * merged loftar's changes
+ 
+$size[14]{$u{Update for 20.02.26:}
+  * merged loftar's changes
+  * fixed hitbox for produce sacks
+ 
+$size[14]{$u{Update for 12.02.26:}
+  * merged loftar's changes
+ 
+$size[14]{$u{Update for 06.02.26:}
+  * merged loftar's changes
+ 
+$size[14]{$u{Update for 24.01.26:}
+  * merged loftar's changes
+ 
+$size[14]{$u{Update for 03.01.26:}
+  * merged loftar's changes
+ 
+$size[14]{$u{Update for 22.12.25:}
+  * merged loftar's changes
+ 
+$size[14]{$u{Update for 16.12.25:}
+  * added support for extended inventory and sorting buton to equippable containers like creels
+ 
+$size[14]{$u{Update for 15.12.25:}
+  * merged loftar's changes
+ 
+$size[14]{$u{Update for 14.12.25:}
+  * merged loftar's changes
+  * merged PR with mapper client fixes
+ 
+$size[14]{$u{Update for 07.12.25:}
+  * merged loftar's changes
+  * added new cave entrances from w16.1 to auto mark config
+  * added riverbed and badlands to tile highlight
+  * fixed gilded items in w16.1 not showing their bonuses on equipment window
+  * fixed filter not working on gilded items in w16.1
+ 
+$size[14]{$u{Update for 06.12.25:}
+  * changed the Alchemy window to read/store data from files in world-specific folders
+ 
+$size[14]{$u{Update for 05.12.25:}
+  * merged loftar's changes
+  * disabled custom gilding window
+ 
+$size[14]{$u{Update for 28.11.25:}
+  * merged loftar's changes
+
+$size[14]{$u{Update for 17.11.25:}
+  * fixed crash related to customized flags
+ 
+$size[14]{$u{Update for 11.11.25:}
+  * merged loftar's changes
+ 
+$size[14]{$u{Update for 22.06.25:}
+  * merged loftar's changes
+ 
+$size[14]{$u{Update for 02.05.25:}
+  * merged loftar's changes
+  * fixed inventory sorter breaking if you have pouches gilded onto your clothes 
+ 
+$size[14]{$u{Update for 09.04.25:}
+  * merged loftar's changes
+  * added some dungeon rats to list of targets for aggro action
+  * added option to mark animals that can be sheared
+ 
+$size[14]{$u{Update for 02.03.25:}
+  * merged loftar's attribute changes
+
+$size[14]{$u{Update for 23.02.25:}
+  * added "Salt All" button to tables
+ 
+$size[14]{$u{Update for 01.02.25:}
+  * merged loftar's changes
+ 
+$size[14]{$u{Update for 07.01.25:}
+  * merged loftar's changes
+  * fixed crash related to food tooltips while eating
+ 
+$size[14]{$u{Update for 21.12.24:}
+  * fixed rare crash related to tooltip while mining
+  * improved info for another rare crash
+ 
+$size[14]{$u{Update for 21.12.24:}
+  * merged loftar's changes
+  * fixed FEP percentages in tooltip
+  * made "#Pick All" action ignore distance and radar settings
+ 
+$size[14]{$u{Update for 17.12.24:}
+  * merged loftar's changes
+ 
+$size[14]{$u{Update for 16.12.24:}
+  * merged loftar's changes
+  * Alchemy: updated ingredient and effect lists
+ 
+$size[14]{$u{Update for 14.12.24:}
+  * merged loftar's code
+  * added black wood and sea brick to tile highlight
+ 
+$size[14]{$u{Update for 12.12.24:}
+  * show tile tooltip when mining cursor is on
+  * Alchemy: fixed limit recipe saving working off wrong tab
+  * added action to equip bow (Xtra -> Equip -> Bow) or can be bound in global shortcuts
+  * added action to equip spear (Xtra -> Equip -> Spear) or can be bound in global shortcuts
+  * added action to equip sword and shield (Xtra -> Equip -> Sword and Shield) or can be bound in global shortcuts
+ 
+$size[14]{$u{Update for 10.12.24:}
+  * merged loftar's changes
+  * fixed map export and import progress windows being invisible
+  * added system log messages when map export/import completes
+  * fixed potential crash with weapon tooltips
+ 
+$size[14]{$u{Update for 09.12.24:}
+  * merged loftar's changes
+  * merged makubo's PR (#132) with some localization improvements
+  * display remaining % of a log in gob info after inspecting it
+  * do not allow to sort inventory with not-default cursor
+  * added Mud Ointment as treatment for Sore Snout
+ 
+$size[14]{$u{Update for 07.12.24:}
+  * added button to sort food on a table
+  * tweaked coloring and sorting of quests in QuestHelper
+  * added button to toggle how quests ready to turn-in are sorted in QuestHelper
+ 
+$size[14]{$u{Update for 06.12.24:}
+  * use separate marker for tracked alchemy ingredients, instead of re-using filter's purple border
+ 
+$size[14]{$u{Update for 05.12.24:}
+  * merged loftar's changes
+  * Alchemy:
+      - slight fix for ingredient tooltip markers updating
+      - allow :name filtering in alchemy window
+      - added alchemy ingredient support to item filters
+ 
+$size[14]{$u{Update for 04.12.24:}
+  * merged loftar's changes
+  * Alchemy changes: 
+      - while tracking ingredients mark matched effects in tooltips with $col[0,255,0]{$font[monospaced]{✓}}, mismatched with $col[255,0,0]{$font[monospaced]{✗}} and untested with $col[0,255,255]{$font[monospaced]{?}}
+      - in Combos tab show $col[0,255,0]{$font[monospaced]{✓}} for tested ingredients that have common effects and $col[255,0,0]{$font[monospaced]{✗}} for ones that don't have common effects
+      - renamed Ingredients tab to Effects
+      - swapped Combos and Recipes tabs
+      - synced selected ingredient between Effects and Combos tabs
+      - updated help
+ 
+$size[14]{$u{Update for 03.12.24:}
+  * fixed rare crash when teleporting with quest/tracking pointers
+  * Alchemy changes: 
+      - made auto-processing optional and disabled by default
+      - added option for deeper effect tracking
+      - updated help
+ 
+$size[14]{$u{Update for 02.12.24:}
+  * slight tweaks to inventory sorter's ordering
+  * Alchemy changes: 
+      - ingredient tab got rework - it now allows tracking tested/untested effects on ingredients and tracking possible positions of an effect
+      - if Alchemy window or effect/combo tracking window are open, then ingredients and elixirs would be auto-processed for their info
+ 
+$size[14]{$u{Update for 01.12.24:}
+  * merged loftar's changes
+  * some small tweaks to Alchemy window and its help
+ 
+$size[14]{$u{Update for 30.11.24:}
+  * fixed mouflons and aurochs not being detected by auto-aggro
+  * added slightly modified inventory sorting from AlexKondor's pull request
+  * merged PR from AlexKondor with improvements to Quest Helper
+  * merged PR from AlexKondor with options to show more info near calendar up top (Options -> UI)
+ 
+$size[14]{$u{Update for 29.11.24:}
+  * fixed some custom messages not displaying
+  * fixed crash related to gaining stats from eating
+  * added Alchemy window - allows viewing and recording of known ingredients, recipes and tested combinations. Can be opened from menu grid (Xtended -> Alchemy) or add keybind in Options -> Global shortcuts. It has [?] button that shows help.
+ 
+$size[14]{$u{Update for 27.11.24:}
+  * do not show progress timers if smelter is not lit
+  * small fix to critter auras vertical positioning
+ 
+$size[14]{$u{Update for 25.11.24:}
+  * merged loftar's code
+  * added Cold Cut to Black Eye treatments
+  * show tiles under damaged (25% HP and lower) mine support in different color
+ 
+$size[14]{$u{Update for 23.11.24:}
+  * merged loftar's code
+  * fixed gob circles/rings being under water if flat terrain is on
+ 
+$size[14]{$u{Update for 20.11.24:}
+  * merged loftar's code
+  * fixed some custom messages (notably animal warnings) not being displayed
+  * made damage tooltip enhancement work for cutthroat knuckles
+  * fixed error when applying sketch to change building materials
+ 
+$size[14]{$u{Update for 18.11.24:}
+  * merged loftar's code
+  * added pouches support for drink. refill drinks and drink meter
+ 
+$size[14]{$u{Update for 15.11.24:}
+  * fixed minesweper import removing numbers from tiles in some cases
+ 
+$size[14]{$u{Update for 13.11.24:}
+  * fixed mining strength display for metal axes
+  * removed unnecessary "of" from some vanilla inspect tooltips
+  * improved vanilla inspect tooltip for stockpiles
+ 
+$size[14]{$u{Update for 12.11.24:}
+  * merged loftar's changes
+  * added some missing biomes
+ 
+$size[14]{$u{Update for 10.11.24:}
+  * fixed bat cape detection for bats aggro
+  * improved minesweeper cursor - added 3rd marker type and allow markers be placed together with numbers
+  * fixed numbers toolbelt not switching by ALT+<Number>
+  * removed default key binds for pouches (ALT+1 and ALT+2) as they clashed with changing of current tool belt
+  * fixed minesweeper numbers from behind camera being shown
+  * fixed big tree threshold being calculated incorrectly
+  * if 'Highlight finished objects' is turned on Stack Furnace will show metal bar icon when it finishes smelting
+  * if 'Highlight finished objects' is turned on Stack Furnace will show snowflake icon when it needs to be heated by using bellows 
+ 
+$size[14]{$u{Update for 09.11.24:}
+  * added second floating equipment widget - for pouches and back
+  * floating equipment widgets can be toggled on or off in the Options -> UI -> Show hands and belt widget and Show pouches and back widget
+  * added mount the closest horse action - Xtended -> Automation -> Mount horse, default key bind - CTRL+Q
+  * fixed some messages (notably player/animal warnings) not being displayed
+  * added Willow Weep to wound treatments
+ 
+$size[14]{$u{Update for 08.11.24:}
+  * merged loftar's changes
+  * updated tree contents for Beech, Poplar and Willow
+ 
+$size[14]{$u{Update for 07.11.24:}
+  * don't add fep multipliers to food tooltips in crafting menus
+  * added minesweeper cursor - hold SHIFT while activating minesweeper display - allows marking tiles as safe or dangerous
+  * fixed buffs being covered by meters if there's too many of them
+  * added option to show drinks meter (Option -> UI -> Show drinks meter) - it shows how much tea and water you have
+ 
+$size[14]{$u{Update for 06.11.24:}
+  * added option to show growth scale for big trees (Options -> Display -> Show gob info cog)
+  * added ability to specify how many items to craft
+ 
+$size[14]{$u{Update for 05.11.24:}
+  * added various FEP modifiers to food tooltips - satiation, hunger, low energy, verified and/or subbed account
+  * fixed drink refill not seeing water barrels
+  * added beech nuts to tree contents
+  * improved (but not fully fixed) detection of friendlies as enemies on login
+  * added option to show full item tooltip instantly (Options -> UI -> Instant full tooltips)
+  * fixed item filter not working for symbel stats
+ 
+$size[14]{$u{Update for 04.11.24:}
+  * fixed AttrMod errors caused by player having VERY old resource cache
+  * fixed mapper crash during character creation
+  * fixed crash on viewing map icons on 1.15 UI scale
+  * do not try queueing path if cursor is not default
+  * added option to auto drop all parasites (leeches and ticks)
+  * added "Steal" and "Drop" buttons to equipment screen of other characters
+  * added option to preserve cutlery
+ 
+$size[14]{$u{Update for 03.11.24:}
+  * allow drink refill to work on buckets in hands
+  * added 'Xtended -> Minesweeper' to menu grid - stores amount of dust fallen when mining if you were present to witness it and can show those numbers when toggled on
+  * added option to export/import minesweeper data when trying to export/import map
+  * made Display Flavor objects option apply instantly
+  * added menu action to toggle flavor objects
+  * added menu action to toggle flat terrain
+ 
+$size[14]{$u{Update for 02.11.24:}
+  * returned path queueing to ALT+LClick
+  * changed object/place highlight to CTRL+ALT+LClick
+  * fixed Craft window not updating selected recipe when recipe is selected from input list
+ 
+$size[14]{$u{Update for 01.11.24:}
+  * added option to display tree contents (seeds, leaves, bough, bark) (Options -> Display -> cog near Show object info)
+  * made ALT+Click highlight spots on map too, not only gobs
+  * made ALT+Click send message in private chat, if open, otherwise sends to party chat or area chat, regardless of currently active chat
+  * changed movement queueing to SHIFT+LClick
+  * fixed world lighting not updating as time passes
+  * merged PR with KO translation update
+  * merged PR with ZH translation
+  * merged PR with mapper tweak to not upload character creation room
+  * fixed not-full-but-with-some-water kuksa being not detected for drink refills
+ 
+$size[14]{$u{Update for 25.10.24:}
+  * merged loftar's changes
+  * fixed map window reacting to hotkeys while hidden
+ 
+$size[14]{$u{Update for 23.10.24:}
+  * merged loftar's changes
+  * added option to make cupboards have default look regardless of materials (Options -> Display -> Cupboard use default materials)
+  * holding SHIFT while inspect custom cursor is on will show gob materials
+  * fixed not being able to click on UI if ALT-Tabbed from client while rotating camera with middle mouse button
+ 
+$size[14]{$u{Update for 18.10.24:}
+  * added smelt timer for finery forge
+ 
+$size[14]{$u{Update for 12.10.24:}
+  * fixed holding CTRL to drop item with drop protection on not working unless SHIFT or ALT are pressed too
+  * fixed Take button in stockpiles
+  * allow drink refill to fill Birchbark Kuksa
+  * fixed drink refill not recognizing water barrels if gob info display is disabled
+  * merged PR with KO translation
+  * fixed rabbit/critter and speed buff auras being not clickable if flat terrain is disabled
+  * fixed Study Window not registering clicks on curios
+  * merged loftar's code
+ 
+$size[14]{$u{Update for 07.10.24:}
+  * fixed combat keybinds
+  * fixed list inventory not updating in some cases
+ 
+$size[14]{$u{Update for 01.10.24:}
+ * merged loftar's changes in preparation to steam release
+ 
+$size[14]{$u{Update for 18.09.24:}
+  * fixed inability to upload new images to sketch
+  * fixed sketch preview window not closing
+ 
+$size[14]{$u{Update for 13.09.24:}
+  * merged loftar's changes
+ 
+$size[14]{$u{Update for 05.08.24:}
+  * merged loftar's changes
+ 
+$size[14]{$u{Update for 26.07.24:}
+  * merged loftar's changes
+ 
+$size[14]{$u{Update for 25.07.24:}
+  * added options (Options -> Display, Options -> Colors) to show clickable auras for speed buffs, rabbits and other critters
+  * added some missing critters to the list
+  * added some missing aggressive animals to the list
+  * fixed crash related to toggling tree visibility
+ 
+$size[14]{$u{Update for 22.07.24:}
+  * update tile grid line width when render scale changes
+  * fixed hit boxes being absent for some domesticated animals
+  * fixed ConcurrentModificationException related to mine support radii as map overlay
+ 
+$size[14]{$u{Update for 21.07.24:}
+  * added option to make solid hit boxes filled in with customized color
+  * added option to drag combat UI and button to reset its position
+  * bumped max vertical offset for combat info
+  * fixed Green and Blue channels being swapped in input fields on opening color config window
+ 
+$size[14]{$u{Update for 20.07.24:}
+  * made action lists (Craft/Build/Act) to jump in front of all windows when opened
+  * added option (Options -> Combat) to show draggable HP and stamina bars 
+ 
+$size[14]{$u{Update for 19.07.24:}
+  * improved openings display in combat info
+  * added stance display to combat info
+  * added setting to change how high combat info is displayed
+  * fixed colors of rings for current target and just in combat being swapped
+  * fixed kin names of party members on minimap being visible only while they are in vision range
+ 
+$size[14]{$u{Update for 18.07.24:}
+  * added option (Options -> Combat) to highlight gobs in combat by adding rings near feet
+ 
+$size[14]{$u{Update for 16.07.24:}
+  * split aggro one into PVP and PVE versions and clarified all aggro descriptions a bit
+ 
+$size[14]{$u{Update for 15.07.24:}
+  * added button to show party member names on minimap
+  * fixed ridge highlight
+  * fixed aggro one/all not targeting some animals 
+  * made aggro one/all actions not aggro own horse or those of party members
+  * made aggro one/all actions not aggro KO creatures
+  * fixed smelter timer disappearing when window is closed
+ 
+$size[14]{$u{Update for 14.07.24:}
+  * added Options -> Colors panel - allows to tweak various colors used by client
+  * added Options -> Display -> Colorize ridge tiles
+ 
+$size[14]{$u{Update for 13.07.24:}
+  * added action to aggro creature nearest to cursor that is not in your party (eXtra -> Automation -> Aggro one). Also, can be bound in global hotkey settings.
+  * added action to aggro all non-party members near you (eXtra -> Automation -> Aggro all). Also, can be bound in global hotkey settings.
+  * added option to highlight party members during combat
+  * added option to highlight self during combat
+  * added option to highlight enemies during combat
+  * added option (Display -> Show mine support radius as overlay) that will highlight tiles covered by mine supports, instead of drawing radius around supports. Turned on by default.
+ 
+$size[14]{$u{Update for 30.06.24:}
+  * fixed startup buffs not working
+  * fixed chat losing focus when items stack in inventory 
+ 
+$size[14]{$u{Update for 29.06.24:}
+  * added whirling snowflake to critters
+ 
+$size[14]{$u{Update for 28.06.24:}
+  * merged loftar's code 
+ 
+$size[14]{$u{Update for 07.06.24:}
+  * merged loftar's code
+  * fixed another potential crash on client start related to QuestHelper
+  * added earth worms to auto-pickup command list 
+ 
+$size[14]{$u{Update for 29.05.24:}
+  * fixed overlap in Realm Blessings window
+  * fixed another potential crash on client start related to QuestHelper 
+ 
+$size[14]{$u{Update for 28.05.24:}
+  * merged loftar's code
+  * added Full Screen option in Video settings
+  * fixed potential crash on client start related to QuestHelper
+ 
+$size[14]{$u{Update for 19.03.24:}
+  * fixed ConcurrentModificationException in Buddy's Info 
+  * fixed NPE in Buddy code 
+ 
+$size[14]{$u{Update for 18.03.24:}
+  * fixed food tooltip hanging client if food has no hunger stats
+  * fixed "Dismiss" button on prospecting window
+  * improved handling of pickling jars in list inventory
+ 
+$size[14]{$u{Update for 17.03.24:}
+  * fixed QBuff crash
+  * added option to set minimum rows for list inventory
+  * fixed layout of stockpile widget
+  * show tooltip for all gobs when inspect cursor is active
+  * added buttons to menu grid (eXtra -> Object Info) to toggle which parts of object info to show
+ 
+$size[14]{$u{Update for 16.03.24:}
+  * merged loftar's changes
+  * fixed bunch of errors when trying to enter Valhalla
+ 
+$size[14]{$u{Update for 12.03.24:}
+  * fixed cattle window detection
+  * fixed crash when picking up item with not-yet-loaded resource
+  * fixed $font[monospaced,13]{use:} item filter not working
+ 
+$size[14]{$u{Update for 09.03.24:}
+  * made custom tool belts store action same way default client does - on server side
+ 
+$size[14]{$u{Update for 04.03.24:}
+  * merged loftar's code
+  * fixed gilding window
+  * fixed timers
+ 
+$size[14]{$u{Update for 27.02.24:}
+  * fixed list inventory grouping
+ 
+$size[14]{$u{Update for 26.02.24:}
+  * merged loftar's code
+  * re-added LP/H to skill tab
+  * fixed resource not found crash in ToolBelt
+  * fixed simple crops
+  * fixed guildings not showing in the equipment bonuses
+ 
+$size[14]{$u{Update for 22.02.24:}
+  * fixed quest pointer crash
+ 
+$size[14]{$u{Update for 21.02.24:}
+  * merged loftar's code
+ 
+$size[14]{$u{Update for 12.02.24:}
+  * merged loftar's code
+  * fixed position of parent text of animal inspect window
+  * added Reindeer support to animal inspect window extension
+  * fixed simple crops not working
+ 
+$size[14]{$u{Update for 22.12.23:}
+  * merged loftar's code
+  * fixed crash when tracking some objects
+ 
+$size[14]{$u{Update for 05.12.23:}
+  * fixed gob info disabled parts not working on restart
+  * fixed mannequins triggering player warning
+ 
+$size[14]{$u{Update for 03.12.23:}
+  * made drink action silent
+  * fixed overlaps in the realm Blessings window
+  * added cheese rack contents to gob info (can be turned off in Display -> gear icon near Show gob info)
+  * fixed potential prospecting crash
+  * fixed potential crash related to display sign contents
+ 
+$size[14]{$u{Update for 01.12.23:}
+  * made system messages use Interface sound volume and each message type doesn't play sound too often
+  * fixed potential crashes on loading new zones
+  * added content text to Display Sign gob info
+  * added options (Display -> gear icon near Show gob info) to configure which parts of the info to show
+ 
+$size[14]{$u{Update for 29.11.23:}
+  * added quest helper to menu grid (Xtended -> Quest helper) - it shows all uncompleted tasks from all currently active quests. Can also be bound to a key in the Global Shortcuts.
+  * fixed typo in punch sore treatment config that caused it to not show any treatments
+  * fixed land survey not working properly when flat terrain is on
+  * hopefully fixed quest pointers jumping behind you sometimes
+  * fixed crash that can happen on startup
+ 
+$size[14]{$u{Update for 28.11.23:}
+  * added wound treatment info
+  * another fix for smelter/oven refuelling not working with stacked fuel
+  * fixed container decal pickup protection not working on chests
+ 
+$size[14]{$u{Update for 26.11.23:}
+  * improved handling of dungeon door hitboxes
+  * fixed damage tooltip enhancement not working
+  * made damage tooltip enhancement work for sling and bows
+  * fixed refuel smelter/oven actions wonky behavior with stacked fuel
+ 
+$size[14]{$u{Update for 25.11.23:}
+  * made visitor gate show hitbox as impassable if you are in combat
+  * fixed some types of contents (namely trees in planter pots) not working properly with quality display and filtering
+  * show ore smelting progress as a timer instead of percentage
+  * made smelters show time till the earliest finished ore in the gob info
+ 
+$size[14]{$u{Update for 24.11.23:}
+  * added skis to radar
+  * made enhanced weapon damage tooltip not apply for ranged weapons and for crafting menus
+  * made drink refill action skip full containers
+  * made drink refill action consider nearby water barrels
+ 
+$size[14]{$u{Update for 22.11.23:}
+  * improved auto-drop handling of stacks
+  * fixed crash when clicking on item placed on custom toolbar
+  * added action to refill waterskins/flasks/jugs with water from nearby water tile - unmapped by default, can be changed in Global Shortcuts.
+  * added drink refill to menu grid (Xtended -> autoMation -> Refill drinks)
+  * added wellsprings to radar and made possible to turn on auto placing marker for them
+ 
+$size[14]{$u{Update for 21.11.23:}
+  * added option to not hide trees that have icons visible on radar (Display -> Don't hide trees that are visible on radar) 
+  * made hotkey interact with the closest gate ignore visitor gates
+  * added cart to radar icons
+ 
+$size[14]{$u{Update for 20.11.23:}
+  * do not show progress as time for curios that are not in the study
+  * highlight bee hives with wax as READY
+  * fixed crafting window not showing tab for actions opened from toolbar
+ 
+$size[14]{$u{Update for 17.11.23:}
+  * fixed crash on receiving a message in realm chat with store chat logs turned on
+  * tweaked layout of animal inspect window
+ 
+$size[14]{$u{Update for 16.11.23:}
+  * added option to highlight broken items (UI -> Highlight broken items, defaults to ON)
+  * fixed hitbox size on growing trees/bushes
+ 
+$size[14]{$u{Update for 15.11.23:}
+  * merged loftar's changes
+  * merged pull request with FR translation from Fr-Dae
+ 
+$size[14]{$u{Update for 14.11.23:}
+  * made Credo description show which parts of the bonus you already got
+  * added option to show initiative and openings over gobs during combat (Combat -> Show combat info)
+  * do not include armor from broken items in the equipment bonuses 
+  * added option to show decals on top of cupboards instead of on the door (Display -> Cupboard decals on top)
+  * added option to pickup decals from containers only when CTRL or SHIFT is held (General -> Container decal pickup protection)
+  * added option to improve weapon damage tooltip (UI -> Improve weapon damage tooltip)
+ 
+$size[14]{$u{Update for 13.11.23:}
+  * added option to flatten terrain (Display -> Make terrain flat)
+  * added option to darken deep ocean tiles (Display -> Darken deep ocean tiles)
+  * display action cooldown numerically during combat
+ 
+$size[14]{$u{Update for 12.11.23:}
+  * fixed filtering by attribute not working on gilding
+  * improved auto picker responsiveness
+  * added moles and lobsters to auto pickup list by making it use SHIFT+RClick to pickup items instead of RClick and waiting for menu
+  * fixed crash when trying to move resizable window (like Map) in Pretty theme
+  * fixed quick action/craft/build windows close on attempt to drag them
+ 
+$size[14]{$u{Update for 11.11.23:}
+  * added arrows to auto pickup list
+  * List inventory: allow right-clicking items onto items in the list
+  * made item auto drop work with stacks
+  * fixed window resizing not working on Slim UI theme
+  * fixed crash on tracking some markers
+ 
+$size[14]{$u{Update for 10.11.23:}
+  * added option to disable transition between tiles, so they all look like squares (Display -> Disable transition between tiles)
+  * added option to allow container windows to spread (UI -> Enable container window spreading) instead of stacking in same place on open
+  * fixed a crash on login to account without created characters
+ 
+$size[14]{$u{Update for 09.11.23:}
+  * added separate option to highlight finished objects (like drying racks), instead of relying on object info toggle
+  * added progress coloring for tanning tubs
+  * drying racks and tanning tubs empty highlight is governed by Display container fullness option
+  * added bay shrimp to auto pickup list
+  * fixed highlight of stacks with matching items
+  * fixed force hardware cursor option
+ 
+$size[14]{$u{Update for 08.11.23:}
+  * merged loftar's code
+  * List inventory: display mode now switched by clicking on label, not by pressing ALT
+  * added missing ores/rocks/pavings to tile highlight and icon group lists
+  * removed broken flat cupboard option
+  * added option to scale cupboards vertically
+  * added option to scale palisades and brick walls vertically
+  * fixed gilding window not working
+  * added hotkey to interact with the closest gate. ALT+W by default, can be customized in Options->Shortcut settings.
+  * fixed craft window not adding tabs for recipes opened through ingredient lookup
+  * fixed mine support radius not toggled by ALT+R
+  * added squirrel cache to container list, so they can be colored by fullness
+  * added full squirrel cache to radar
+ 
+$size[14]{$u{Update for 25.03.23:}
   * merged loftar's code
   * merged ender's code
   * small bug fixes

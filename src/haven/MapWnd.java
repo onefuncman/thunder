@@ -385,7 +385,7 @@ public class MapWnd extends WindowX implements Console.Directory {
 
 	public boolean clickloc(Location loc, int button, boolean press) {
 	    if(domark && (button == 1) && !press) {
-		Marker nm = new PMarker(loc.seg.id, loc.tc, "New marker", BuddyWnd.gc[new Random().nextInt(BuddyWnd.gc.length)]);
+		Marker nm = new PMarker(loc.seg.id, loc.tc, "New marker", BuddyWnd.gc[new Random().nextInt(BuddyWnd.gc.length)], false);
 		file.add(nm);
 		focus(nm);
 		domark = false;

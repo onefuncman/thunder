@@ -231,6 +231,8 @@ public class MapMesh implements RenderTree.Node, Disposable {
     }
 
     private static void dotrans(MapMesh m, Random rnd, Coord lc, Coord gc) {
+	if(CFG.NO_TILE_TRANSITION.get()) {return;}
+	
 	Tiler ground = m.map.tiler(m.map.gettile(gc));
 	int tr[][] = new int[3][3];
 	int max = -1;

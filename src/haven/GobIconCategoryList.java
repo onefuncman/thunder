@@ -237,15 +237,15 @@ public class GobIconCategoryList extends Listbox<GobIconCategoryList.GobCategory
 	    }
 	    return GobCategory.OTHER;
 	}
-	
+
 	public static boolean isOre(String res) {
 	    return Arrays.stream(ORE_PATHS).anyMatch(res::contains);
 	}
-	
+
 	public static boolean isRock(String res) {
 	    return Arrays.stream(ROCK_PATHS).anyMatch(res::contains);
 	}
-	
+
 	public boolean enabled() {
 	    return cfg.get();
 	}

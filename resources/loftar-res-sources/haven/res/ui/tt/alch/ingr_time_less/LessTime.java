@@ -7,7 +7,7 @@ import haven.res.ui.tt.alch.effect.*;
 import java.awt.image.BufferedImage;
 
 /* >tt: LessTime */
-@haven.FromResource(name = "ui/tt/alch/ingr-time-less", version = 1)
+@haven.FromResource(name = "ui/tt/alch/ingr-time-less", version = 2)
 public class LessTime extends Effect {
     public LessTime(Owner owner) {super(owner);}
 

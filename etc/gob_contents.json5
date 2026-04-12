@@ -14,7 +14,7 @@
   "gfx/terobjs/trees/almondtree": {Seed: "gfx/invobjs/almond"},
   "gfx/terobjs/trees/appletree": {Seed: "gfx/invobjs/apple"},
   "gfx/terobjs/trees/appletreegreen": {Seed: "gfx/invobjs/applegreen"},
-  "gfx/terobjs/trees/beech": {Seed:"gfx/invobjs/seed-beech", Bark: "gfx/invobjs/toughbark", Bough:  "gfx/invobjs/bough-beech"},
+  "gfx/terobjs/trees/beech": {Seed: "gfx/invobjs/seed-beech", Bark: "gfx/invobjs/toughbark", Bough: "gfx/invobjs/bough-beech"},
   "gfx/terobjs/trees/birch": {Bark: "gfx/invobjs/bark-birch"},
   "gfx/terobjs/trees/cedar": {Bark: "gfx/invobjs/toughbark"},
   "gfx/terobjs/trees/cherry": {Seed: "gfx/invobjs/cherry"},
@@ -47,9 +47,9 @@
   "gfx/terobjs/trees/wartybirch": {Bark: "gfx/invobjs/bark-birch"},
   "gfx/terobjs/trees/willow": {Bark: "gfx/invobjs/bark-willow"},
   "gfx/terobjs/trees/yew": {Bough: "gfx/invobjs/small/bough-yew"},
-  "tag/smelter": {"Ready":  "gfx/invobjs/bar-lead", Cold: "gfx/hud/gob/cold"},
+  "tag/smelter": {"Ready": "gfx/invobjs/bar-lead", Cold: "gfx/hud/gob/cold"},
   "tag/animal": {"Fleece": "gfx/invobjs/shears"},
-  "gfx/terobjs/chickencoop": {"Water":  "gfx/invobjs/water", Food: "gfx/invobjs/straw"},
+  "gfx/terobjs/chickencoop": {"Water": "gfx/invobjs/water", Food: "gfx/invobjs/straw"},
   "gfx/terobjs/trough": {Food: "gfx/invobjs/straw"},
-  "gfx/terobjs/gardenpot": {"Water":  "gfx/invobjs/water", "Soil":  "gfx/invobjs/soil", "Flower":  "gfx/invobjs/flower", "NotPlanted":  "gfx/invobjs/gardenpot"}
+  "gfx/terobjs/gardenpot": {"Water": "gfx/invobjs/water", "Soil": "gfx/invobjs/soil", "Flower": "gfx/invobjs/flower", "NotPlanted": "gfx/invobjs/gardenpot"}
 }

@@ -127,9 +127,13 @@ public class CFG<T> {
     public static final CFG<Boolean> DRINKS_METER = new CFG<>("ui.drinks_meter", false);
     public static final CFG<Boolean> SHOW_BOT_MESSAGES = new CFG<>("ui.hide_bot_messages", true);
     
+    public static final CFG<Integer> MINE_SUPPORT_DANGER_THRESHOLD = new CFG<>("display.mine_support_danger_threshold", 50);
+
     //Color settings
+    public static final CFG<Color> COLOR_MINE_SUPPORT_SINGLE_OVERLAY = new CFG<>("colors.mine_support_single_overlay", new Color(10, 211, 188, 70));
     public static final CFG<Color> COLOR_MINE_SUPPORT_OVERLAY = new CFG<>("colors.mine_support_overlay", new Color(149, 246, 194));
     public static final CFG<Color> COLOR_MINE_SUPPORT_DAMAGED_OVERLAY = new CFG<>("colors.damaged_mine_support_overlay", new Color(253, 44, 70));
+    public static final CFG<Color> COLOR_MINE_SUPPORT_VIRTUAL_OVERLAY = new CFG<>("colors.mine_support_overlay_virtual", new Color(190, 27, 255, 64));
     public static final CFG<Color> COLOR_TILE_GRID = new CFG<>("colors.tile_grid", new Color(255, 255, 255, 48));
     public static final CFG<Color> COLOR_HBOX_FILLED = new CFG<>("colors.hit_box_filled", new Color(178, 71, 178, 160));
     public static final CFG<Color> COLOR_HBOX_SOLID = new CFG<>("colors.hit_box_solid", new Color(178, 71, 178, 255));

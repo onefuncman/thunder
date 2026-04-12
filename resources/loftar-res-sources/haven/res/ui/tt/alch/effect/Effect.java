@@ -5,7 +5,7 @@ import haven.*;
 import java.util.*;
 import java.awt.image.BufferedImage;
 
-@haven.FromResource(name = "ui/tt/alch/effect", version = 1)
+@haven.FromResource(name = "ui/tt/alch/effect", version = 2)
 public abstract class Effect extends ItemInfo.Tip {
     public Effect(Owner owner) {
 	super(owner);
@@ -14,7 +14,7 @@ public abstract class Effect extends ItemInfo.Tip {
     public static class Subtip extends Tip {
 	final List<Effect> ls = new ArrayList<>();
 
-	Subtip() {super(null);}
+	Subtip(Owner owner) {super(owner);}
 
 	public void layout(Layout l) {
 	    Collections.sort(ls, Comparator.comparing(Effect::order));
@@ -28,7 +28,7 @@ public abstract class Effect extends ItemInfo.Tip {
 	public int order() {return(1000);}
     }
 
-    public static final Layout.ID<Subtip> sid = Subtip::new;
+    public static final Layout.TipID<Subtip> sid = Subtip::new;
 
     public void add(CompImage img) {
 	img.add(CompImage.mk(alchtip()), new Coord(0, img.sz.y));

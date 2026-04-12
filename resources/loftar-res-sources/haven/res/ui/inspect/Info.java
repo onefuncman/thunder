@@ -6,7 +6,7 @@ import java.util.*;
 import java.awt.Color;
 
 /* >wdg: LocalInspect */
-@haven.FromResource(name = "ui/inspect", version = 4)
+@haven.FromResource(name = "ui/inspect", version = 5)
 public class Info implements UI.Notice {
     public final long gobid;
     public final boolean syn;

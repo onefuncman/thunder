@@ -7,7 +7,7 @@ import haven.res.ui.tt.alch.effect.*;
 import java.awt.image.BufferedImage;
 
 /* >tt: BuffAttr */
-@haven.FromResource(name = "ui/tt/alch/ingr-buff", version = 1)
+@haven.FromResource(name = "ui/tt/alch/ingr-buff", version = 2)
 public class BuffAttr extends Effect {
     public final Indir<Resource> res;
 

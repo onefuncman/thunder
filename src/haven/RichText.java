@@ -48,7 +48,7 @@ public class RichText extends Text {
 	Map<Attribute, Object> a = new HashMap<Attribute, Object>();
 	a.put(TextAttribute.FAMILY, "SansSerif");
 	a.put(TextAttribute.SIZE, UI.scale(10.0f));
-	a.put(IMAGESRC, ImageSource.res(Resource.local()));
+	a.put(IMAGESRC, ImageSource.res(Resource.remote()));
 	std = new Parser(a);
 	stdf = new Foundry(std);
     }

@@ -2,14 +2,16 @@
   <library name="lib">
     <CLASSES>
       <root url="file://$PROJECT_DIR$/lib" />
-      <root url="file://$PROJECT_DIR$/lib/ext/steamworks" />
       <root url="file://$PROJECT_DIR$/lib/ext/lwjgl" />
+      <root url="file://$PROJECT_DIR$/lib/ext/jogl" />
+      <root url="file://$PROJECT_DIR$/lib/ext/steamworks" />
     </CLASSES>
     <JAVADOC>
       <root url="jar://$PROJECT_DIR$/lib/rxjava-1.1.5-javadoc.jar!/" />
     </JAVADOC>
     <SOURCES />
     <jarDirectory url="file://$PROJECT_DIR$/lib" recursive="false" />
+    <jarDirectory url="file://$PROJECT_DIR$/lib/ext/jogl" recursive="false" />
     <jarDirectory url="file://$PROJECT_DIR$/lib/ext/lwjgl" recursive="false" />
     <jarDirectory url="file://$PROJECT_DIR$/lib/ext/steamworks" recursive="false" />
   </library>

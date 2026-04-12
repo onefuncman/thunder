@@ -7,3 +7,12 @@
 out
 /resources/compiled
 /resources/classes
+/resources/custom/
+/nbproject
+/accounts.json
+/config.json
+/error.log
+/i10n/**/missing/
+/windows.json
+/charterbook.json
+/autochoose.json

@@ -6,7 +6,7 @@ import java.util.*;
 import java.awt.Color;
 
 /* >wdg: LocalInspect */
-@haven.FromResource(name = "ui/inspect", version = 4)
+@haven.FromResource(name = "ui/inspect", version = 5)
 public class SavedInfo extends GAttrib {
     public List<String> lines = Collections.emptyList();
 
