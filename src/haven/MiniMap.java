@@ -233,7 +233,7 @@ public class MiniMap extends Widget {
 	if(CFG.MMAP_SHOW_BIOMES.get()) {
 	    Coord mc = rootxlate(ui.mc);
 	    if(mc.isect(Coord.z, sz)) {
-		setBiome(xlate(mc));
+		setBiome(mc);
 	    } else {
 		setBiome(null);
 	    }
@@ -625,11 +625,11 @@ public class MiniMap extends Widget {
     }
 
     private Coord l2dscale(Coord c) {
-	return(c.mul(dmag).div(1 << dlvl));
+	return(c.mul(dmag).mul(scale).div(1 << dlvl));
     }
 
     private Coord d2lscale(Coord c) {
-	return(c.mul(1 << dlvl).div(dmag));
+	return(c.mul(1 << dlvl).div(dmag).div(scale));
     }
 
     public Coord st2c(Coord tc) {
@@ -1074,7 +1074,7 @@ public class MiniMap extends Widget {
 	    if((grid != null) && (grid.dc != null)) {
 		DataGrid dgrid = grid.gref.get();
 		if(dgrid != null) {
-		    Coord gc = c.sub(grid.dc).div(dmag);
+		    Coord gc = c.sub(grid.dc).div(dmag).div(scale);
 		    gc = Area.sized(cmaps).closest(gc); /* XXX: This should not be necessary. */
 		    TileInfo tile = dgrid.tilesets[dgrid.gettile(gc)];
 		    if(tile != null) {
@@ -1257,10 +1257,10 @@ public class MiniMap extends Widget {
 	}
     }
     
-    private void setBiome(Location loc) {
+    private void setBiome(Coord sc) {
 	try {
 	    String newbiome = biome;
-	    if(loc == null) {
+	    if(sc == null) {
 		Gob player = player();
 		if(player != null) {
 		    MCache mCache = ui.sess.glob.map;
@@ -1271,16 +1271,17 @@ public class MiniMap extends Widget {
 		    }
 		}
 	    } else {
-		MapFile map = loc.seg.file();
-		if(map.lock.readLock().tryLock()) {
-		    try {
-			MapFile.Grid grid = loc.seg.grid(loc.tc.div(cmaps)).get();
-			if(grid != null) {
-			    int tile = grid.gettile(loc.tc.mod(cmaps));
-			    newbiome = grid.tilesets[tile].res.name;
+		DisplayGrid grid = gridat(sc);
+		if((grid != null) && (grid.dc != null)) {
+		    DataGrid dgrid = grid.gref.get();
+		    if(dgrid != null) {
+			Coord gc = sc.sub(grid.dc).div(dmag).div(scale);
+			gc = Area.sized(cmaps).closest(gc);
+			TileInfo tile = dgrid.tilesets[dgrid.gettile(gc)];
+			if(tile != null) {
+			    Resource tres = tile.res.get();
+			    newbiome = tres.name;
 			}
-		    } finally {
-			map.lock.readLock().unlock();
 		    }
 		}
 	    }
