@@ -994,6 +994,9 @@ public class OptWnd extends WindowX {
 	y += STEP + UI.scale(4);
 
 	panel.add(new CFGBox("Minimap debug overlay", CFG.MMAP_DEBUG, "Shows zoom/scale/dlvl and the tile under the cursor"), x, y);
+	y += STEP;
+
+	panel.add(new CFGBox("Cattle roster debug", CFG.CROSTER_DEBUG, "Ctrl+Right-click a cattle roster row to dump entry fields to stderr"), x, y);
 	y += STEP + UI.scale(14);
 
 	panel.add(new PButton(UI.scale(200), "Back", 27, main), 0, y);
@@ -1287,7 +1290,10 @@ public class OptWnd extends WindowX {
 	
 	y += STEP;
 	panel.add(new CFGBox("Display enhanced waterfall", CFG.ENHANCE_WATERFALL, "Enables the waterfall animation / foam from Bullfinch Falls update. (Needs area reload)", true), x, y);
-	
+
+	y += STEP;
+	y = addSlider(CFG.CROSTER_NAME_Z, 5, 60, "Cattle roster name height: %d", "Height above animal where cattle roster names are drawn.", panel, x, y, STEP);
+
 	y += STEP;
 	
 	y += STEP;

@@ -61,14 +61,16 @@ public class CompImage {
 	return(this);
     }
     
+    public static class BufImg implements Image {
+	private final BufferedImage img;
+	public BufImg(BufferedImage img) {this.img = img;}
+	public void draw(Graphics g, Coord c) {g.drawImage(img, c.x, c.y, null);}
+	public Coord sz() {return(PUtils.imgsz(img));}
+    }
+
     public static Image mk(final BufferedImage img) {
 	if(img == null) {return new NullImg();}
-	return(new Image() {
-	    public void draw(Graphics g, Coord c) {
-		g.drawImage(img, c.x, c.y, null);
-	    }
-	    public Coord sz() {return(PUtils.imgsz(img));}
-	});
+	return(new BufImg(img));
     }
     
     public CompImage add(final BufferedImage img, Coord c) {
@@ -80,13 +82,15 @@ public class CompImage {
 	return add(img, Coord.of(x, sz.y));
     }
     
+    public static class CompImg implements Image {
+	private final CompImage img;
+	public CompImg(CompImage img) {this.img = img;}
+	public void draw(Graphics g, Coord c) {img.compose(g, c);}
+	public Coord sz() {return(img.sz);}
+    }
+
     public static Image mk(final CompImage img) {
-	return(new Image() {
-	    public void draw(Graphics g, Coord c) {
-		img.compose(g, c);
-	    }
-	    public Coord sz() {return(img.sz);}
-	});
+	return(new CompImg(img));
     }
     
     public CompImage add(final CompImage img, Coord c) {

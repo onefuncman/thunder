@@ -202,6 +202,8 @@ public class CFG<T> {
     public static final CFG<Boolean> SHOW_MINIMAP_ON_START = new CFG<>("minimap.show_on_start", false);
     public static final CFG<Integer> DISPLAY_SCALE_TREES = new CFG<>("display.scale.trees", 100);
     public static final CFG<Integer> DISPLAY_SCALE_BUSHES = new CFG<>("display.scale.bushes", 100);
+    public static final CFG<Integer> CROSTER_NAME_Z = new CFG<>("croster.name_z", 25);
+    public static final CFG<Boolean> CROSTER_DEBUG = new CFG<>("croster.debug", false);
     public static final CFG<Boolean> AUTO_DRINK_ENABLED = new CFG<>("automation.autodrink.enabled", false);
     public static final CFG<Integer> AUTO_DRINK_THRESHOLD = new CFG<>("automation.autodrink.threshold", 74);
     public static final CFG<Integer> AUTO_DRINK_DELAY = new CFG<>("automation.autodrink.delay", 250);
