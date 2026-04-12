@@ -15,9 +15,9 @@ public class CattleId extends GAttrib implements RenderTree.Node, PView.Render2D
 
     /* Top-of-model Z per animal resource, in world units. Captured from
      * each mesh's bind-pose vertex positions via State Inspector →
-     * Capture Heights (the meshMaxZ column). The config slider adds extra
-     * units above this base so names sit a uniform distance above each
-     * animal regardless of its size.
+     * Capture Heights (the meshMaxZ column). This base is projected to
+     * screen; the config slider then lifts the name by a fixed pixel
+     * amount so the gap stays stable regardless of camera zoom.
      *
      * Two key shapes:
      *   "gfx/kritter/horse/mare"           - bare resname (no variants)
@@ -112,8 +112,8 @@ public class CattleId extends GAttrib implements RenderTree.Node, PView.Render2D
     private int lgrp;
     private Tex rnm;
     public void draw(GOut g, Pipe state) {
-	float zoff = modelTopZ() + Math.max(0, haven.CFG.CROSTER_NAME_Z.get());
-	Coord sc = Homo3D.obj2view(new Coord3f(0, 0, zoff), state, Area.sized(g.sz())).round2();
+	Coord sc = Homo3D.obj2view(new Coord3f(0, 0, modelTopZ()), state, Area.sized(g.sz())).round2();
+	sc = sc.sub(0, UI.scale(Math.max(0, haven.CFG.CROSTER_NAME_Z.get())));
 	if(sc.isect(Coord.z, g.sz())) {
 	    Entry entry = entry();
 	    int grp = (entry != null) ? entry.grp : 0;

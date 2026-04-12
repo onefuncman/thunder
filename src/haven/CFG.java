@@ -152,7 +152,7 @@ public class CFG<T> {
     public static final CFG<Color> COLOR_GOB_RABBIT = new CFG<>("colors.gob.rabbit", new Color(0, 255, 119, 140));
     public static final CFG<Color> COLOR_GOB_CRITTERS = new CFG<>("colors.gob.critters", new Color(150, 230, 255, 140));
     public static final CFG<Color> COLOR_GOB_SPEED_BUFF = new CFG<>("colors.gob.speed_buff", new Color(200, 255, 230, 140));
-    public static final CFG<Color> COLOR_CATTLE_HIGHLIGHT = new CFG<>("colors.cattle_highlight", new Color(0xC8, 0x46, 0x41, 0xE6));
+    public static final CFG<Color> COLOR_CATTLE_HIGHLIGHT = new CFG<>("colors.cattle_highlight", new Color(70, 65, 230, 200));
     
     /**Show stack's hover inventory widgets only if SHIFT is pressed*/
     public static final CFG<Boolean> UI_STACK_SUB_INV_ON_SHIFT = new CFG<>("ui.stack.sub_inv_on_shift", false);

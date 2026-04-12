@@ -8,6 +8,7 @@ import java.util.function.*;
 import java.lang.reflect.Field;
 import haven.MenuGrid.Pagina;
 import java.awt.Color;
+import java.awt.Graphics;
 import java.awt.image.BufferedImage;
 
 @haven.FromResource(name = "ui/croster", version = 77)
@@ -25,10 +26,12 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
     public Column<? super T> mousecol, ordercol;
     public boolean revorder;
     private Button btnRemove;
-    private Button btnAll, btnNone, btnInvert, btnHighlight, btnClear;
+    private Button btnAll, btnNone, btnInvert, btnClear;
+    private ToggleBtn btnHighlight;
     private Dropbox<SelAction> selDrop;
     private Label countLbl;
     private int lastSel = -1, lastTotal = -1;
+    private boolean highlighting = false;
 
     public CattleRoster() {
 	super(new Coord(WIDTH, UI.scale(400)));
@@ -43,8 +46,9 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 		      btnAll.pos("ur").adds(5, 0));
 	btnInvert = add(new Button(bw, "Invert", false).action(this::invertSel),
 			btnNone.pos("ur").adds(5, 0));
-	btnHighlight = add(new Button(bw, "Highlight", false).action(this::highlightSel),
+	btnHighlight = add(new ToggleBtn(bw, "Highlight").action(this::highlightSel),
 			   btnInvert.pos("ur").adds(5, 0));
+	btnHighlight.settip("Toggle persistent highlight for selected cattle");
 	selDrop = add(new SelDrop(UI.scale(140)), btnHighlight.pos("ur").adds(5, 0));
 	selDrop.change(SelAction.PICK);
 	countLbl = add(new Label("0/0"), selDrop.pos("ur").adds(8, 4));
@@ -92,30 +96,38 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
     }
 
     private void highlightSel() {
-	Glob glob = ui.sess.glob;
-	List<Gob> gobs = new ArrayList<>();
-	for(T e : entries.values()) {
-	    if(!e.mark.a) continue;
-	    for(Gob g : glob.oc) {
-		CattleId cid = g.getattr(CattleId.class);
-		if(cid != null && cid.id.equals(e.id)) {
-		    gobs.add(g);
-		    break;
-		}
+	highlighting = !highlighting;
+	btnHighlight.setOn(highlighting);
+	if(!highlighting) clearAllCattleHighlights();
+    }
+
+    private void clearAllCattleHighlights() {
+	if(ui == null || ui.sess == null) return;
+	for(Gob g : ui.sess.glob.oc) {
+	    if(g.getattr(CattleId.class) == null) continue;
+	    GobHighlight h = g.getattr(GobHighlight.class);
+	    if(h != null && h.isPersistent()) {
+		h.setPersistent(false);
+		g.delattr(GobHighlight.class);
 	    }
 	}
-	boolean anyOn = false;
-	for(Gob g : gobs) {
-	    GobHighlight h = g.getattr(GobHighlight.class);
-	    if(h != null && h.isPersistent()) {anyOn = true; break;}
+    }
+
+    private void syncHighlights() {
+	if(ui == null || ui.sess == null) return;
+	Set<UID> marked = new HashSet<>();
+	for(T e : entries.values()) {
+	    if(e.mark.a) marked.add(e.id);
 	}
-	boolean turnOn = !anyOn;
-	for(Gob g : gobs) {
+	for(Gob g : ui.sess.glob.oc) {
+	    CattleId cid = g.getattr(CattleId.class);
+	    if(cid == null) continue;
+	    boolean want = marked.contains(cid.id);
 	    GobHighlight h = g.getattr(GobHighlight.class);
-	    if(turnOn) {
+	    if(want) {
 		if(h == null) {h = new GobHighlight(g); g.setattr(h);}
-		h.setPersistent(true);
-	    } else if(h != null) {
+		if(!h.isPersistent()) h.setPersistent(true);
+	    } else if(h != null && h.isPersistent()) {
 		h.setPersistent(false);
 		g.delattr(GobHighlight.class);
 	    }
@@ -174,6 +186,7 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 	    lastSel = sel; lastTotal = tot;
 	    countLbl.settext(sel + "/" + tot);
 	}
+	if(highlighting) syncHighlights();
 	super.tick(dt);
     }
 
@@ -423,6 +436,26 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 	    suppress = true;
 	    change(SelAction.PICK);
 	    suppress = false;
+	}
+    }
+
+    private static class ToggleBtn extends Button {
+	private boolean on = false;
+	ToggleBtn(int w, String text) { super(w, text, false); }
+	public ToggleBtn action(Runnable action) { super.action(action); return(this); }
+	public void setOn(boolean v) {
+	    if(on != v) { on = v; redraw(); }
+	}
+	public void draw(BufferedImage img) {
+	    super.draw(img);
+	    if(on) {
+		Graphics g = img.getGraphics();
+		g.setColor(new Color(80, 220, 80, 90));
+		g.fillRect(UI.scale(4), UI.scale(4), sz.x - UI.scale(8), sz.y - UI.scale(8));
+		g.setColor(new Color(140, 255, 140, 200));
+		g.drawRect(UI.scale(4), UI.scale(4), sz.x - UI.scale(9), sz.y - UI.scale(9));
+		g.dispose();
+	    }
 	}
     }
 

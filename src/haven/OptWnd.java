@@ -1292,7 +1292,7 @@ public class OptWnd extends WindowX {
 	panel.add(new CFGBox("Display enhanced waterfall", CFG.ENHANCE_WATERFALL, "Enables the waterfall animation / foam from Bullfinch Falls update. (Needs area reload)", true), x, y);
 
 	y += STEP;
-	y = addSlider(CFG.CROSTER_NAME_Z, 0, 30, "Cattle roster name height: %d", "World-units above each animal's top-of-model where its name is drawn. Uniform across species — per-animal base height is built in.", panel, x, y, STEP);
+	y = addSlider(CFG.CROSTER_NAME_Z, 0, 60, "Cattle roster name height: %d", "Pixels above each animal's top-of-model where its name is drawn. Stable across zoom levels — per-animal base height is built in.", panel, x, y, STEP);
 
 	y += STEP;
 	
