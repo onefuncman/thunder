@@ -48,8 +48,9 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 	selDrop = add(new SelDrop(UI.scale(140)), btnHighlight.pos("ur").adds(5, 0));
 	selDrop.change(SelAction.PICK);
 	countLbl = add(new Label("0/0"), selDrop.pos("ur").adds(8, 4));
-	btnClear = add(new Button(UI.scale(100), "Clear Names", false).action(this::clearNames),
+	btnClear = add(new Button(UI.scale(100), "Refresh Names", false).action(this::clearNames),
 		       countLbl.pos("ur").adds(10, -4));
+	btnClear.settip("Prune names to current roster");
 	btnRemove = adda(new Button(UI.scale(150), "Remove selected", false).action(() -> {
 	    Collection<Object> args = new ArrayList<>();
 	    for(Entry entry : this.entries.values()) {
@@ -106,7 +107,7 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 
     private void clearNames() {
 	RosterWindow w = getparent(RosterWindow.class);
-	if(w != null) w.clearMemorized();
+	if(w != null) w.refreshMemorized();
     }
 
     @SafeVarargs

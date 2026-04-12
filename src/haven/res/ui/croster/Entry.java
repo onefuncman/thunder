@@ -112,9 +112,10 @@ public class Entry extends Widget {
     }
 
     public <T extends Entry> void markall(Class<T> type, Predicate<? super T> p) {
+	boolean val = !this.mark.a;
 	for(T ent : getparent(CattleRoster.class).children(type)) {
 	    if(p.test(ent))
-		ent.mark.click();
+		ent.mark.set(val);
 	}
     }
 }

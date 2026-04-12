@@ -73,14 +73,6 @@ public class CattleId extends GAttrib implements RenderTree.Node, PView.Render2D
 		if((entry != null) && entry.mark.a)
 		    g.image(CheckBox.smark, nmc.sub(CheckBox.smark.sz().x, 0));
 	    }
-	    Entry e = entry;
-	    if((e != null) && e.mark.a) {
-		Coord fc = Homo3D.obj2view(new Coord3f(0, 0, 0), state, Area.sized(g.sz())).round2();
-		int r = UI.scale(18);
-		g.chcolor(80, 255, 80, 140);
-		g.frect2(fc.sub(r, r / 3), fc.add(r, r / 3));
-		g.chcolor();
-	    }
 	}
     }
 }

@@ -18,6 +18,7 @@ public class RosterWindow extends Window {
     public final Set<UID> memorized = new HashSet<>();
     private boolean collapsed = false;
     private Coord uncollapsedSz;
+    private Coord requestedSz;
     private long lastCapClick = 0;
     private CattleRoster lastShown = null;
     private boolean packing = false;
@@ -110,10 +111,11 @@ public class RosterWindow extends Window {
 
     @Override
     public void resize(Coord sz) {
-	int minW = UI.scale(300), minH = UI.scale(40);
+	int minW = UI.scale(180), minH = UI.scale(16);
 	if(!collapsed) minH = UI.scale(140);
 	if(sz.x < minW) sz = new Coord(minW, sz.y);
 	if(sz.y < minH) sz = new Coord(sz.x, minH);
+	requestedSz = sz;
 	super.resize(sz);
 	if(packing || collapsed) return;
 	Area ca = (deco != null) ? deco.contarea() : null;
@@ -131,22 +133,25 @@ public class RosterWindow extends Window {
     }
 
     public void toggleCollapsed() {
-	collapsed = !collapsed;
-	if(collapsed) {
-	    uncollapsedSz = new Coord(sz.x, sz.y);
+	if(!collapsed) {
+	    if(requestedSz != null)
+		uncollapsedSz = new Coord(requestedSz.x, requestedSz.y);
 	    lastShown = null;
 	    for(CattleRoster ch : children(CattleRoster.class)) {
 		if(ch.visible) lastShown = ch;
 		ch.hide();
 	    }
 	    for(TypeButton b : buttons) b.hide();
-	    pack();
+	    collapsed = true;
+	    int w = (requestedSz != null) ? requestedSz.x : sz.x;
+	    resize(new Coord(w, UI.scale(16)));
 	} else {
+	    collapsed = false;
 	    for(TypeButton b : buttons) b.show();
 	    if(lastShown != null) show(lastShown);
 	    else if(!buttons.isEmpty()) buttons.get(0).click();
-	    if(uncollapsedSz != null) resize(uncollapsedSz);
-	    else pack();
+	    Coord target = (uncollapsedSz != null) ? uncollapsedSz : new Coord(sz.x, UI.scale(300));
+	    resize(target);
 	}
     }
 
