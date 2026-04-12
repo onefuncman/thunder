@@ -110,13 +110,13 @@ public class SkillWnd extends Widget {
 	    this.sortkey = nm;
 	}
 
-	public String rendertext(CredoGrid credoGrid) {
+	public RichText.Document rendertext(CredoGrid credoGrid) {
 	    StringBuilder buf = new StringBuilder();
 	    Resource res = this.res.get();
 	    buf.append("$img[self]\n\n");
 	    buf.append("$b{$font[serif,16]{" + res.flayer(Resource.tooltip).t + "}}\n\n\n");
 	    buf.append(format(res.flayer(Resource.pagina).text, credoGrid));
-	    return(buf.toString());
+	    return(resdoc(res, buf.toString()));
 	}
 	
 	private String format(String text, CredoGrid credoGrid) {
@@ -486,7 +486,7 @@ public class SkillWnd extends Widget {
 			SkillWnd.this.skg.sel = null;
 			SkillWnd.this.exps.sel = null;
 			if (cr != null)
-			    info.settext(() -> cr.rendertext(this));
+			    info.set(() -> cr.rendertext(this));
 			else if (p != null)
 			    info.set(() -> null);
 		    }
