@@ -625,11 +625,11 @@ public class MiniMap extends Widget {
     }
 
     private Coord l2dscale(Coord c) {
-	return(c.mul(dmag).mul(scale).div(1 << dlvl));
+	return(UI.scale(c.div(1 << dlvl)).mul(scale));
     }
 
     private Coord d2lscale(Coord c) {
-	return(c.mul(1 << dlvl).div(dmag).div(scale));
+	return(UI.unscale(c).mul(1 << dlvl).div(scale));
     }
 
     public Coord st2c(Coord tc) {
@@ -826,6 +826,39 @@ public class MiniMap extends Widget {
 	if(CFG.MMAP_SHOW_BIOMES.get()) {drawbiome(g); }
     }
 
+    private void logDebugAt(Coord sc) {
+	StringBuilder buf = new StringBuilder("[MiniMap debug]\n");
+	buf.append(String.format("  zoom=%d scale=%d dlvl=%d dmag=%d maglevel=%d uiScale=%.2f sz=%s\n",
+				 zoomlevel, scale, dlvl, dmag, maglevel, UI.scale(1.0), sz));
+	buf.append(String.format("  cursor(widget)=%s\n", sc));
+	Location mloc = xlate(sc);
+	if(mloc != null)
+	    buf.append(String.format("  worldTile=%s seg=%d\n", mloc.tc, mloc.seg.id));
+	DisplayGrid grid = gridat(sc);
+	if((grid != null) && (grid.dc != null)) {
+	    Coord gc = UI.unscale(sc.sub(grid.dc)).div(scale);
+	    Coord gcClamped = Area.sized(cmaps).closest(gc);
+	    buf.append(String.format("  grid.sc=%s grid.dc=%s localCell=%s clamped=%s\n",
+				     grid.sc, grid.dc, gc, gcClamped));
+	    try {
+		DataGrid dgrid = grid.gref.get();
+		if(dgrid != null) {
+		    int tid = dgrid.gettile(gcClamped);
+		    TileInfo ti = dgrid.tilesets[tid];
+		    if(ti != null) {
+			Resource tres = ti.res.get();
+			buf.append(String.format("  tile=%s (id=%d)\n", tres.name, tid));
+		    }
+		}
+	    } catch(Loading l) {
+		buf.append("  tile=<loading>\n");
+	    }
+	} else {
+	    buf.append("  no DisplayGrid at cursor\n");
+	}
+	System.err.println(buf.toString());
+    }
+
     public void draw(GOut g) {
 	Location loc = this.curloc;
 	if(loc == null)
@@ -989,6 +1022,10 @@ public class MiniMap extends Widget {
     private DisplayIcon dsicon;
     private DisplayMarker dsmark;
     public boolean mousedown(MouseDownEvent ev) {
+	if(CFG.MMAP_DEBUG.get() && ev.b == 3 && ui.modctrl) {
+	    logDebugAt(ev.c);
+	    return(true);
+	}
 	dsloc = xlate(ev.c);
 	if(dsloc != null) {
 	    dsicon = iconat(ev.c);
@@ -1074,7 +1111,7 @@ public class MiniMap extends Widget {
 	    if((grid != null) && (grid.dc != null)) {
 		DataGrid dgrid = grid.gref.get();
 		if(dgrid != null) {
-		    Coord gc = c.sub(grid.dc).div(dmag).div(scale);
+		    Coord gc = UI.unscale(c.sub(grid.dc)).div(scale);
 		    gc = Area.sized(cmaps).closest(gc); /* XXX: This should not be necessary. */
 		    TileInfo tile = dgrid.tilesets[dgrid.gettile(gc)];
 		    if(tile != null) {
@@ -1275,7 +1312,7 @@ public class MiniMap extends Widget {
 		if((grid != null) && (grid.dc != null)) {
 		    DataGrid dgrid = grid.gref.get();
 		    if(dgrid != null) {
-			Coord gc = sc.sub(grid.dc).div(dmag).div(scale);
+			Coord gc = UI.unscale(sc.sub(grid.dc)).div(scale);
 			gc = Area.sized(cmaps).closest(gc);
 			TileInfo tile = dgrid.tilesets[dgrid.gettile(gc)];
 			if(tile != null) {

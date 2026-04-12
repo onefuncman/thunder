@@ -991,6 +991,9 @@ public class OptWnd extends WindowX {
 		if(gui != null) gui.toggleStatsPanel();
 	    }
 	}, x, y);
+	y += STEP + UI.scale(4);
+
+	panel.add(new CFGBox("Minimap debug overlay", CFG.MMAP_DEBUG, "Shows zoom/scale/dlvl and the tile under the cursor"), x, y);
 	y += STEP + UI.scale(14);
 
 	panel.add(new PButton(UI.scale(200), "Back", 27, main), 0, y);
@@ -1401,7 +1404,7 @@ public class OptWnd extends WindowX {
     
 	y += STEP;
 	panel.add(new CFGBox("Show biomes on minimap", CFG.MMAP_SHOW_BIOMES), x, y);
-    
+
 	y += STEP;
 	panel.add(new CFGBox("Show queued path on minimap", CFG.MMAP_SHOW_PATH), x, y);
 	
