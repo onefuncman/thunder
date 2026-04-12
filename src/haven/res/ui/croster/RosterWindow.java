@@ -169,8 +169,20 @@ public class RosterWindow extends Window {
 	return(super.mousedown(ev));
     }
 
+    @Override
+    public boolean checkhit(Coord c) {
+	if(super.checkhit(c)) return(true);
+	return(onCaptionBar(c));
+    }
+
     private boolean onCaptionBar(Coord c) {
-	return(c.y >= 0 && c.y < UI.scale(30));
+	if(c.x < 0 || c.x >= sz.x || c.y < 0) return(false);
+	int h = UI.scale(30);
+	if(deco instanceof DefaultDeco) {
+	    DefaultDeco dd = (DefaultDeco) deco;
+	    if(dd.cpsz.y > 0) h = dd.cpsz.y;
+	}
+	return(c.y < h);
     }
 
     public void wdgmsg(Widget sender, String msg, Object... args) {
