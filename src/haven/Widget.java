@@ -1255,7 +1255,16 @@ public class Widget {
 	    return(super.shandle(w));
 	}
     }
-    
+
+    public static abstract class FocusChangeEvent extends Event {
+	public boolean propagation(Widget from) {
+	    return(false);
+	}
+    }
+
+    public static class GotFocusEvent extends FocusChangeEvent {}
+    public static class LostFocusEvent extends FocusChangeEvent {}
+
     public static abstract class QueryEvent<R> extends PointerEvent {
 	public final QueryEvent<R> root;
 	public R ret;

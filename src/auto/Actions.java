@@ -299,44 +299,87 @@ public class Actions {
 		return;
 	    }
 
+	    CheeseTrayFiller.Env env = new GameUICheeseEnv(gui, bot, trays);
 	    try {
-		for (WItem tray : trays) {
-		    while (true) {
-			bot.checkCancelled();
-
-			boolean handEmpty = gui.hand() == null;
-
-			if(handEmpty) {
-			    Optional<WItem> curd = ItemHelpers.find(gui.ui, w -> {
-				String res = w.item.resname();
-				return res != null && res.contains("gfx/invobjs/curd");
-			    });
-			    if(!curd.isPresent()) { return; }
-			    curd.get().item.wdgmsg("take", Coord.z);
-			    if(!BotUtil.waitHeld(gui, "Curd")) {
-				bot.cancel("Failed to pick up curd");
-				return;
-			    }
-			}
-
-			tray.item.wdgmsg("itemact", 1);
-			if(!BotUtil.waitHeld(gui, null, 500)) {
-			    break; // tray full, move to next
-			}
-		    }
-		}
+		CheeseTrayFiller.Result r = CheeseTrayFiller.run(env);
+		if(r.cancelReason != null) { bot.cancel(r.cancelReason); }
 	    } catch (Exception e) {
 		bot.cancel("Fill cheese tray error: " + e.getClass().getSimpleName()
 		    + (e.getMessage() != null ? ": " + e.getMessage() : ""));
-		return;
-	    }
-
-	    // drop any remaining curd on cursor
-	    if(gui.hand() != null) {
-		gui.maininv.wdgmsg("drop", Coord.z);
-		BotUtil.waitHeldChanged(gui);
 	    }
 	}).start(gui.ui);
+    }
+
+    private static class GameUICheeseEnv implements CheeseTrayFiller.Env {
+	private final GameUI gui;
+	private final Bot bot;
+	private final List<WItem> trays;
+
+	GameUICheeseEnv(GameUI gui, Bot bot, List<WItem> trays) {
+	    this.gui = gui;
+	    this.bot = bot;
+	    this.trays = trays;
+	}
+
+	public boolean isCancelled() {
+	    try { bot.checkCancelled(); return false; }
+	    catch (InterruptedException e) { return true; }
+	}
+
+	public boolean handEmpty() { return gui.hand() == null; }
+
+	public int trayCount() { return trays.size(); }
+
+	public int trayFill(int trayIndex) {
+	    return readTrayFill(trays.get(trayIndex));
+	}
+
+	public boolean pickupCurd() {
+	    Optional<WItem> curd = ItemHelpers.find(gui.ui, w -> {
+		String res = w.item.resname();
+		return res != null && res.contains("gfx/invobjs/curd");
+	    });
+	    if(!curd.isPresent()) { return false; }
+	    curd.get().item.wdgmsg("take", Coord.z);
+	    return BotUtil.waitHeld(gui, "Curd");
+	}
+
+	/**
+	 * Place a curd by sending itemact and confirming via the tray's own
+	 * content-count transition — the authoritative server signal. We wait
+	 * for the hand-state change event as our sync point (fires whenever
+	 * the server processes a hand-affecting action), then compare the
+	 * tray's fill before vs. after.
+	 */
+	public boolean placeIntoTray(int trayIndex) {
+	    WItem tray = trays.get(trayIndex);
+	    int before = readTrayFill(tray);
+	    tray.item.wdgmsg("itemact", 1);
+	    BotUtil.waitHeldChanged(gui);
+	    int after = readTrayFill(tray);
+	    if(before < 0 || after < 0) { return gui.hand() == null; }
+	    return after > before;
+	}
+
+	public void dropHeld() {
+	    if(gui.hand() == null) { return; }
+	    gui.maininv.wdgmsg("drop", Coord.z);
+	    BotUtil.waitHeldChanged(gui);
+	}
+
+	private static int readTrayFill(WItem tray) {
+	    try {
+		List<ItemInfo> info = tray.item.info();
+		if(info == null) { return -1; }
+		ItemData.Content c = ItemInfo.getContent(info);
+		if(c == null || c.empty()) { return 0; }
+		return (int) c.count;
+	    } catch (Loading l) {
+		return -1;
+	    } catch (Exception e) {
+		return -1;
+	    }
+	}
     }
 
     private static List<WItem> findCheeseTrays(GameUI gui) {
