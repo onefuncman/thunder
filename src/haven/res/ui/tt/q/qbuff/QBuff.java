@@ -31,11 +31,7 @@ public class QBuff extends ItemInfo.Tip {
 	QList(Owner owner) {super(owner);}
 	
 	void sort() {
-	    Collections.sort(ql, new Comparator<QBuff>() {
-		public int compare(QBuff a, QBuff b) {
-		    return(a.name.compareTo(b.name));
-		}
-	    });
+	    ql.sort((a, b) -> a.name.compareTo(b.name));
 	    for(Modifier mod : mods)
 		mod.prepare(this);
 	}
