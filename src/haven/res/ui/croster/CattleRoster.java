@@ -93,14 +93,31 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 
     private void highlightSel() {
 	Glob glob = ui.sess.glob;
+	List<Gob> gobs = new ArrayList<>();
 	for(T e : entries.values()) {
 	    if(!e.mark.a) continue;
 	    for(Gob g : glob.oc) {
 		CattleId cid = g.getattr(CattleId.class);
 		if(cid != null && cid.id.equals(e.id)) {
-		    g.highlight();
+		    gobs.add(g);
 		    break;
 		}
+	    }
+	}
+	boolean anyOn = false;
+	for(Gob g : gobs) {
+	    GobHighlight h = g.getattr(GobHighlight.class);
+	    if(h != null && h.isPersistent()) {anyOn = true; break;}
+	}
+	boolean turnOn = !anyOn;
+	for(Gob g : gobs) {
+	    GobHighlight h = g.getattr(GobHighlight.class);
+	    if(turnOn) {
+		if(h == null) {h = new GobHighlight(g); g.setattr(h);}
+		h.setPersistent(true);
+	    } else if(h != null) {
+		h.setPersistent(false);
+		g.delattr(GobHighlight.class);
 	    }
 	}
     }

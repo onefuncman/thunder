@@ -45,9 +45,9 @@ public class CFGColorWnd extends WindowX {
 	skipInitPos = skipSavePos = true;
 	this.hasAlpha = hasAlpha;
 	col = cfg.get();
-	
+
 	Composer composer = new Composer(this).hmrgn(PAD).vmrgn(PAD).hpad(BOX.x + PAD);
-	
+
 	txtR = new TextField(TEXT_W, Integer.toString(col.getRed()), this::rgbUpdated);
 	txtG = new TextField(TEXT_W, Integer.toString(col.getGreen()), this::rgbUpdated);
 	txtB = new TextField(TEXT_W, Integer.toString(col.getBlue()), this::rgbUpdated);
@@ -74,7 +74,15 @@ public class CFGColorWnd extends WindowX {
 	    new Button(BTN_W, "Save", () -> update(col, true)),
 	    new Button(BTN_W, "Reset", () -> update(this.cfg.def, false))
 	);
-	
+
+	composer.hpad(0).add(PAD);
+	composer.addr(new Label("Apply = preview   Save = persist   Reset = default"));
+	if(hasAlpha) {
+	    composer.addr(new Label("Swatch: top = opaque reference, bottom = actual (with alpha)"));
+	} else {
+	    composer.addr(new Label("Swatch shows the configured color."));
+	}
+
 	pack();
     }
     

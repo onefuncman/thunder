@@ -86,7 +86,12 @@ public class CustomOptPanels {
 	
 	y += STEP;
 	panel.add(new CFGColorBtn(CFG.COLOR_GOB_COMBAT_TARGET, "Current target", true), tx, y);
-	
+
+	y += STEP;
+	panel.add(new Label("Cattle roster:"), x, y);
+	y += STEP;
+	panel.add(new CFGColorBtn(CFG.COLOR_CATTLE_HIGHLIGHT, "Highlight", true), tx, y);
+
 	my = Math.max(my, y);
 	
 	w = panel.add(wnd.new PButton(UI.scale(200), "Back", 27, wnd.main), new Coord(0, my + UI.scale(35)));
