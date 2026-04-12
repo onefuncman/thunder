@@ -20,6 +20,8 @@
     <exec executable="git" outputproperty="git-rev-short" failifexecutionfails="false">
       <arg line="rev-parse --short HEAD" />
     </exec>
+    <property name="git-rev" value="unknown" />
+    <property name="git-rev-short" value="unknown" />
     <condition property="buildinfo-unchanged">
       <equals arg1="${buildinfo.git-rev}" arg2="${git-rev}" />
     </condition>
