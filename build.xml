@@ -17,19 +17,23 @@
     <exec executable="git" outputproperty="git-rev" failifexecutionfails="false">
       <arg line="rev-parse HEAD" />
     </exec>
+    <exec executable="git" outputproperty="git-rev-short" failifexecutionfails="false">
+      <arg line="rev-parse --short HEAD" />
+    </exec>
     <condition property="buildinfo-unchanged">
       <equals arg1="${buildinfo.git-rev}" arg2="${git-rev}" />
     </condition>
   </target>
 
-  <target name="buildinfo">
+  <target name="buildinfo" depends="make-buildinfo" unless="buildinfo-unchanged">
+    <property name="git-rev-short" value="unknown" />
     <tstamp>
-      <format property="version" pattern="dd.MM.yyyy HH:mm" />
+      <format property="build-time" pattern="dd.MM.yyyy HH:mm" />
     </tstamp>
     <echo message="Updating buildinfo" />
     <echo file="build/classes/buildinfo">
       git-rev = ${git-rev}
-      version = ${version}
+      version = ${build-time} ${git-rev-short}
     </echo>
   </target>
 
