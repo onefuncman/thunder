@@ -2,6 +2,7 @@ package haven.proto;
 
 import haven.*;
 import java.awt.Color;
+import java.nio.file.Path;
 
 public class StateInspector extends GameUI.Hidewnd {
     private static final int W = UI.scale(600);
@@ -37,6 +38,20 @@ public class StateInspector extends GameUI.Hidewnd {
 	add(new Button(btnW, "Widgets") { public void click() { tabs.showtab(widgetTab); } }, btnX, btnY);
 	btnX += btnW + UI.scale(4);
 	add(new Button(btnW, "Resources") { public void click() { tabs.showtab(resTab); } }, btnX, btnY);
+	btnX += btnW + UI.scale(4);
+	add(new Button(UI.scale(100), "Snapshot Scene") { public void click() { doSnapshot(); } }, btnX, btnY);
+    }
+
+    private void doSnapshot() {
+	GameUI gui = ui.gui;
+	if(gui == null) { return; }
+	try {
+	    Path p = SceneSnapshotter.snapshot(gui);
+	    gui.msg("Scene snapshot: " + p.toAbsolutePath(), GameUI.MsgType.INFO);
+	} catch (Exception e) {
+	    gui.error("Snapshot failed: " + e.getClass().getSimpleName()
+		+ (e.getMessage() != null ? ": " + e.getMessage() : ""));
+	}
     }
 
     public void inspectGob(long id) {

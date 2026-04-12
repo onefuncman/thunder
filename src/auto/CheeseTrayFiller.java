@@ -9,9 +9,8 @@ public class CheeseTrayFiller {
 	int trayCount();
 
 	/**
-	 * Current curd count in the given tray, read from its item-info
-	 * (e.g. "Contents: 2 curds of goat" → 2). Returns -1 if unknown
-	 * (info not yet loaded).
+	 * Current curd count in the tray. Must block until item-info is loaded —
+	 * the algorithm relies on this being an authoritative count.
 	 */
 	int trayFill(int trayIndex);
 
@@ -22,13 +21,11 @@ public class CheeseTrayFiller {
 	boolean pickupCurd();
 
 	/**
-	 * Send the place action and return whether the tray's fill count
-	 * actually increased. This is the authoritative signal — we're not
-	 * inferring from timeouts; we compare tray state before and after
-	 * the server has had a chance to reply.
-	 * @return true if tray accepted the curd (count went up); false otherwise.
+	 * Send the place action and wait for the server round-trip to settle.
+	 * Whether the tray accepted the curd is determined by re-reading
+	 * {@link #trayFill}, not by any signal from this method.
 	 */
-	boolean placeIntoTray(int trayIndex);
+	void placeIntoTray(int trayIndex);
 
 	void dropHeld();
     }
@@ -57,7 +54,7 @@ public class CheeseTrayFiller {
 		if(env.isCancelled()) { break outer; }
 
 		int fill = env.trayFill(i);
-		if(fill >= 0 && fill >= TRAY_CAPACITY) { break; }
+		if(fill >= TRAY_CAPACITY) { break; }
 
 		if(env.handEmpty()) {
 		    if(!env.pickupCurd()) {
@@ -66,8 +63,10 @@ public class CheeseTrayFiller {
 		    }
 		}
 
-		if(!env.placeIntoTray(i)) { break; }
-		placed[i]++;
+		env.placeIntoTray(i);
+		int fillAfter = env.trayFill(i);
+		if(fillAfter > fill) { placed[i]++; }
+		else { break; }
 	    }
 	}
 

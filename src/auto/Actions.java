@@ -7,6 +7,8 @@ import me.ender.ItemHelpers;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -331,7 +333,14 @@ public class Actions {
 	public int trayCount() { return trays.size(); }
 
 	public int trayFill(int trayIndex) {
-	    return readTrayFill(trays.get(trayIndex));
+	    WItem tray = trays.get(trayIndex);
+	    while (true) {
+		try { bot.checkCancelled(); }
+		catch (InterruptedException e) { return CheeseTrayFiller.TRAY_CAPACITY; }
+		Integer fill = tryReadTrayFill(tray);
+		if(fill != null) { return fill; }
+		BotUtil.pause(50);
+	    }
 	}
 
 	public boolean pickupCurd() {
@@ -344,21 +353,11 @@ public class Actions {
 	    return BotUtil.waitHeld(gui, "Curd");
 	}
 
-	/**
-	 * Place a curd by sending itemact and confirming via the tray's own
-	 * content-count transition — the authoritative server signal. We wait
-	 * for the hand-state change event as our sync point (fires whenever
-	 * the server processes a hand-affecting action), then compare the
-	 * tray's fill before vs. after.
-	 */
-	public boolean placeIntoTray(int trayIndex) {
+	public void placeIntoTray(int trayIndex) {
 	    WItem tray = trays.get(trayIndex);
-	    int before = readTrayFill(tray);
 	    tray.item.wdgmsg("itemact", 1);
-	    BotUtil.waitHeldChanged(gui);
-	    int after = readTrayFill(tray);
-	    if(before < 0 || after < 0) { return gui.hand() == null; }
-	    return after > before;
+	    BotUtil.waitHeldChanged(gui, 2000);
+	    BotUtil.pause(20);
 	}
 
 	public void dropHeld() {
@@ -367,17 +366,26 @@ public class Actions {
 	    BotUtil.waitHeldChanged(gui);
 	}
 
-	private static int readTrayFill(WItem tray) {
+	private static final Pattern TRAY_FILL = Pattern.compile("^(\\d+)/");
+
+	/**
+	 * The curd count lives in the Contents sub Name.original as "N/4 pieces of curd".
+	 * (ItemData.Content.parse mis-handles the slash and returns "4" for the capacity.)
+	 * Returns null if info isn't yet loaded; caller should retry.
+	 */
+	private static Integer tryReadTrayFill(WItem tray) {
 	    try {
 		List<ItemInfo> info = tray.item.info();
-		if(info == null) { return -1; }
-		ItemData.Content c = ItemInfo.getContent(info);
-		if(c == null || c.empty()) { return 0; }
-		return (int) c.count;
+		if(info == null) { return null; }
+		ItemInfo.Contents contents = ItemInfo.find(ItemInfo.Contents.class, info);
+		if(contents == null) { return 0; }
+		ItemInfo.Name name = ItemInfo.find(ItemInfo.Name.class, contents.sub);
+		if(name == null || name.original == null) { return 0; }
+		Matcher m = TRAY_FILL.matcher(name.original);
+		if(m.find()) { return Integer.parseInt(m.group(1)); }
+		return 0;
 	    } catch (Loading l) {
-		return -1;
-	    } catch (Exception e) {
-		return -1;
+		return null;
 	    }
 	}
     }
@@ -391,7 +399,8 @@ public class Actions {
 		    if(inv != null) {
 			for (WItem item : inv.children(WItem.class)) {
 			    String res = item.item.resname();
-			    if(res != null && res.contains("gfx/invobjs/cheesetray")) {
+			    // Match accepting trays only; "cheesetray-curd" is full.
+			    if(res != null && res.endsWith("/cheesetray")) {
 				trays.add(item);
 			    }
 			}

@@ -25,9 +25,6 @@ public class CheeseTrayFillerTest {
 	int pickupFailsAfter = -1;
 	int pickupsDone = 0;
 
-	/** If set, trayFill returns -1 (unknown) for the given index. */
-	int hideFillForTray = -1;
-
 	FakeEnv(int trayCount, int curds) {
 	    this(trayCount, CheeseTrayFiller.TRAY_CAPACITY, curds);
 	}
@@ -59,10 +56,7 @@ public class CheeseTrayFillerTest {
 
 	public int trayCount() { return trays.length; }
 
-	public int trayFill(int trayIndex) {
-	    if(trayIndex == hideFillForTray) { return -1; }
-	    return trays[trayIndex];
-	}
+	public int trayFill(int trayIndex) { return trays[trayIndex]; }
 
 	public boolean pickupCurd() {
 	    tick();
@@ -75,13 +69,12 @@ public class CheeseTrayFillerTest {
 	    return true;
 	}
 
-	public boolean placeIntoTray(int trayIndex) {
+	public void placeIntoTray(int trayIndex) {
 	    tick();
 	    if(!holdingCurd) { throw new IllegalStateException("place with empty hand"); }
-	    if(trays[trayIndex] >= capacity[trayIndex]) { return false; }
+	    if(trays[trayIndex] >= capacity[trayIndex]) { return; }
 	    trays[trayIndex]++;
 	    holdingCurd = false;
-	    return true;
 	}
 
 	public void dropHeld() {
@@ -189,6 +182,27 @@ public class CheeseTrayFillerTest {
     }
 
     /**
+     * Real-world resume scenario: re-running the filler against a cupboard
+     * of trays left in assorted partial states (e.g. after a prior buggy
+     * run). Every non-full tray should be topped up to capacity.
+     */
+    @Test
+    void topsUpManyPartiallyFilledTrays() {
+	FakeEnv env = new FakeEnv(10, 100)
+	    .withInitialFill(0, 2).withInitialFill(1, 2).withInitialFill(2, 4)
+	    .withInitialFill(3, 3).withInitialFill(4, 1).withInitialFill(5, 2)
+	    .withInitialFill(6, 2).withInitialFill(7, 3).withInitialFill(8, 1)
+	    .withInitialFill(9, 1);
+	CheeseTrayFiller.Result r = CheeseTrayFiller.run(env);
+	// perTray is placed-by-us; every tray must end at capacity.
+	int[] finalFill = new int[10];
+	for (int i = 0; i < 10; i++) { finalFill[i] = env.trays[i]; }
+	assertArrayEquals(new int[]{4, 4, 4, 4, 4, 4, 4, 4, 4, 4}, finalFill);
+	// Placed = 40 total minus the 21 already there = 19.
+	assertEquals(19, r.placed);
+    }
+
+    /**
      * When the tray reports its fill as >= capacity, skip it immediately
      * (no placement attempt). This is the short-circuit that avoids the
      * old bug where we attempted placements we couldn't actually make.
@@ -199,18 +213,6 @@ public class CheeseTrayFillerTest {
 	CheeseTrayFiller.Result r = CheeseTrayFiller.run(env);
 	// Tray 0 already full — no place attempt. Tray 1 fills normally.
 	assertArrayEquals(new int[]{0, 4}, r.perTray);
-    }
-
-    /**
-     * When trayFill is unavailable (info not loaded), the algorithm should
-     * still place correctly, falling back on placeIntoTray's return value.
-     */
-    @Test
-    void fillsCorrectlyWhenFillUnknown() {
-	FakeEnv env = new FakeEnv(2, 100);
-	env.hideFillForTray = 0;
-	CheeseTrayFiller.Result r = CheeseTrayFiller.run(env);
-	assertArrayEquals(new int[]{4, 4}, r.perTray);
     }
 
     /**

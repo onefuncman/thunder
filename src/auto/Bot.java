@@ -116,6 +116,10 @@ public class Bot implements Defer.Callable<Void> {
 	cancelCurrent("Cancelled by user");
     }
 
+    public static boolean hasCurrent() {
+	synchronized (lock) { return current != null; }
+    }
+
     public static void cancelCurrent(String reason) {
 	synchronized (lock) {
 	    if(current != null) {

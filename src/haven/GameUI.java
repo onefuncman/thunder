@@ -1930,6 +1930,9 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	} else if(kb_stats.key().match(ev)) {
 	    toggleStatsPanel();
 	    return(true);
+	} else if(ev.c == 27 && auto.Bot.hasCurrent()) {
+	    auto.Bot.cancelCurrent();
+	    return(true);
 	} else if((ev.c == 27) && (map != null) && !map.hasfocus) {
 	    setfocus(map);
 	    return(true);
