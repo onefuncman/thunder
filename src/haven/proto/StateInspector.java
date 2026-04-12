@@ -40,6 +40,8 @@ public class StateInspector extends GameUI.Hidewnd {
 	add(new Button(btnW, "Resources") { public void click() { tabs.showtab(resTab); } }, btnX, btnY);
 	btnX += btnW + UI.scale(4);
 	add(new Button(UI.scale(100), "Snapshot Scene") { public void click() { doSnapshot(); } }, btnX, btnY);
+	btnX += UI.scale(100) + UI.scale(4);
+	add(new Button(UI.scale(110), "Capture Heights") { public void click() { doCaptureHeights(); } }, btnX, btnY);
     }
 
     private void doSnapshot() {
@@ -50,6 +52,18 @@ public class StateInspector extends GameUI.Hidewnd {
 	    gui.msg("Scene snapshot: " + p.toAbsolutePath(), GameUI.MsgType.INFO);
 	} catch (Exception e) {
 	    gui.error("Snapshot failed: " + e.getClass().getSimpleName()
+		+ (e.getMessage() != null ? ": " + e.getMessage() : ""));
+	}
+    }
+
+    private void doCaptureHeights() {
+	GameUI gui = ui.gui;
+	if(gui == null) { return; }
+	try {
+	    Path p = CattleHeightsCapture.capture(gui);
+	    gui.msg("Cattle heights: " + p.toAbsolutePath(), GameUI.MsgType.INFO);
+	} catch (Exception e) {
+	    gui.error("Capture heights failed: " + e.getClass().getSimpleName()
 		+ (e.getMessage() != null ? ": " + e.getMessage() : ""));
 	}
     }

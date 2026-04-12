@@ -108,7 +108,78 @@ public class Entry extends Widget {
 	    }
 	    cls = cls.getSuperclass();
 	}
+	appendGobInfo(buf);
 	System.err.println(buf.toString());
+    }
+
+    private void appendGobInfo(StringBuilder buf) {
+	Gob gob = null;
+	try {
+	    for(Gob g : ui.sess.glob.oc) {
+		CattleId cid = g.getattr(CattleId.class);
+		if(cid != null && cid.id.equals(id)) {gob = g; break;}
+	    }
+	} catch(Exception ignored) {}
+	if(gob == null) {buf.append("  [gob] not found in oc\n"); return;}
+	buf.append(String.format("  [gob] id=%d rc=%s%n", gob.id, gob.rc));
+	Drawable d = gob.drawable;
+	Resource res = (d != null) ? d.getres() : null;
+	buf.append(String.format("  [gob] drawable=%s res=%s%n",
+	    (d == null) ? "null" : d.getClass().getSimpleName(),
+	    (res == null) ? "null" : res.name));
+	Skeleton skel = null;
+	if(d instanceof Composite) {
+	    Composite cd = (Composite)d;
+	    skel = cd.comp.skel;
+	    try {
+		for(Composited.MD md : cd.comp.cmod) {
+		    try {buf.append(String.format("  [gob] model=%s%n", md.mod.get().name));}
+		    catch(Loading l) {buf.append("  [gob] model=(loading)\n");}
+		    for(ResData tex : md.tex) {
+			try {buf.append(String.format("    tex=%s%n", tex.res.get().name));}
+			catch(Loading l) {buf.append("    tex=(loading)\n");}
+		    }
+		}
+		for(Composited.ED eq : cd.comp.cequ) {
+		    try {buf.append(String.format("  [gob] equ %s=%s%n", eq.at, eq.res.res.get().name));}
+		    catch(Loading l) {buf.append(String.format("  [gob] equ %s=(loading)%n", eq.at));}
+		}
+	    } catch(Exception e) {buf.append("  [gob] composite error: ").append(e.getMessage()).append('\n');}
+	} else if(res != null) {
+	    Skeleton.Res sr = res.layer(Skeleton.Res.class);
+	    if(sr != null) skel = sr.s;
+	}
+	synchronized(gob.ols) {
+	    for(Gob.Overlay ol : gob.ols) {
+		String olRes = "?";
+		try {
+		    if(ol.spr != null && ol.spr.res != null) olRes = ol.spr.res.name;
+		} catch(Exception ignored) {}
+		buf.append(String.format("  [gob] ol id=%d res=%s spr=%s%n", ol.id, olRes,
+		    (ol.spr == null) ? "null" : ol.spr.getClass().getSimpleName()));
+	    }
+	}
+	if(skel == null) {buf.append("  [gob] no skeleton (use empirical observation for height)\n"); return;}
+	Skeleton.Pose bind = skel.bindpose;
+	float maxX = Float.NEGATIVE_INFINITY, maxY = Float.NEGATIVE_INFINITY, maxZ = Float.NEGATIVE_INFINITY;
+	float minX = Float.POSITIVE_INFINITY, minY = Float.POSITIVE_INFINITY, minZ = Float.POSITIVE_INFINITY;
+	String topX = null, topY = null, topZ = null;
+	for(int i = 0; i < skel.blist.length; i++) {
+	    float x = bind.gpos[i][0], y = bind.gpos[i][1], z = bind.gpos[i][2];
+	    if(x > maxX) {maxX = x; topX = skel.blist[i].name;}
+	    if(y > maxY) {maxY = y; topY = skel.blist[i].name;}
+	    if(z > maxZ) {maxZ = z; topZ = skel.blist[i].name;}
+	    if(x < minX) minX = x;
+	    if(y < minY) minY = y;
+	    if(z < minZ) minZ = z;
+	}
+	buf.append(String.format("  [gob] bindpose extents: x=[%.2f..%.2f] y=[%.2f..%.2f] z=[%.2f..%.2f] (world +Z=up)%n",
+	    minX, maxX, minY, maxY, minZ, maxZ));
+	buf.append(String.format("  [gob] topmost bones: maxX=%s maxY=%s maxZ=%s%n", topX, topY, topZ));
+	for(int i = 0; i < skel.blist.length; i++) {
+	    buf.append(String.format("    bone %-20s gpos=(%.2f, %.2f, %.2f)%n",
+		skel.blist[i].name, bind.gpos[i][0], bind.gpos[i][1], bind.gpos[i][2]));
+	}
     }
 
     public <T extends Entry> void markall(Class<T> type, Predicate<? super T> p) {

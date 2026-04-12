@@ -13,6 +13,64 @@ import java.awt.image.BufferedImage;
 public class CattleId extends GAttrib implements RenderTree.Node, PView.Render2D {
     public final UID id;
 
+    /* Top-of-model Z per animal resource, in world units. Captured from
+     * each mesh's bind-pose vertex positions via State Inspector →
+     * Capture Heights (the meshMaxZ column). The config slider adds extra
+     * units above this base so names sit a uniform distance above each
+     * animal regardless of its size.
+     *
+     * Two key shapes:
+     *   "gfx/kritter/horse/mare"           - bare resname (no variants)
+     *   "gfx/kritter/sheep/sheep[ram]"     - variant, selected when the
+     *                                        composite resId contains "/ram"
+     * modelTopZ() tries variant-aware keys first, then bare resname. */
+    private static final Map<String, Float> MODEL_TOP_Z = new HashMap<>();
+    /* Order matters: checked in sequence, first substring match in the
+     * composite resId wins. */
+    private static final String[] VARIANT_MARKERS = {"/ram", "/ewe", "/bull", "/cow"};
+    static {
+	MODEL_TOP_Z.put("gfx/kritter/cattle/calf",               8.29f);
+	MODEL_TOP_Z.put("gfx/kritter/cattle/cattle[bull]",      15.64f);
+	MODEL_TOP_Z.put("gfx/kritter/cattle/cattle[cow]",       13.48f);
+	MODEL_TOP_Z.put("gfx/kritter/cattle/cattle",            13.48f);
+	MODEL_TOP_Z.put("gfx/kritter/goat/billy",               11.27f);
+	MODEL_TOP_Z.put("gfx/kritter/goat/kid",                  7.17f);
+	MODEL_TOP_Z.put("gfx/kritter/goat/nanny",                9.91f);
+	MODEL_TOP_Z.put("gfx/kritter/horse/foal",               12.23f);
+	MODEL_TOP_Z.put("gfx/kritter/horse/mare",               18.28f);
+	MODEL_TOP_Z.put("gfx/kritter/horse/stallion",           19.74f);
+	MODEL_TOP_Z.put("gfx/kritter/pig/hog",                   8.42f);
+	MODEL_TOP_Z.put("gfx/kritter/pig/piglet",                4.53f);
+	MODEL_TOP_Z.put("gfx/kritter/pig/sow",                   7.36f);
+	MODEL_TOP_Z.put("gfx/kritter/reindeer/teimdeerbull",    19.76f);
+	MODEL_TOP_Z.put("gfx/kritter/reindeer/teimdeercow",     13.04f);
+	MODEL_TOP_Z.put("gfx/kritter/reindeer/teimdeerkid",      8.54f);
+	MODEL_TOP_Z.put("gfx/kritter/sheep/lamb",                6.94f);
+	MODEL_TOP_Z.put("gfx/kritter/sheep/sheep[ram]",         11.07f);
+	MODEL_TOP_Z.put("gfx/kritter/sheep/sheep[ewe]",         10.52f);
+	MODEL_TOP_Z.put("gfx/kritter/sheep/sheep",              10.52f);
+    }
+
+    private float modelTopZ() {
+	try {
+	    Resource res = gob.getres();
+	    if(res == null) return(0f);
+	    String name = res.name;
+	    String resId = (gob.drawable instanceof Composite) ? ((Composite)gob.drawable).resId() : null;
+	    if(resId != null) {
+		for(String marker : VARIANT_MARKERS) {
+		    if(resId.contains(marker)) {
+			Float v = MODEL_TOP_Z.get(name + "[" + marker.substring(1) + "]");
+			if(v != null) return(v);
+		    }
+		}
+	    }
+	    Float v = MODEL_TOP_Z.get(name);
+	    if(v != null) return(v);
+	} catch(Loading l) {}
+	return(0f);
+    }
+
     public CattleId(Gob gob, UID id) {
 	super(gob);
 	this.id = id;
@@ -54,7 +112,7 @@ public class CattleId extends GAttrib implements RenderTree.Node, PView.Render2D
     private int lgrp;
     private Tex rnm;
     public void draw(GOut g, Pipe state) {
-	int zoff = Math.max(0, haven.CFG.CROSTER_NAME_Z.get());
+	float zoff = modelTopZ() + Math.max(0, haven.CFG.CROSTER_NAME_Z.get());
 	Coord sc = Homo3D.obj2view(new Coord3f(0, 0, zoff), state, Area.sized(g.sz())).round2();
 	if(sc.isect(Coord.z, g.sz())) {
 	    Entry entry = entry();

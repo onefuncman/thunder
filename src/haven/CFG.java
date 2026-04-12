@@ -152,7 +152,7 @@ public class CFG<T> {
     public static final CFG<Color> COLOR_GOB_RABBIT = new CFG<>("colors.gob.rabbit", new Color(0, 255, 119, 140));
     public static final CFG<Color> COLOR_GOB_CRITTERS = new CFG<>("colors.gob.critters", new Color(150, 230, 255, 140));
     public static final CFG<Color> COLOR_GOB_SPEED_BUFF = new CFG<>("colors.gob.speed_buff", new Color(200, 255, 230, 140));
-    public static final CFG<Color> COLOR_CATTLE_HIGHLIGHT = new CFG<>("colors.cattle_highlight", new Color(200, 16, 64, 200));
+    public static final CFG<Color> COLOR_CATTLE_HIGHLIGHT = new CFG<>("colors.cattle_highlight", new Color(0xC8, 0x46, 0x41, 0xE6));
     
     /**Show stack's hover inventory widgets only if SHIFT is pressed*/
     public static final CFG<Boolean> UI_STACK_SUB_INV_ON_SHIFT = new CFG<>("ui.stack.sub_inv_on_shift", false);
@@ -203,7 +203,7 @@ public class CFG<T> {
     public static final CFG<Boolean> SHOW_MINIMAP_ON_START = new CFG<>("minimap.show_on_start", false);
     public static final CFG<Integer> DISPLAY_SCALE_TREES = new CFG<>("display.scale.trees", 100);
     public static final CFG<Integer> DISPLAY_SCALE_BUSHES = new CFG<>("display.scale.bushes", 100);
-    public static final CFG<Integer> CROSTER_NAME_Z = new CFG<>("croster.name_z", 25);
+    public static final CFG<Integer> CROSTER_NAME_Z = new CFG<>("croster.name_z", 5);
     public static final CFG<Boolean> CROSTER_DEBUG = new CFG<>("croster.debug", false);
     public static final CFG<Boolean> AUTO_DRINK_ENABLED = new CFG<>("automation.autodrink.enabled", false);
     public static final CFG<Integer> AUTO_DRINK_THRESHOLD = new CFG<>("automation.autodrink.threshold", 74);
