@@ -216,7 +216,7 @@ public class Shopbox extends Widget implements ItemInfo.SpriteOwner, GSprite.Own
 
     public void wdgmsg(Widget sender, String msg, Object... args) {
 	Integer n;
-	if(sender == bbtn) {
+	if((sender == bbtn) || (sender == bulkTextEntry)) {
 	    int count = 1;
 	    if(bulkTextEntry != null && !bulkTextEntry.text().isEmpty()) {
 		try {count = Integer.parseInt(bulkTextEntry.text());}
@@ -249,6 +249,7 @@ public class Shopbox extends Widget implements ItemInfo.SpriteOwner, GSprite.Own
 		    super.changed();
 		}
 	    }, bulkTextEntryc);
+	    bulkTextEntry.canactivate = true;
 	} else if(!canbuy && (bbtn != null)) {
 	    bbtn.reqdestroy();
 	    bbtn = null;
