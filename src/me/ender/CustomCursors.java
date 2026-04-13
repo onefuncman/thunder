@@ -11,7 +11,10 @@ public class CustomCursors {
     public static final Resource.Named INSPECT = Resource.local().loadwait("gfx/hud/curs/studyx").indir();
     public static final Resource.Named TRACK = Resource.local().loadwait("gfx/hud/curs/track").indir();
     public static final Resource.Named SWEEPER = Resource.local().loadwait("gfx/hud/curs/minesweep").indir();
-    public static final Resource.Named PICK = Resource.local().loadwait("gfx/hud/curs/studyx").indir();
+    // Distinct Named so PICK != INSPECT by reference, even though they share a cursor image.
+    public static final Resource.Named PICK = new Resource.Named(INSPECT.name, INSPECT.ver) {
+	public Resource get() {return INSPECT.get();}
+    };
     private static Consumer<Gob> pickCallback;
     private static boolean pickConsumeEmpty;
     private static boolean pickShowTooltip;
