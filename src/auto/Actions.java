@@ -357,7 +357,6 @@ public class Actions {
 	    WItem tray = trays.get(trayIndex);
 	    tray.item.wdgmsg("itemact", 1);
 	    BotUtil.waitHeldChanged(gui, 2000);
-	    BotUtil.pause(20);
 	}
 
 	public void dropHeld() {

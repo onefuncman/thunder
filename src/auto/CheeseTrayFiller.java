@@ -50,24 +50,27 @@ public class CheeseTrayFiller {
 
 	outer:
 	for (int i = 0; i < count; i++) {
-	    while (true) {
-		if(env.isCancelled()) { break outer; }
+	    if(env.isCancelled()) { break outer; }
 
-		int fill = env.trayFill(i);
-		if(fill >= TRAY_CAPACITY) { break; }
+	    int initial = env.trayFill(i);
+	    if(initial >= TRAY_CAPACITY) { continue; }
+	    int toPlace = TRAY_CAPACITY - initial;
+
+	    for (int n = 0; n < toPlace; n++) {
+		if(env.isCancelled()) { break outer; }
 
 		if(env.handEmpty()) {
 		    if(!env.pickupCurd()) {
 			if(!env.handEmpty()) { env.dropHeld(); }
+			placed[i] = Math.max(0, env.trayFill(i) - initial);
 			return new Result(placed, null);
 		    }
 		}
 
 		env.placeIntoTray(i);
-		int fillAfter = env.trayFill(i);
-		if(fillAfter > fill) { placed[i]++; }
-		else { break; }
 	    }
+
+	    placed[i] = Math.max(0, env.trayFill(i) - initial);
 	}
 
 	if(!env.handEmpty()) { env.dropHeld(); }
