@@ -34,6 +34,9 @@ import java.nio.channels.*;
 import java.awt.Color;
 import java.awt.event.KeyEvent;
 import java.awt.image.*;
+import haven.render.Render;
+import haven.render.RenderTree;
+import haven.render.TickList;
 import haven.MiniMap.*;
 import haven.BuddyWnd.GroupSelector;
 import me.ender.QuestCondition;
@@ -57,7 +60,9 @@ public class MapWnd extends WindowX implements Console.Directory {
     private final Widget toolbar;
     private final Widget topbar;
     private final Frame viewf;
+    private final MarkerObjs mvmarks = new MarkerObjs(this);
     private GroupSelector colsel;
+    private CheckBox onmapbtn;
     protected Button mremove;
     private Button mtrack;
     private Predicate<Marker> mflt = pmarkers;
@@ -175,6 +180,16 @@ public class MapWnd extends WindowX implements Console.Directory {
 	tool = add(new Toolbox2());;
 	compact(Utils.getprefb("compact-map", false));
 	resize(sz);
+    }
+
+    protected void added() {
+	super.added();
+	mv.basic.add(mvmarks);
+    }
+
+    public void remove() {
+	super.remove();
+	mvmarks.remove();
     }
 
     public void toggleol(String tag, boolean a) {
@@ -799,6 +814,10 @@ public class MapWnd extends WindowX implements Console.Directory {
 		    ui.destroy(colsel);
 		    colsel = null;
 		}
+		if(onmapbtn != null) {
+		    ui.destroy(onmapbtn);
+		    onmapbtn = null;
+		}
 		if(mtrack != null) {
 		    ui.destroy(mtrack);
 		    mtrack = null;
@@ -828,6 +847,11 @@ public class MapWnd extends WindowX implements Console.Directory {
 				view.file.update(mark);
 			    }
 			});
+		    onmapbtn = (CheckBox)tool.add(new CheckBox("Display in world").state(() -> pm.onmap));
+		    onmapbtn.set(v -> {
+			pm.onmap = v;
+			view.file.update(mark);
+		    });
 		} else if(mark instanceof CustomMarker) {
 		    CustomMarker cm = (CustomMarker) mark;
 		    colsel = tool.add(new GroupSelector(Math.max(0, Utils.index(BuddyWnd.gc, cm.color))) {
@@ -861,7 +885,7 @@ public class MapWnd extends WindowX implements Console.Directory {
     }
 
     public void resize(Coord sz) {
-	sz = sz.max(compact() ? UI.scale(150, 150) : UI.scale(350, 240));
+	sz = sz.max(compact() ? UI.scale(150, 150) : UI.scale(350, 255));
 	super.resize(sz);
 	tool.resize(sz.y);
 	if(!compact()) {
@@ -907,6 +931,97 @@ public class MapWnd extends WindowX implements Console.Directory {
 
     protected Deco makedeco() {
 	return(new DecoX(true).dragsize(true));
+    }
+
+    public static class MarkerObjs extends RenderTree.Node.Track1 implements TickList.TickNode, TickList.Ticking {
+	public static final Indir<Resource> flag = Resource.local().load("gfx/hud/mmap/markobj");
+	public final MapWnd mm;
+	private final Map<PMarker, Pair<Gob, RenderTree.Slot>> dcurrent = new HashMap<>();
+	private Collection<PMarker> acurrent = Collections.emptyList();
+	private MiniMap.Location curloc = null;
+	private boolean loading = true;
+
+	public MarkerObjs(MapWnd mm) {
+	    this.mm = mm;
+	}
+
+	private Area area = null;
+	private int markerseq = -1;
+	private void updatepos() {
+	    try {
+		MiniMap.Location loc = mm.view.sessloc;
+		if(loc == null)
+		    return;
+		Coord cc = Coord2d.of(mm.mv.getcc()).floor(tilesz).div(MCache.cutsz);
+		Area area = Area.corni(cc.sub(2, 2), cc.add(2, 2)).mul(MCache.cutsz).xl(loc.tc);
+		int markerseq = mm.file.markerseq;
+		if(Utils.eq(area, this.area) && (markerseq == this.markerseq))
+		    return;
+		Collection<PMarker> next = new ArrayList<>();
+		if(!mm.file.lock.readLock().tryLock())
+		    return;
+		try {
+		    for(Marker m : mm.file.markers) {
+			if(!(m instanceof PMarker))
+			    continue;
+			PMarker pm = (PMarker)m;
+			if(pm.onmap && (pm.seg == loc.seg.id) && area.contains(pm.tc))
+			    next.add(pm);
+		    }
+		} finally {
+		    mm.file.lock.readLock().unlock();
+		}
+		this.acurrent = next.isEmpty() ? Collections.emptyList() : next;
+		this.area = area;
+		this.curloc = loc;
+		this.markerseq = markerseq;
+		this.loading = true;
+	    } catch(Loading l) {
+	    }
+	}
+
+	private void updateobjs() {
+	    if(!loading)
+		return;
+	    try {
+		Collection<PMarker> old = new HashSet<>(dcurrent.keySet());
+		for(PMarker m : acurrent) {
+		    if(!dcurrent.containsKey(m)) {
+			Gob mob = new Gob(mm.ui.sess.glob, Coord2d.of(m.tc.sub(curloc.tc)).add(0.5, 0.5).mul(tilesz));
+			MessageBuf sdt = new MessageBuf();
+			sdt.addcolor(m.color);
+			mob.setattr(new ResDrawable(mob, flag, new MessageBuf(sdt.fin())));
+			dcurrent.put(m, Pair.of(mob, slot.add(mob.placed)));
+		    }
+		    old.remove(m);
+		}
+		for(PMarker m : old) {
+		    Pair<Gob, RenderTree.Slot> r = dcurrent.remove(m);
+		    synchronized(r.a) {
+			r.b.remove();
+		    }
+		}
+		loading = false;
+	    } catch(Loading l) {}
+	}
+
+	public TickList.Ticking ticker() {return(this);}
+	public void autotick(double dt) {
+	    updatepos();
+	    updateobjs();
+	    for(Pair<Gob, RenderTree.Slot> c : dcurrent.values())
+		c.a.ctick(dt);
+	}
+
+	public void autogtick(Render out) {
+	    for(Pair<Gob, RenderTree.Slot> c : dcurrent.values())
+		c.a.gtick(out);
+	}
+
+	void remove() {
+	    if(slot != null)
+		slot.remove();
+	}
     }
 
     public void markobj(long gobid, long oid, Indir<Resource> resid, String nm) {
@@ -1305,13 +1420,16 @@ public class MapWnd extends WindowX implements Console.Directory {
 		if(colsel != null) {
 		    colsel.c = namesel.c.add(0, namesel.sz.y + UI.scale(10));
 		}
+		if(onmapbtn != null) {
+		    onmapbtn.c = colsel.c.add(0, colsel.sz.y + UI.scale(5));
+		}
 		int y = namesel.sz.y + BuddyWnd.margin3 + UI.scale(20);
 		mremove.c = namesel.c.add(0, y);
 		mtrack.c = namesel.c.add(UI.scale(105), y);
 	    }
 	}
     }
-    
+
     private Map<String, Console.Command> cmdmap = new TreeMap<String, Console.Command>();
     {
 	cmdmap.put("exportmap", new Console.Command() {
