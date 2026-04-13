@@ -88,7 +88,9 @@ public class Entry extends Widget {
 	}
 	if(ev.propagate(this) || super.mousedown(ev))
 	    return(true);
-	getparent(CattleRoster.class).wdgmsg("click", id, ev.b, ui.modflags(), ui.mc);
+	CattleRoster<?> rost = getparent(CattleRoster.class);
+	if(rost == null) return(false);
+	rost.wdgmsg("click", id, ev.b, ui.modflags(), ui.mc);
 	return(true);
     }
 
@@ -115,9 +117,12 @@ public class Entry extends Widget {
     private void appendGobInfo(StringBuilder buf) {
 	Gob gob = null;
 	try {
-	    for(Gob g : ui.sess.glob.oc) {
-		CattleId cid = g.getattr(CattleId.class);
-		if(cid != null && cid.id.equals(id)) {gob = g; break;}
+	    OCache oc = ui.sess.glob.oc;
+	    synchronized(oc) {
+		for(Gob g : oc) {
+		    CattleId cid = g.getattr(CattleId.class);
+		    if(cid != null && cid.id.equals(id)) {gob = g; break;}
+		}
 	    }
 	} catch(Exception ignored) {}
 	if(gob == null) {buf.append("  [gob] not found in oc\n"); return;}
@@ -183,8 +188,10 @@ public class Entry extends Widget {
     }
 
     public <T extends Entry> void markall(Class<T> type, Predicate<? super T> p) {
+	CattleRoster<?> rost = getparent(CattleRoster.class);
+	if(rost == null) return;
 	boolean val = !this.mark.a;
-	for(T ent : getparent(CattleRoster.class).children(type)) {
+	for(T ent : rost.children(type)) {
 	    if(p.test(ent))
 		ent.mark.set(val);
 	}

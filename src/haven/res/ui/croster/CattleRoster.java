@@ -103,12 +103,15 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 
     private void clearAllCattleHighlights() {
 	if(ui == null || ui.sess == null) return;
-	for(Gob g : ui.sess.glob.oc) {
-	    if(g.getattr(CattleId.class) == null) continue;
-	    GobHighlight h = g.getattr(GobHighlight.class);
-	    if(h != null && h.isPersistent()) {
-		h.setPersistent(false);
-		g.delattr(GobHighlight.class);
+	OCache oc = ui.sess.glob.oc;
+	synchronized(oc) {
+	    for(Gob g : oc) {
+		if(g.getattr(CattleId.class) == null) continue;
+		GobHighlight h = g.getattr(GobHighlight.class);
+		if(h != null && h.isPersistent()) {
+		    h.setPersistent(false);
+		    g.delattr(GobHighlight.class);
+		}
 	    }
 	}
     }
@@ -119,17 +122,20 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 	for(T e : entries.values()) {
 	    if(e.mark.a) marked.add(e.id);
 	}
-	for(Gob g : ui.sess.glob.oc) {
-	    CattleId cid = g.getattr(CattleId.class);
-	    if(cid == null) continue;
-	    boolean want = marked.contains(cid.id);
-	    GobHighlight h = g.getattr(GobHighlight.class);
-	    if(want) {
-		if(h == null) {h = new GobHighlight(g); g.setattr(h);}
-		if(!h.isPersistent()) h.setPersistent(true);
-	    } else if(h != null && h.isPersistent()) {
-		h.setPersistent(false);
-		g.delattr(GobHighlight.class);
+	OCache oc = ui.sess.glob.oc;
+	synchronized(oc) {
+	    for(Gob g : oc) {
+		CattleId cid = g.getattr(CattleId.class);
+		if(cid == null) continue;
+		boolean want = marked.contains(cid.id);
+		GobHighlight h = g.getattr(GobHighlight.class);
+		if(want) {
+		    if(h == null) {h = new GobHighlight(g); g.setattr(h);}
+		    if(!h.isPersistent()) h.setPersistent(true);
+		} else if(h != null && h.isPersistent()) {
+		    h.setPersistent(false);
+		    g.delattr(GobHighlight.class);
+		}
 	    }
 	}
     }
@@ -275,6 +281,7 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 
     public void delentry(UID id) {
 	T entry = entries.remove(id);
+	if(entry == null) return;
 	entry.destroy();
 	dirty = true;
 	entryseq++;
@@ -297,8 +304,11 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 	    delentry((UID)args[0]);
 	} else if(msg == "addto") {
 	    GameUI gui = (GameUI)ui.getwidget(Utils.iv(args[0]));
+	    if(gui == null || gui.menu == null) return;
 	    Pagina pag = gui.menu.paginafor(ui.sess.getresv(args[1]));
+	    if(pag == null) return;
 	    RosterButton btn = (RosterButton)Loading.waitfor(pag::button);
+	    if(btn == null) return;
 	    btn.add(this);
 	} else {
 	    super.uimsg(msg, args);
