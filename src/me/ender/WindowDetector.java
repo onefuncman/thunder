@@ -3,6 +3,7 @@ package me.ender;
 import auto.Actions;
 import auto.InventorySorter;
 import haven.*;
+import haven.res.ui.tt.drinkbuff.Drinkbuff;
 import haven.rx.CharterBook;
 import haven.rx.Reactor;
 import me.ender.ui.CFGBox;
@@ -160,5 +161,43 @@ public class WindowDetector {
 	
 	wnd.add(new Button(55, "Salt All", false, () -> Actions.saltFood(wnd.ui.gui)), btn.pos("ur").adds(-55, -20))
 	    .settip("Salt all food");
+
+	wnd.add(new DrinkBuffLabel(), btn.pos("bl").adds(0, 4));
+    }
+
+    private static class DrinkBuffLabel extends Label {
+	private int last = -1;
+
+	DrinkBuffLabel() {
+	    super("Drink: 0");
+	    settip("Current drink buff count");
+	}
+
+	@Override
+	public void tick(double dt) {
+	    super.tick(dt);
+	    int n = currentDrinkCount();
+	    if(n != last) {
+		last = n;
+		settext(String.format("Drink: %d", n));
+	    }
+	}
+
+	private int currentDrinkCount() {
+	    try {
+		Bufflist bl = ui.gui.buffs;
+		if(bl == null) {return 0;}
+		for(Buff buff : bl.children(Buff.class)) {
+		    try {
+			for(ItemInfo info : buff.info()) {
+			    if(info instanceof Drinkbuff) {
+				return ((Drinkbuff) info).n;
+			    }
+			}
+		    } catch(Loading ignore) {}
+		}
+	    } catch(Exception ignore) {}
+	    return 0;
+	}
     }
 }
