@@ -8,7 +8,6 @@ import haven.rx.CharterBook;
 import haven.rx.Reactor;
 import me.ender.ui.CFGBox;
 
-import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -168,14 +167,13 @@ public class WindowDetector {
 	wnd.add(new DrinkBuffLabel(), btn.pos("bl").adds(0, 4));
     }
 
-    private static class DrinkBuffLabel extends Widget {
+    private static class DrinkBuffLabel extends Label {
+	private String sig = "init";
 	private List<Buff> drinkBuffs = new ArrayList<>();
-	private String sig = "";
-	private Tex disp;
 	private Tex longtip;
 
 	DrinkBuffLabel() {
-	    super(Coord.z);
+	    super("Drinks: ...");
 	}
 
 	@Override
@@ -186,9 +184,8 @@ public class WindowDetector {
 	    if(!newSig.equals(sig)) {
 		sig = newSig;
 		drinkBuffs = found;
-		if(disp != null) {disp.dispose(); disp = null;}
 		if(longtip != null) {longtip.dispose(); longtip = null;}
-		rebuild();
+		settext(buildText(found));
 	    }
 	}
 
@@ -226,30 +223,20 @@ public class WindowDetector {
 	    return sb.toString();
 	}
 
-	private void rebuild() {
-	    List<BufferedImage> parts = new ArrayList<>();
-	    for(Buff b : drinkBuffs) {
+	private static String buildText(List<Buff> buffs) {
+	    StringBuilder sb = new StringBuilder();
+	    for(Buff b : buffs) {
 		try {
 		    for(ItemInfo i : b.info()) {
 			if(i instanceof Drinkbuff) {
 			    Drinkbuff db = (Drinkbuff) i;
-			    parts.add(Text.render(String.format("%s: %d", db.nm, db.n)).img);
+			    if(sb.length() > 0) {sb.append("  ");}
+			    sb.append(db.nm).append(": ").append(db.n);
 			}
 		    }
 		} catch(Loading ignore) {}
 	    }
-	    if(parts.isEmpty()) {
-		resize(Coord.z);
-		return;
-	    }
-	    BufferedImage combined = ItemInfo.catimgsh(UI.scale(8), parts.toArray(new BufferedImage[0]));
-	    disp = new TexI(combined);
-	    resize(new Coord(combined.getWidth(), combined.getHeight()));
-	}
-
-	@Override
-	public void draw(GOut g) {
-	    if(disp != null) {g.image(disp, Coord.z);}
+	    return sb.length() == 0 ? "Drinks: 0" : sb.toString();
 	}
 
 	@Override
