@@ -8,7 +8,10 @@ import haven.rx.CharterBook;
 import haven.rx.Reactor;
 import me.ender.ui.CFGBox;
 
+import java.awt.image.BufferedImage;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -165,39 +168,104 @@ public class WindowDetector {
 	wnd.add(new DrinkBuffLabel(), btn.pos("bl").adds(0, 4));
     }
 
-    private static class DrinkBuffLabel extends Label {
-	private int last = -1;
+    private static class DrinkBuffLabel extends Widget {
+	private List<Buff> drinkBuffs = new ArrayList<>();
+	private String sig = "";
+	private Tex disp;
+	private Tex longtip;
 
 	DrinkBuffLabel() {
-	    super("Drink: 0");
-	    settip("Current drink buff count");
+	    super(Coord.z);
 	}
 
 	@Override
 	public void tick(double dt) {
 	    super.tick(dt);
-	    int n = currentDrinkCount();
-	    if(n != last) {
-		last = n;
-		settext(String.format("Drink: %d", n));
+	    List<Buff> found = findDrinkBuffs();
+	    String newSig = buildSig(found);
+	    if(!newSig.equals(sig)) {
+		sig = newSig;
+		drinkBuffs = found;
+		if(disp != null) {disp.dispose(); disp = null;}
+		if(longtip != null) {longtip.dispose(); longtip = null;}
+		rebuild();
 	    }
 	}
 
-	private int currentDrinkCount() {
+	private List<Buff> findDrinkBuffs() {
+	    List<Buff> out = new ArrayList<>();
 	    try {
 		Bufflist bl = ui.gui.buffs;
-		if(bl == null) {return 0;}
+		if(bl == null) {return out;}
 		for(Buff buff : bl.children(Buff.class)) {
 		    try {
 			for(ItemInfo info : buff.info()) {
 			    if(info instanceof Drinkbuff) {
-				return ((Drinkbuff) info).n;
+				out.add(buff);
+				break;
 			    }
 			}
 		    } catch(Loading ignore) {}
 		}
 	    } catch(Exception ignore) {}
-	    return 0;
+	    return out;
+	}
+
+	private static String buildSig(List<Buff> buffs) {
+	    StringBuilder sb = new StringBuilder();
+	    for(Buff b : buffs) {
+		try {
+		    for(ItemInfo i : b.info()) {
+			if(i instanceof Drinkbuff) {
+			    Drinkbuff db = (Drinkbuff) i;
+			    sb.append(db.nm).append(':').append(db.n).append(';');
+			}
+		    }
+		} catch(Loading ignore) {}
+	    }
+	    return sb.toString();
+	}
+
+	private void rebuild() {
+	    List<BufferedImage> parts = new ArrayList<>();
+	    for(Buff b : drinkBuffs) {
+		try {
+		    for(ItemInfo i : b.info()) {
+			if(i instanceof Drinkbuff) {
+			    Drinkbuff db = (Drinkbuff) i;
+			    parts.add(Text.render(String.format("%s: %d", db.nm, db.n)).img);
+			}
+		    }
+		} catch(Loading ignore) {}
+	    }
+	    if(parts.isEmpty()) {
+		resize(Coord.z);
+		return;
+	    }
+	    BufferedImage combined = ItemInfo.catimgsh(UI.scale(8), parts.toArray(new BufferedImage[0]));
+	    disp = new TexI(combined);
+	    resize(new Coord(combined.getWidth(), combined.getHeight()));
+	}
+
+	@Override
+	public void draw(GOut g) {
+	    if(disp != null) {g.image(disp, Coord.z);}
+	}
+
+	@Override
+	public Object tooltip(Coord c, Widget prev) {
+	    if(drinkBuffs.isEmpty()) {return null;}
+	    if(longtip == null) {
+		List<ItemInfo> infos = new ArrayList<>();
+		for(Buff b : drinkBuffs) {
+		    try {infos.addAll(b.info());} catch(Loading ignore) {}
+		}
+		if(infos.isEmpty()) {return "...";}
+		try {
+		    longtip = new TexI(ItemInfo.longtip(infos));
+		} catch(Loading l) {return "...";}
+	    }
+	    return longtip;
 	}
     }
 }
