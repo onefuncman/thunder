@@ -1,5 +1,6 @@
 package haven;
 
+import haven.res.ui.tt.drinkbuff.Drinkbuff;
 import me.ender.ClientUtils;
 import me.ender.GobInfoOpts;
 import me.ender.GobInfoOpts.InfoPart;
@@ -24,6 +25,8 @@ public class GeneralGobInfo extends GobInfo {
     private static final double BUSH_MULT = 100.0 / (100.0 - BUSH_START);
     private static final Color Q_COL = new Color(235, 252, 255, 255);
     private static final Color BARREL_COL = new Color(252, 235, 255, 255);
+    private static final Color DRINK_COL = new Color(190, 220, 255, 255);
+    private static final String TABLE_PREFIX = "gfx/terobjs/furn/table";
     private static final Color BG = new Color(0, 0, 0, 84);
     private static final Map<Pair<Color, String>, Text.Line> TEXT_CACHE = new HashMap<>();
     public static final int MARGIN = UI.scale(3);
@@ -45,6 +48,7 @@ public class GeneralGobInfo extends GobInfo {
     private GobHealth health;
     private int scalePercent = -1;
     private String contents = null;
+    private int lastDrinkCount = -1;
     int q, taken;
     private static final Map<String, Integer> POS = new HashMap<>();
     
@@ -123,6 +127,7 @@ public class GeneralGobInfo extends GobInfo {
 	    content(),
 	    quality(),
 	    timer.img(),
+	    drinkCount(resid),
 	};
 	
 	renderEquippedOverlays();
@@ -163,6 +168,16 @@ public class GeneralGobInfo extends GobInfo {
     @Override
     public void ctick(double dt) {
 	if(enabled() && timer.update()) {dirty();}
+	if(enabled() && GobInfoOpts.enabled(InfoPart.DRINK_COUNT)) {
+	    String resid = gob == null ? null : gob.resid();
+	    if(resid != null && resid.startsWith(TABLE_PREFIX)) {
+		int n = currentDrinkCount();
+		if(n != lastDrinkCount) {
+		    lastDrinkCount = n;
+		    dirty();
+		}
+	    }
+	}
 	super.ctick(dt);
     }
     
@@ -172,6 +187,32 @@ public class GeneralGobInfo extends GobInfo {
 	super.dispose();
     }
     
+    private BufferedImage drinkCount(String resid) {
+	if(GobInfoOpts.disabled(InfoPart.DRINK_COUNT)) {return null;}
+	if(!resid.startsWith(TABLE_PREFIX)) {return null;}
+	int n = currentDrinkCount();
+	lastDrinkCount = n;
+	if(n <= 0) {return null;}
+	return text(String.format("Drink: %d", n), DRINK_COL).img;
+    }
+
+    private int currentDrinkCount() {
+	try {
+	    Bufflist bl = gob.glob.sess.ui.gui.buffs;
+	    if(bl == null) {return 0;}
+	    for(Buff buff : bl.children(Buff.class)) {
+		try {
+		    for(ItemInfo info : buff.info()) {
+			if(info instanceof Drinkbuff) {
+			    return ((Drinkbuff) info).n;
+			}
+		    }
+		} catch(Loading ignore) {}
+	    }
+	} catch(Exception ignore) {}
+	return 0;
+    }
+
     private BufferedImage quality() {
 	if(GobInfoOpts.disabled(InfoPart.QUALITY)) {return null;}
 	Text text;

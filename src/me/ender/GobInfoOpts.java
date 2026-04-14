@@ -23,7 +23,8 @@ public class GobInfoOpts extends WindowX {
 	DISPLAY_SIGN("Display sign contents"),
 	CHEESE_RACK("Cheese rack contents"),
 	QUALITY("Quality"),
-	TIMER("Timer");
+	TIMER("Timer"),
+	DRINK_COUNT("Drink buff count on tables");
 	
 	public final String text;
 	
