@@ -47,12 +47,13 @@ public class Global implements LocalOverlay {
 
 	public void fill(Area a, boolean[] buf) {
 	    Data dat = Global.this.dat;
-	    if((dat == null) || ((a = a.overlap(dat.area)) == null))
+	    Area oa;
+	    if((dat == null) || ((oa = a.overlap(dat.area)) == null))
 		return;
-	    fill2(dat, a, buf);
+	    fill2(dat, a, oa, buf);
 	}
 
-	protected abstract void fill2(Data dat, Area a, boolean[] buf);
+	protected abstract void fill2(Data dat, Area a, Area oa, boolean[] buf);
 
 	public boolean filter(Area a) {
 	    return((dat == null) || (a.overlap(dat.area) == null));
@@ -61,29 +62,29 @@ public class Global implements LocalOverlay {
     public final LocalOverlay[] ols = {
 	this,
 	new Overlay(ol_1) {
-	    public void fill2(Data dat, Area a, boolean[] buf) {
-		for(Coord tc : a)
+	    public void fill2(Data dat, Area a, Area oa, boolean[] buf) {
+		for(Coord tc : oa)
 		    buf[a.ridx(tc)] |= (dat.cc[dat.area.ridx(tc)] == 1) &&
 			(dat.dc[dat.area.ridx(tc)] == 0);
 	    }
 	},
 	new Overlay(ol_m) {
-	    public void fill2(Data dat, Area a, boolean[] buf) {
-		for(Coord tc : a)
+	    public void fill2(Data dat, Area a, Area oa, boolean[] buf) {
+		for(Coord tc : oa)
 		    buf[a.ridx(tc)] |= (dat.cc[dat.area.ridx(tc)] > 1) &&
 			(dat.dc[dat.area.ridx(tc)] < dat.cc[dat.area.ridx(tc)]);
 	    }
 	},
 	new Overlay(ol_v) {
-	    public void fill2(Data dat, Area a, boolean[] buf) {
-		for(Coord tc : a)
+	    public void fill2(Data dat, Area a, Area oa, boolean[] buf) {
+		for(Coord tc : oa)
 		    buf[a.ridx(tc)] |= (dat.vc[dat.area.ridx(tc)] > 0) &&
 			(dat.cc[dat.area.ridx(tc)] <= 1);
 	    }
 	},
 	new Overlay(ol_d) {
-	    public void fill2(Data dat, Area a, boolean[] buf) {
-		for(Coord tc : a)
+	    public void fill2(Data dat, Area a, Area oa, boolean[] buf) {
+		for(Coord tc : oa)
 		    buf[a.ridx(tc)] |= (dat.cc[dat.area.ridx(tc)] > 0) &&
 			(dat.dc[dat.area.ridx(tc)] >= dat.cc[dat.area.ridx(tc)]);
 	    }
