@@ -79,7 +79,7 @@ public class FileCache implements ResCache {
 		    super.close();
 		    try  {
 			Files.move(tmp, nm, StandardCopyOption.ATOMIC_MOVE);
-		    } catch(AtomicMoveNotSupportedException | AccessDeniedException e) {
+		    } catch(AtomicMoveNotSupportedException | AccessDeniedException | FileAlreadyExistsException e) {
 			Files.move(tmp, nm, StandardCopyOption.REPLACE_EXISTING);
 		    }
 		}

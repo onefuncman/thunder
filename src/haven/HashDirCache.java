@@ -330,7 +330,7 @@ public class HashDirCache implements ResCache {
 		    Utils.ioretry(() -> {
 			    try {
 				return(Files.move(tmp, path, StandardCopyOption.ATOMIC_MOVE));
-			    } catch(AtomicMoveNotSupportedException | AccessDeniedException e) {
+			    } catch(AtomicMoveNotSupportedException | AccessDeniedException | FileAlreadyExistsException e) {
 				return(Files.move(tmp, path, StandardCopyOption.REPLACE_EXISTING));
 			    }
 			});
