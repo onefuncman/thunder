@@ -14,6 +14,7 @@ public class StatsPanel extends GameUI.Hidewnd {
     private final Label rateLabel;
     private final Label bwLabel;
     private final Label totalLabel;
+    private boolean captureHeld = false;
 
     public StatsPanel(Session sess) {
 	super(new Coord(W, H), "Protocol Stats");
@@ -30,8 +31,29 @@ public class StatsPanel extends GameUI.Hidewnd {
     @Override
     public void show() {
 	super.show();
-	if(sess.protoBus != null)
-	    sess.protoBus.capturing = true;
+	if(sess.protoBus != null && !captureHeld) {
+	    sess.protoBus.acquireCapture();
+	    captureHeld = true;
+	}
+    }
+
+    @Override
+    public void hide() {
+	super.hide();
+	releaseCapture();
+    }
+
+    @Override
+    public void destroy() {
+	releaseCapture();
+	super.destroy();
+    }
+
+    private void releaseCapture() {
+	if(captureHeld && sess.protoBus != null) {
+	    sess.protoBus.releaseCapture();
+	    captureHeld = false;
+	}
     }
 
     @Override

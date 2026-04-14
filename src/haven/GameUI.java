@@ -700,6 +700,7 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
     public void toggleProtoInspector() {
 	if(protoInspector == null) {
 	    protoInspector = add(new haven.proto.ProtoInspector(ui.sess), ClientUtils.getScreenCenter(ui));
+	    protoInspector.show();
 	    protoInspector.raise();
 	} else {
 	    protoInspector.toggle();
@@ -2352,7 +2353,6 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 			    if(rec.isRecording()) {
 				rec.stop();
 			    } else {
-				ui.sess.protoBus.capturing = true;
 				java.nio.file.Path dir = Debug.somedir("proto-recordings");
 				dir.toFile().mkdirs();
 				String fn = String.format("proto-%tY%<tm%<td-%<tH%<tM%<tS.rec", new java.util.Date());

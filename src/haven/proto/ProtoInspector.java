@@ -16,6 +16,7 @@ public class ProtoInspector extends GameUI.Hidewnd {
     private boolean paused = false;
     private final Session sess;
     private Consumer<ProtoEvent> listener;
+    private boolean captureHeld = false;
     private int eventCount = 0;
     private final RichTextBox detailBox;
 
@@ -185,7 +186,10 @@ public class ProtoInspector extends GameUI.Hidewnd {
     public void show() {
 	super.show();
 	if(sess.protoBus != null) {
-	    sess.protoBus.capturing = true;
+	    if(!captureHeld) {
+		sess.protoBus.acquireCapture();
+		captureHeld = true;
+	    }
 	    if(listener == null) {
 		listener = this::onEvent;
 		sess.protoBus.addListener(listener);
@@ -196,6 +200,20 @@ public class ProtoInspector extends GameUI.Hidewnd {
     @Override
     public void hide() {
 	super.hide();
+	releaseCapture();
+    }
+
+    private void releaseCapture() {
+	if(sess.protoBus != null) {
+	    if(listener != null) {
+		sess.protoBus.removeListener(listener);
+		listener = null;
+	    }
+	    if(captureHeld) {
+		sess.protoBus.releaseCapture();
+		captureHeld = false;
+	    }
+	}
     }
 
     private void onEvent(ProtoEvent evt) {
@@ -219,8 +237,7 @@ public class ProtoInspector extends GameUI.Hidewnd {
 
     @Override
     public void destroy() {
-	if(listener != null && sess.protoBus != null)
-	    sess.protoBus.removeListener(listener);
+	releaseCapture();
 	super.destroy();
     }
 

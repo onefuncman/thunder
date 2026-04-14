@@ -174,7 +174,7 @@ public class GobInspectorPanel extends Widget {
 		    lines.add("  OL " + ol.id + ": " + sprInfo);
 		}
 	    }
-	    if(ui.sess.protoBus != null && ui.sess.protoBus.capturing) {
+	    if(ui.sess.protoBus != null && ui.sess.protoBus.isCapturing()) {
 		List<ProtoEvent> gobEvents = ui.sess.protoBus.getHistoryForGob(gobId);
 		if(!gobEvents.isEmpty()) {
 		    lines.add("--- Recent Events (last 20) ---");

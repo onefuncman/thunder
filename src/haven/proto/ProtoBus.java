@@ -3,10 +3,11 @@ package haven.proto;
 import haven.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 public class ProtoBus implements Transport.Callback {
-    public volatile boolean capturing = false;
+    private final AtomicInteger captureRefs = new AtomicInteger(0);
     private final ConcurrentLinkedQueue<ProtoEvent> pending = new ConcurrentLinkedQueue<>();
     private final ProtoEvent[] history;
     private int historyHead = 0;
@@ -24,8 +25,17 @@ public class ProtoBus implements Transport.Callback {
 	this.recorder = new EnhancedRecorder(sess);
     }
 
+    public boolean isCapturing() { return captureRefs.get() > 0; }
+
+    public void acquireCapture() { captureRefs.incrementAndGet(); }
+
+    public void releaseCapture() {
+	int n = captureRefs.updateAndGet(v -> Math.max(0, v - 1));
+	if(n == 0) pending.clear();
+    }
+
     public void handle(PMessage msg) {
-	if(!capturing) return;
+	if(!isCapturing()) return;
 	try {
 	    ProtoEvent evt = ProtoDecoder.decodeRel(msg, sess);
 	    pending.add(evt);
@@ -35,7 +45,7 @@ public class ProtoBus implements Transport.Callback {
     }
 
     public void handle(OCache.ObjDelta delta) {
-	if(!capturing) return;
+	if(!isCapturing()) return;
 	try {
 	    ProtoEvent evt = ProtoDecoder.decodeObjDelta(delta, sess);
 	    pending.add(evt);
@@ -44,7 +54,7 @@ public class ProtoBus implements Transport.Callback {
     }
 
     public void mapdata(Message msg) {
-	if(!capturing) return;
+	if(!isCapturing()) return;
 	try {
 	    ProtoEvent evt = ProtoDecoder.decodeMapData(msg);
 	    pending.add(evt);
@@ -53,7 +63,7 @@ public class ProtoBus implements Transport.Callback {
     }
 
     public void recordOutgoing(int widgetId, String name, Object[] args) {
-	if(!capturing) return;
+	if(!isCapturing()) return;
 	try {
 	    ProtoEvent evt = ProtoDecoder.decodeOutgoing(widgetId, name, args);
 	    pending.add(evt);
