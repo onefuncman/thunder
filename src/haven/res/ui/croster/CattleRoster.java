@@ -106,7 +106,8 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 	OCache oc = ui.sess.glob.oc;
 	synchronized(oc) {
 	    for(Gob g : oc) {
-		if(g.getattr(CattleId.class) == null) continue;
+		CattleId cid = g.getattr(CattleId.class);
+		if(cid == null || !entries.containsKey(cid.id)) continue;
 		GobHighlight h = g.getattr(GobHighlight.class);
 		if(h != null && h.isPersistent()) {
 		    h.setPersistent(false);
@@ -126,7 +127,7 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 	synchronized(oc) {
 	    for(Gob g : oc) {
 		CattleId cid = g.getattr(CattleId.class);
-		if(cid == null) continue;
+		if(cid == null || !entries.containsKey(cid.id)) continue;
 		boolean want = marked.contains(cid.id);
 		GobHighlight h = g.getattr(GobHighlight.class);
 		if(want) {
