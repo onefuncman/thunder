@@ -41,7 +41,13 @@ public class ShowCover extends MenuGrid.PagButton {
 	    return;
 	}
 
-	show = !show;
+	if(show) {
+	    map.disol(Global.OL_TAG);
+	    show = false;
+	} else {
+	    map.enol(Global.OL_TAG);
+	    show = true;
+	}
 	pag.scm.ui.msg("Mine-support display is now turned " + (show ? "on" : "off") + ".", null,
 		       Audio.resclip(show ? Toggle.sfxon : Toggle.sfxoff));
     }

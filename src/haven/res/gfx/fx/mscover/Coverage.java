@@ -28,7 +28,7 @@ public abstract class Coverage extends GAttrib {
 
     public int fl() {
 	GobHealth h = gob.getattr(GobHealth.class);
-	return((real ? 0 : 1) | (((h != null) && (h.hp < 0.9)) ? 2 : 0));
+	return((real ? 0 : 1) | (((h != null) && (h.hp < gl.healthThreshold)) ? 2 : 0));
     }
 
     public void dispose() {
