@@ -24,6 +24,15 @@ public class WidgetDetailsWindow extends Window {
 	return new DefaultDeco(true).dragsize(true);
     }
 
+    @Override
+    public void wdgmsg(Widget sender, String msg, Object... args) {
+	if(sender == this && "close".equals(msg)) {
+	    reqdestroy();
+	    return;
+	}
+	super.wdgmsg(sender, msg, args);
+    }
+
     private int visibleLines() { return Math.max(1, sz.y / LINEH); }
 
     private int maxScroll() { return Math.max(0, lines.size() - visibleLines()); }

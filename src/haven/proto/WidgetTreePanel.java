@@ -136,7 +136,7 @@ public class WidgetTreePanel extends Widget {
 
     private void handlePick(Coord rootC) {
 	endPick();
-	Widget picked = deepestAt(ui.root, rootC);
+	Widget picked = deepestAt(ui.root, rootC, topLevelAncestor());
 	if(picked == null) return;
 	refresh();
 	for(int i = 0; i < entries.size(); i++) {
@@ -150,16 +150,30 @@ public class WidgetTreePanel extends Widget {
 	}
     }
 
-    private Widget deepestAt(Widget w, Coord rootC) {
-	if(!w.visible) return null;
+    private Widget topLevelAncestor() {
+	Widget w = this;
+	while(w.parent != null && w.parent != ui.root) w = w.parent;
+	return w;
+    }
+
+    private static boolean isPassthrough(Widget w) {
+	Class<?> c = w.getClass();
+	Package pkg = c.getPackage();
+	if(pkg != null && "haven.proto".equals(pkg.getName())) return true;
+	return "haven.res.ui.locptr.Pointer".equals(c.getName());
+    }
+
+    private Widget deepestAt(Widget w, Coord rootC, Widget exclude) {
+	if(w == null || w == exclude || !w.visible) return null;
 	Coord wp = w.rootpos();
 	if(!rootC.isect(wp, w.sz)) return null;
-	Widget best = w;
-	for(Widget ch = w.child; ch != null; ch = ch.next) {
-	    Widget r = deepestAt(ch, rootC);
-	    if(r != null) best = r;
+	for(Widget ch = w.lchild; ch != null; ch = ch.prev) {
+	    Widget r = deepestAt(ch, rootC, exclude);
+	    if(r != null) return r;
 	}
-	return best;
+	if(isPassthrough(w)) return null;
+	if(w.parent == null) return null;
+	return w;
     }
 
     private void openDetails(TreeEntry e) {
