@@ -24,12 +24,15 @@ public class RosterWindow extends Window {
     private boolean packing = false;
     private static final String PREF_HIGHLIGHT = "croster/highlight";
     private static final String PREF_HIDE_CLOSED = "croster/hide-when-closed";
+    private static final String BASE_TITLE = "Cattle Roster";
+    private static final String CAP_TIP = "Double-click title to collapse/expand";
+    private static final Resource handcurs = Resource.local().loadwait("gfx/hud/curs/hand");
     public boolean highlighting;
     public boolean hideWhenClosed;
     private CheckBox cbHighlight, cbHideClosed;
 
     RosterWindow() {
-	super(Coord.z, "Cattle Roster", true);
+	super(Coord.z, "\u25BC " + BASE_TITLE, true);
 	highlighting = Utils.getprefb(PREF_HIGHLIGHT, false);
 	hideWhenClosed = Utils.getprefb(PREF_HIDE_CLOSED, false);
 	cbHighlight = add(new CheckBox("Highlight") {
@@ -154,11 +157,21 @@ public class RosterWindow extends Window {
     public void pack() {
 	packing = true;
 	try { super.pack(); } finally { packing = false; }
+	relayoutCheckboxes();
+    }
+
+    private void relayoutCheckboxes() {
+	if(cbHighlight == null || cbHideClosed == null || collapsed) return;
+	Area ca = (deco != null) ? deco.contarea() : null;
+	int rightEdge = (ca != null) ? ca.sz().x : sz.x;
+	int cbY = btny + UI.scale(6);
+	cbHighlight.move(new Coord(rightEdge - cbHighlight.sz.x, cbY));
+	cbHideClosed.move(new Coord(cbHighlight.c.x - cbHideClosed.sz.x - UI.scale(12), cbY));
     }
 
     @Override
     public void resize(Coord sz) {
-	int minW = UI.scale(180), minH = UI.scale(16);
+	int minW = UI.scale(collapsed ? 80 : 180), minH = UI.scale(16);
 	if(!collapsed) minH = UI.scale(140);
 	if(sz.x < minW) sz = new Coord(minW, sz.y);
 	if(sz.y < minH) sz = new Coord(sz.x, minH);
@@ -177,10 +190,7 @@ public class RosterWindow extends Window {
 	}
 	btny = availY + UI.scale(4);
 	relayoutButtons();
-	int cbY = btny + UI.scale(6);
-	int rightEdge = ca.sz().x;
-	cbHighlight.move(new Coord(rightEdge - cbHighlight.sz.x, cbY));
-	cbHideClosed.move(new Coord(cbHighlight.c.x - cbHideClosed.sz.x - UI.scale(12), cbY));
+	relayoutCheckboxes();
     }
 
     public void toggleCollapsed() {
@@ -196,10 +206,14 @@ public class RosterWindow extends Window {
 	    cbHighlight.hide();
 	    cbHideClosed.hide();
 	    collapsed = true;
-	    int w = (requestedSz != null) ? requestedSz.x : sz.x;
+	    String newCap = "\u25B2 " + BASE_TITLE;
+	    chcap(newCap);
+	    int capW = Window.cf.render(newCap).sz().x;
+	    int w = capW + Window.cbtni[0].getWidth() + UI.scale(24);
 	    resize(new Coord(w, UI.scale(16)));
 	} else {
 	    collapsed = false;
+	    chcap("\u25BC " + BASE_TITLE);
 	    for(TypeButton b : buttons) b.show();
 	    cbHighlight.show();
 	    cbHideClosed.show();
@@ -208,6 +222,18 @@ public class RosterWindow extends Window {
 	    Coord target = (uncollapsedSz != null) ? uncollapsedSz : new Coord(sz.x, UI.scale(300));
 	    resize(target);
 	}
+    }
+
+    @Override
+    public Object tooltip(Coord c, Widget prev) {
+	if(onCaptionBar(c)) return(CAP_TIP);
+	return(super.tooltip(c, prev));
+    }
+
+    @Override
+    public Resource getcurss(Coord c) {
+	if(onCaptionBar(c)) return(handcurs);
+	return(super.getcurss(c));
     }
 
     @Override
@@ -222,12 +248,6 @@ public class RosterWindow extends Window {
 	    lastCapClick = now;
 	}
 	return(super.mousedown(ev));
-    }
-
-    @Override
-    public boolean checkhit(Coord c) {
-	if(super.checkhit(c)) return(true);
-	return(onCaptionBar(c));
     }
 
     private boolean onCaptionBar(Coord c) {
