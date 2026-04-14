@@ -125,7 +125,8 @@ public class CattleId extends GAttrib implements RenderTree.Node, PView.Render2D
 		lgrp = grp;
 	    }
 	    boolean memorized = (wnd != null) && wnd.isMemorized(id);
-	    if((rnm != null) && memorized) {
+	    boolean showVisuals = (wnd != null) && (wnd.visible || !wnd.hideWhenClosed);
+	    if((rnm != null) && memorized && showVisuals) {
 		Coord nmc = sc.sub(rnm.sz().x / 2, -rnm.sz().y);
 		g.image(rnm, nmc);
 		if((entry != null) && entry.mark.a)

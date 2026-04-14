@@ -22,9 +22,55 @@ public class RosterWindow extends Window {
     private long lastCapClick = 0;
     private CattleRoster lastShown = null;
     private boolean packing = false;
+    private static final String PREF_HIGHLIGHT = "croster/highlight";
+    private static final String PREF_HIDE_CLOSED = "croster/hide-when-closed";
+    public boolean highlighting;
+    public boolean hideWhenClosed;
+    private CheckBox cbHighlight, cbHideClosed;
 
     RosterWindow() {
 	super(Coord.z, "Cattle Roster", true);
+	highlighting = Utils.getprefb(PREF_HIGHLIGHT, false);
+	hideWhenClosed = Utils.getprefb(PREF_HIDE_CLOSED, false);
+	cbHighlight = add(new CheckBox("Highlight") {
+		{a = highlighting;}
+		public void set(boolean v) {
+		    this.a = v;
+		    highlighting = v;
+		    Utils.setprefb(PREF_HIGHLIGHT, v);
+		    if(!v) clearAllHighlights();
+		}
+	    });
+	cbHighlight.settip("Highlight selected cattle/animals with a glow");
+	cbHideClosed = add(new CheckBox("Hide when closed") {
+		{a = hideWhenClosed;}
+		public void set(boolean v) {
+		    this.a = v;
+		    hideWhenClosed = v;
+		    Utils.setprefb(PREF_HIDE_CLOSED, v);
+		    if(v && !visible) clearAllHighlights();
+		}
+	    });
+	cbHideClosed.settip("Hide names, selections, and highlights while the roster window is closed");
+    }
+
+    public void clearAllHighlights() {
+	for(CattleRoster ch : children(CattleRoster.class))
+	    ch.clearAllCattleHighlights();
+    }
+
+    public void syncAllHighlights() {
+	for(CattleRoster ch : children(CattleRoster.class))
+	    ch.syncHighlights();
+    }
+
+    private boolean visualsActive() {
+	return(visible || !hideWhenClosed);
+    }
+
+    public void tick(double dt) {
+	if(highlighting && visualsActive()) syncAllHighlights();
+	super.tick(dt);
     }
 
     @Override
@@ -68,6 +114,7 @@ public class RosterWindow extends Window {
 	boolean wasVisible = visible;
 	boolean ret = super.show(show);
 	if(show && !wasVisible) refreshMemorized();
+	if(!show && wasVisible && hideWhenClosed) clearAllHighlights();
 	return(ret);
     }
 
@@ -130,6 +177,10 @@ public class RosterWindow extends Window {
 	}
 	btny = availY + UI.scale(4);
 	relayoutButtons();
+	int cbY = btny + UI.scale(6);
+	int rightEdge = ca.sz().x;
+	cbHighlight.move(new Coord(rightEdge - cbHighlight.sz.x, cbY));
+	cbHideClosed.move(new Coord(cbHighlight.c.x - cbHideClosed.sz.x - UI.scale(12), cbY));
     }
 
     public void toggleCollapsed() {
@@ -142,12 +193,16 @@ public class RosterWindow extends Window {
 		ch.hide();
 	    }
 	    for(TypeButton b : buttons) b.hide();
+	    cbHighlight.hide();
+	    cbHideClosed.hide();
 	    collapsed = true;
 	    int w = (requestedSz != null) ? requestedSz.x : sz.x;
 	    resize(new Coord(w, UI.scale(16)));
 	} else {
 	    collapsed = false;
 	    for(TypeButton b : buttons) b.show();
+	    cbHighlight.show();
+	    cbHideClosed.show();
 	    if(lastShown != null) show(lastShown);
 	    else if(!buttons.isEmpty()) buttons.get(0).click();
 	    Coord target = (uncollapsedSz != null) ? uncollapsedSz : new Coord(sz.x, UI.scale(300));
