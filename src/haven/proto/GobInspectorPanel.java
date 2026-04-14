@@ -17,6 +17,11 @@ public class GobInspectorPanel extends Widget {
     private final List<String> lines = new ArrayList<>();
     private final Scrollbar sb;
     private static final int LINEH = fnd.height() + UI.scale(2);
+    private static final int HEADER = UI.scale(25);
+    private int selected = -1;
+    private long lastClickTime = 0;
+    private int lastClickIdx = -1;
+    private long flashUntil = 0;
 
     public GobInspectorPanel(Coord sz) {
 	super(sz);
@@ -45,7 +50,26 @@ public class GobInspectorPanel extends Widget {
 	    }
 	}, x, 0);
 	pickBtn.tooltip = "Click a gob on the map to inspect it (right-click to cancel)";
-	sb = adda(new Scrollbar(sz.y - UI.scale(25), 0, 0), sz.x - UI.scale(1), UI.scale(25), 1, 0);
+	x += UI.scale(54);
+	add(new Button(UI.scale(70), "Copy All") { public void click() { copyAll(); } }, x, 0);
+	x += UI.scale(74);
+	add(new Button(UI.scale(90), "Copy Selected") { public void click() { copySelected(); } }, x, 0);
+	sb = adda(new Scrollbar(sz.y - HEADER, 0, 0), sz.x - UI.scale(1), HEADER, 1, 0);
+    }
+
+    private void copyAll() {
+	StringBuilder sb2 = new StringBuilder();
+	for(String line : lines) sb2.append(line).append('\n');
+	ClipboardUtil.copy(sb2.toString());
+	flashUntil = System.currentTimeMillis() + 400;
+	selected = -2;
+    }
+
+    private void copySelected() {
+	if(selected >= 0 && selected < lines.size()) {
+	    ClipboardUtil.copy(lines.get(selected));
+	    flashUntil = System.currentTimeMillis() + 400;
+	}
     }
 
     public void setGobId(long id) {
@@ -168,19 +192,28 @@ public class GobInspectorPanel extends Widget {
     }
 
     private int visibleLines() {
-	return (sz.y - UI.scale(25)) / LINEH;
+	return (sz.y - HEADER) / LINEH;
     }
 
     @Override
     public void draw(GOut g) {
 	g.chcolor(new Color(15, 15, 15, 220));
-	g.frect(new Coord(0, UI.scale(25)), new Coord(sz.x, sz.y - UI.scale(25)));
+	g.frect(new Coord(0, HEADER), new Coord(sz.x, sz.y - HEADER));
 	g.chcolor();
 
-	int y = UI.scale(27);
+	boolean flashing = System.currentTimeMillis() < flashUntil;
+	int y = HEADER + UI.scale(2);
 	int vis = visibleLines();
 	for(int i = 0; i < vis && (i + sb.val) < lines.size(); i++) {
-	    String line = lines.get(i + sb.val);
+	    int idx = i + sb.val;
+	    String line = lines.get(idx);
+	    if(flashing && selected == -2) {
+		g.chcolor(new Color(80, 120, 80, 120));
+		g.frect(new Coord(0, y), new Coord(sz.x, LINEH));
+	    } else if(idx == selected) {
+		g.chcolor(flashing ? new Color(80, 120, 80, 160) : new Color(60, 80, 110, 160));
+		g.frect(new Coord(0, y), new Coord(sz.x, LINEH));
+	    }
 	    if(line.startsWith("---")) {
 		g.chcolor(new Color(100, 180, 255));
 	    } else if(line.startsWith("  ")) {
@@ -196,6 +229,29 @@ public class GobInspectorPanel extends Widget {
     }
 
     @Override
+    public boolean mousedown(MouseDownEvent ev) {
+	if(ev.propagate(this)) return true;
+	if(ev.c.y >= HEADER && ev.b == 1) {
+	    int idx = (ev.c.y - HEADER - UI.scale(2)) / LINEH + sb.val;
+	    if(idx >= 0 && idx < lines.size()) {
+		long now = System.currentTimeMillis();
+		if(idx == lastClickIdx && (now - lastClickTime) < 400) {
+		    selected = idx;
+		    copySelected();
+		    lastClickTime = 0;
+		    lastClickIdx = -1;
+		} else {
+		    selected = idx;
+		    lastClickTime = now;
+		    lastClickIdx = idx;
+		}
+		return true;
+	    }
+	}
+	return false;
+    }
+
+    @Override
     public boolean mousewheel(MouseWheelEvent ev) {
 	sb.ch(ev.a);
 	return true;
@@ -204,7 +260,7 @@ public class GobInspectorPanel extends Widget {
     @Override
     public void resize(Coord sz) {
 	super.resize(sz);
-	sb.resize(sz.y - UI.scale(25));
-	sb.c = new Coord(sz.x - sb.sz.x, UI.scale(25));
+	sb.resize(sz.y - HEADER);
+	sb.c = new Coord(sz.x - sb.sz.x, HEADER);
     }
 }

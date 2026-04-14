@@ -9,14 +9,21 @@ import java.util.*;
 public class WidgetDetailsWindow extends Window {
     private static final Text.Foundry fnd = new Text.Foundry(Text.mono, 10);
     private static final int LINEH = fnd.height() + UI.scale(2);
+    private static final int HEADER = UI.scale(24);
     private static final Coord DEFSZ = UI.scale(500, 400);
 
     private final List<String> lines = new ArrayList<>();
     private int scroll = 0;
+    private int selected = -1;
+    private long flashUntil = 0;
+    private long lastClickTime = 0;
 
     public WidgetDetailsWindow(Widget target) {
 	super(DEFSZ, "Widget: " + target.getClass().getSimpleName(), true);
 	collect(target);
+	add(new Button(UI.scale(70), "Copy All") { public void click() { copyAll(); } }, UI.scale(4), UI.scale(2));
+	add(new Button(UI.scale(90), "Copy Selected") { public void click() { copySelected(); } }, UI.scale(78), UI.scale(2));
+	add(new Label("click to select, double-click to copy", fnd), UI.scale(174), UI.scale(6));
     }
 
     @Override
@@ -33,9 +40,24 @@ public class WidgetDetailsWindow extends Window {
 	super.wdgmsg(sender, msg, args);
     }
 
-    private int visibleLines() { return Math.max(1, sz.y / LINEH); }
+    private int visibleLines() { return Math.max(1, (sz.y - HEADER) / LINEH); }
 
     private int maxScroll() { return Math.max(0, lines.size() - visibleLines()); }
+
+    private void copyAll() {
+	StringBuilder sb = new StringBuilder();
+	for(String line : lines) sb.append(line).append('\n');
+	ClipboardUtil.copy(sb.toString());
+	flashUntil = System.currentTimeMillis() + 400;
+	selected = -2;
+    }
+
+    private void copySelected() {
+	if(selected >= 0 && selected < lines.size()) {
+	    ClipboardUtil.copy(lines.get(selected));
+	    flashUntil = System.currentTimeMillis() + 400;
+	}
+    }
 
     private void collect(Widget w) {
 	lines.clear();
@@ -95,10 +117,19 @@ public class WidgetDetailsWindow extends Window {
     @Override
     public void cdraw(GOut g) {
 	super.cdraw(g);
-	int y = UI.scale(4);
+	int y = HEADER;
 	int vis = visibleLines();
+	boolean flashing = System.currentTimeMillis() < flashUntil;
 	for(int i = 0; i < vis && (i + scroll) < lines.size(); i++) {
-	    String line = lines.get(i + scroll);
+	    int idx = i + scroll;
+	    String line = lines.get(idx);
+	    if(idx == selected || (flashing && selected == -2)) {
+		g.chcolor(new Color(80, 120, 80, 160));
+		g.frect(new Coord(0, y), new Coord(sz.x, LINEH));
+	    } else if(idx == selected) {
+		g.chcolor(new Color(60, 80, 110, 160));
+		g.frect(new Coord(0, y), new Coord(sz.x, LINEH));
+	    }
 	    Color col = line.startsWith("==") ? Color.YELLOW
 		: line.startsWith("--") ? new Color(180, 220, 255)
 		: line.startsWith("  [") ? new Color(160, 200, 160)
@@ -108,6 +139,26 @@ public class WidgetDetailsWindow extends Window {
 	    y += LINEH;
 	}
 	g.chcolor();
+    }
+
+    @Override
+    public boolean mousedown(MouseDownEvent ev) {
+	if(super.mousedown(ev)) return true;
+	if(ev.c.y >= HEADER && ev.b == 1) {
+	    int idx = (ev.c.y - HEADER) / LINEH + scroll;
+	    if(idx >= 0 && idx < lines.size()) {
+		long now = System.currentTimeMillis();
+		if(idx == selected && (now - lastClickTime) < 400) {
+		    copySelected();
+		    lastClickTime = 0;
+		} else {
+		    lastClickTime = now;
+		}
+		selected = idx;
+		return true;
+	    }
+	}
+	return false;
     }
 
     @Override
