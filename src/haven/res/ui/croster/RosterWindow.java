@@ -78,7 +78,7 @@ public class RosterWindow extends Window {
     }
 
     private Tex chevTex() {
-	String s = collapsed ? "\u25B2" : "\u25BC";
+	String s = collapsed ? "\u25BC" : "\u25B2";
 	return(Window.DefaultDeco.cf.render(s).tex());
     }
 
