@@ -16,6 +16,7 @@ public class RosterWindow extends Window {
     public int btny = 0;
     public List<TypeButton> buttons = new ArrayList<>();
     public final Set<UID> memorized = new HashSet<>();
+    public final Map<UID, Boolean> castrated = Collections.synchronizedMap(new HashMap<>());
     private boolean collapsed = false;
     private Coord uncollapsedSz;
     private Coord requestedSz;
@@ -32,7 +33,7 @@ public class RosterWindow extends Window {
     private CheckBox cbHighlight, cbHideClosed;
 
     RosterWindow() {
-	super(Coord.z, "\u25BC " + BASE_TITLE, true);
+	super(Coord.z, BASE_TITLE, true);
 	highlighting = Utils.getprefb(PREF_HIGHLIGHT, false);
 	hideWhenClosed = Utils.getprefb(PREF_HIDE_CLOSED, false);
 	cbHighlight = add(new CheckBox("Highlight") {
@@ -76,9 +77,26 @@ public class RosterWindow extends Window {
 	super.tick(dt);
     }
 
+    private Tex chevTex() {
+	String s = collapsed ? "\u25B2" : "\u25BC";
+	return(Window.DefaultDeco.cf.render(s).tex());
+    }
+
     @Override
     protected Deco makedeco() {
-	return(new DefaultDeco(true).dragsize(true));
+	return(new ChevronDeco().dragsize(true));
+    }
+
+    private class ChevronDeco extends DefaultDeco {
+	ChevronDeco() { super(true); }
+	@Override
+	protected void drawframe(GOut g) {
+	    super.drawframe(g);
+	    Tex chev = chevTex();
+	    int x = sz.x - cbtn.sz.x - chev.sz().x - UI.scale(6);
+	    int y = (cbtn.sz.y - chev.sz().y) / 2;
+	    g.image(chev, new Coord(x, y));
+	}
     }
 
     public void memorize(UID id) {
@@ -206,14 +224,12 @@ public class RosterWindow extends Window {
 	    cbHighlight.hide();
 	    cbHideClosed.hide();
 	    collapsed = true;
-	    String newCap = "\u25B2 " + BASE_TITLE;
-	    chcap(newCap);
-	    int capW = Window.cf.render(newCap).sz().x;
-	    int w = capW + Window.cbtni[0].getWidth() + UI.scale(24);
+	    int capW = Window.cf.render(BASE_TITLE).sz().x;
+	    int chevW = chevTex().sz().x;
+	    int w = capW + chevW + Window.cbtni[0].getWidth() + UI.scale(28);
 	    resize(new Coord(w, UI.scale(16)));
 	} else {
 	    collapsed = false;
-	    chcap("\u25BC " + BASE_TITLE);
 	    for(TypeButton b : buttons) b.show();
 	    cbHighlight.show();
 	    cbHideClosed.show();
@@ -234,6 +250,16 @@ public class RosterWindow extends Window {
     public Resource getcurss(Coord c) {
 	if(onCaptionBar(c)) return(handcurs);
 	return(super.getcurss(c));
+    }
+
+    @Override
+    public boolean keydown(KeyDownEvent ev) {
+	if(super.keydown(ev)) return(true);
+	if(ev.code == ev.awt.VK_SPACE) {
+	    toggleCollapsed();
+	    return(true);
+	}
+	return(false);
     }
 
     @Override

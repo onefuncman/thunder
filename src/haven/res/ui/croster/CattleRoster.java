@@ -7,6 +7,9 @@ import java.util.*;
 import java.util.function.*;
 import java.lang.reflect.Field;
 import haven.MenuGrid.Pagina;
+import haven.rx.Reactor;
+import rx.Subscription;
+import java.util.concurrent.atomic.AtomicReference;
 
 @haven.FromResource(name = "ui/croster", version = 77)
 public abstract class CattleRoster <T extends Entry> extends Widget {
@@ -356,6 +359,8 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 	NOT_LACTATING("Not Lactating", fieldMatch(LACT_FIELDS, false)),
 	BRANDED("Branded", ownedMatch(true)),
 	NOT_BRANDED("Not Branded", ownedMatch(false)),
+	CASTRATED("Castrated", null),
+	NONCASTRATED("Noncastrated", null),
 	BY_COLOR("By color...", null);
 	public final String label;
 	public final Predicate<Entry> pred;
@@ -430,6 +435,102 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 	}
     }
 
+    private volatile boolean scanning = false;
+    private static final String CASTRATE_OPT = "Castrate";
+
+    private boolean isMale(T e) {
+	for(String n : MALE_FIELDS) {
+	    Field f = findField(e.getClass(), n);
+	    if(f == null) continue;
+	    try {
+		Object v = f.get(e);
+		if((v instanceof Boolean) && ((Boolean)v).booleanValue()) return(true);
+	    } catch(IllegalAccessException ignored) {}
+	}
+	return(false);
+    }
+
+    private void scanCastration(boolean selectCastrated) {
+	if(scanning) return;
+	RosterWindow wnd = getparent(RosterWindow.class);
+	if(wnd == null || ui == null || ui.sess == null || ui.gui == null || ui.gui.map == null) return;
+	List<Gob> targets = new ArrayList<>();
+	OCache oc = ui.sess.glob.oc;
+	synchronized(oc) {
+	    for(Gob g : oc) {
+		CattleId cid = g.getattr(CattleId.class);
+		if(cid == null) continue;
+		T e = entries.get(cid.id);
+		if(e == null || !isMale(e)) continue;
+		if(wnd.castrated.get(cid.id) == Boolean.TRUE) continue;
+		targets.add(g);
+	    }
+	}
+	if(targets.isEmpty()) {
+	    applyCastratedSelection(wnd, selectCastrated);
+	    return;
+	}
+	scanning = true;
+	Thread t = new Thread(() -> {
+	    try {
+		for(Gob g : targets) {
+		    if(ui == null) break;
+		    scanOne(g, wnd);
+		}
+	    } finally {
+		scanning = false;
+		applyCastratedSelection(wnd, selectCastrated);
+	    }
+	}, "CastrationScan");
+	t.setDaemon(true);
+	t.start();
+    }
+
+    private void scanOne(Gob gob, RosterWindow wnd) {
+	CattleId cid = gob.getattr(CattleId.class);
+	if(cid == null) return;
+	AtomicReference<FlowerMenu> captured = new AtomicReference<>();
+	Object lock = new Object();
+	Subscription sub = Reactor.FLOWER.subscribe(fm -> {
+	    if(captured.compareAndSet(null, fm)) {
+		synchronized(lock) { lock.notifyAll(); }
+	    }
+	});
+	try {
+	    FlowerMenu.lastGob(gob);
+	    ui.gui.map.click(gob, 3);
+	    long deadline = System.currentTimeMillis() + 2000;
+	    synchronized(lock) {
+		while(captured.get() == null) {
+		    long rem = deadline - System.currentTimeMillis();
+		    if(rem <= 0) break;
+		    try { lock.wait(rem); } catch(InterruptedException e) { return; }
+		}
+	    }
+	    FlowerMenu fm = captured.get();
+	    if(fm == null) return;
+	    boolean hasCastrate = false;
+	    for(String opt : fm.options) {
+		if(CASTRATE_OPT.equals(opt)) { hasCastrate = true; break; }
+	    }
+	    wnd.castrated.put(cid.id, !hasCastrate);
+	    fm.choose(-1);
+	    Thread.sleep(80);
+	} catch(InterruptedException ignored) {
+	} finally {
+	    sub.unsubscribe();
+	}
+    }
+
+    private void applyCastratedSelection(RosterWindow wnd, boolean selectCastrated) {
+	applyMark(e -> true, false);
+	for(T e : entries.values()) {
+	    Boolean v = wnd.castrated.get(e.id);
+	    if(v == null) continue;
+	    if(selectCastrated == v.booleanValue()) e.mark.set(true);
+	}
+    }
+
     private class SelDrop extends Dropbox<SelAction> {
 	private boolean suppress = false;
 	SelDrop(int w) { super(w, 12, UI.scale(16)); }
@@ -446,6 +547,10 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 	    if(it == SelAction.BY_COLOR) {
 		List<Integer> grps = distinctGrps();
 		if(!grps.isEmpty()) ui.root.add(new ColorPickWnd(grps), ui.mc);
+	    } else if(it == SelAction.CASTRATED) {
+		scanCastration(true);
+	    } else if(it == SelAction.NONCASTRATED) {
+		scanCastration(false);
 	    } else if(it.pred != null) {
 		applyMark(e -> true, false);
 		applyMark(it.pred, true);
