@@ -89,13 +89,48 @@ public class RosterWindow extends Window {
 
     private class ChevronDeco extends DefaultDeco {
 	ChevronDeco() { super(true); }
+
+	@Override
+	public void iresize(Coord isz) {
+	    super.iresize(isz);
+	    cap = null;
+	}
+
 	@Override
 	protected void drawframe(GOut g) {
 	    super.drawframe(g);
 	    Tex chev = chevTex();
-	    int x = sz.x - cbtn.sz.x - chev.sz().x - UI.scale(6);
-	    int y = (cbtn.sz.y - chev.sz().y) / 2;
-	    g.image(chev, new Coord(x, y));
+	    g.image(chev, chevronPos(chev.sz()));
+	}
+
+	private Coord chevronPos(Coord chevSz) {
+	    int x, y;
+	    if(collapsed) {
+		int capW = (cap != null) ? cap.sz().x : 0;
+		x = cpo.x + capW + UI.scale(3);
+		int max = sz.x - cbtn.sz.x - chevSz.x - UI.scale(4);
+		x = Math.min(x, max);
+		y = (cbtn.sz.y - chevSz.y) / 2;
+	    } else {
+		x = unfoldedX(chevSz.x);
+		y = (cbtn.sz.y - chevSz.y) / 2 + UI.scale(5);
+	    }
+	    return(new Coord(x, y));
+	}
+
+	private int unfoldedX(int chevW) {
+	    int fallback = sz.x - cbtn.sz.x - chevW - UI.scale(6);
+	    if(lastShown == null || aa == null) return(fallback);
+	    try {
+		List<? extends Column<?>> cs = lastShown.cols();
+		if(cs.isEmpty()) return(fallback);
+		Column<?> first = cs.get(0);
+		int x = aa.ul.x + lastShown.c.x + first.x + first.w - chevW;
+		int max = sz.x - cbtn.sz.x - chevW - UI.scale(6);
+		return(Math.min(x, max));
+	    } catch(Exception e) {
+		return(fallback);
+	    }
 	}
     }
 
@@ -226,7 +261,7 @@ public class RosterWindow extends Window {
 	    collapsed = true;
 	    int capW = Window.cf.render(BASE_TITLE).sz().x;
 	    int chevW = chevTex().sz().x;
-	    int w = capW + chevW + Window.cbtni[0].getWidth() + UI.scale(28);
+	    int w = Window.cpo.x + capW + chevW + Window.cbtni[0].getWidth() + UI.scale(16);
 	    resize(new Coord(w, UI.scale(16)));
 	} else {
 	    collapsed = false;
