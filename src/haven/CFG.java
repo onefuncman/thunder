@@ -232,6 +232,7 @@ public class CFG<T> {
     public static final CFG<Boolean> DISABLE_YULELIGHTS_FX = new CFG<>("display.disable_yulelights_fx", true);
     public static final CFG<Boolean> MAP_COMPACT_LOCKED = new CFG<>("map.compact_locked", false);
 
+
     private static final String CONFIG_JSON = "config.json";
     private static final Map<Object, Object> cfg;
     private static final Map<String, Object> cache = new HashMap<>();

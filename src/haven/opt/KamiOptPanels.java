@@ -8,15 +8,6 @@ import static haven.OptWnd.*;
 
 
 public interface KamiOptPanels {
-	static int addSlider(CFG<Integer> cfg, int min, int max, String format, String tip, OptWnd.Panel panel, int x, int y, int STEP) {
-		final Label label = panel.add(new Label(""), x, y);
-		label.settip(tip);
-
-		y += STEP;
-		panel.add(new CFGSlider(UI.scale(200), min, max, cfg, label, format), x, y).settip(tip);
-
-		return y;
-	}
 
 	static void initMinimapPanel(OptWnd wnd, OptWnd.Panel panel) {
 		int STEP = UI.scale(25);
@@ -151,6 +142,7 @@ public interface KamiOptPanels {
 
 		y += STEP;
 		panel.add(new CFGBox("Hide domestic animals", CFG.HIDE_DOMESTIC_ANIMALS, "Completely hides domesticated animals from rendering. Reduces GPU workload when many animals are on screen."), x, y);
+
 
 		//second row
 		my = Math.max(my, y);

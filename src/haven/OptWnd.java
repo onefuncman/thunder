@@ -43,7 +43,6 @@ import me.ender.ui.CFGSlider;
 import me.ender.ui.DrinkMeter;
 import me.ender.ui.TabStrip;
 import haven.opt.KamiOptPanels;
-import static haven.opt.KamiOptPanels.addSlider;
 
 import java.awt.event.KeyEvent;
 import java.util.Set;
@@ -1340,6 +1339,16 @@ public class OptWnd extends WindowX {
 	panel.add(new PButton(UI.scale(200), "Back", 27, main), new Coord(0, my + UI.scale(35)));
 	panel.pack();
 	title.c.x = (panel.sz.x - title.sz.x) / 2;
+    }
+
+    public static int addSlider(CFG<Integer> cfg, int min, int max, String format, String tip, Panel panel, int x, int y, int STEP) {
+	final Label label = panel.add(new Label(""), x, y);
+	label.settip(tip);
+
+	y += STEP;
+	panel.add(new CFGSlider(UI.scale(200), min, max, cfg, label, format), x, y).settip(tip);
+
+	return y;
     }
 
     private void initUIPanel(Panel panel) {
