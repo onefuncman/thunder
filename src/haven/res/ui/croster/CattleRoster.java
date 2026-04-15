@@ -532,7 +532,11 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 		if(CASTRATE_OPT.equals(opt)) { hasCastrate = true; break; }
 	    }
 	    wnd.castrated.put(cid.id, !hasCastrate);
-	    fm.choose(-1);
+	    long attachDeadline = System.currentTimeMillis() + 500;
+	    while(fm.ui == null && System.currentTimeMillis() < attachDeadline) {
+		Thread.sleep(10);
+	    }
+	    if(fm.ui != null) fm.choose(-1);
 	    Thread.sleep(80);
 	} catch(InterruptedException ignored) {
 	} finally {
