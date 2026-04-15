@@ -48,23 +48,42 @@ public class ItemHelpers {
     
     private static String preserveDishes(WItem item, UI ui) {
 	if(!ItemData.hasFoodInfo(item.item)) {return null;}
-	
-	if(!ui.isCursor(CURSOR_EAT)) {return null;}
-	
+
+	if(!eatCursorActive(ui)) {return null;}
+
 	Window wnd = item.getparent(Window.class);
 	if(wnd == null) {return null;}
-	
-	Optional<WItem> atRisk = wnd.children(Inventory.class).stream()
-	    .filter(i -> i.isz.equals(DISHES_SZ) || i.isz.equals(TABLECLOTH_SZ))
-	    .flatMap(i -> i.children(WItem.class).stream())
-	    .filter(w -> {
-		Wear wear = ItemInfo.getWear(w.item.info());
-		if(wear == null) {return false;}
-		return wear.m - wear.d <= DISH_HP_WARNING;
-	    })
-	    .findFirst();
-	
-	return atRisk.map(wItem -> String.format("Cannot eat from this table: %s is almost broken!", wItem.name.get())).orElse(null);
-	
+
+	try {
+	    Optional<WItem> atRisk = wnd.children(Inventory.class).stream()
+		.filter(i -> i.isz.equals(DISHES_SZ) || i.isz.equals(TABLECLOTH_SZ))
+		.flatMap(i -> i.children(WItem.class).stream())
+		.filter(w -> {
+		    Wear wear = ItemInfo.getWear(w.item.info());
+		    if(wear == null) {return true;}
+		    return wear.m - wear.d <= DISH_HP_WARNING;
+		})
+		.findFirst();
+
+	    return atRisk.map(wItem -> {
+		try {
+		    return String.format("Cannot eat from this table: %s is almost broken!", wItem.name.get());
+		} catch (Loading l) {
+		    return "Cannot eat from this table: some cutlery is almost broken!";
+		}
+	    }).orElse(null);
+	} catch (Loading l) {
+	    return "Cannot eat from this table: cutlery info still loading.";
+	}
+    }
+
+    private static boolean eatCursorActive(UI ui) {
+	try {
+	    Indir<Resource> cur = ui.root.cursor;
+	    if(cur == null) {return false;}
+	    return CURSOR_EAT.equals(cur.get().name);
+	} catch (Loading l) {
+	    return true;
+	}
     }
 }
