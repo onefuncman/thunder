@@ -235,10 +235,10 @@ public class ProtoDecoderTest {
 
     @Test
     void decodeRelMapIv() {
-        PMessage msg = new PMessage(RMessage.RMSG_MAPIV, new byte[]{1, 2, 3});
+        PMessage msg = new PMessage(RMessage.RMSG_MAPIV, new byte[]{2});
         ProtoEvent evt = ProtoDecoder.decodeRel(msg, null);
         assertEquals(ProtoEvent.Category.MAP, evt.category);
-        assertTrue(evt.summary.contains("Map invalidation"));
+        assertTrue(evt.summary.contains("Map trim all"));
     }
 
     // --- decodeRel: RMSG_GLOBLOB ---
@@ -297,12 +297,19 @@ public class ProtoDecoderTest {
 
     @Test
     void decodeMapData() {
-        MessageBuf msg = new MessageBuf(new byte[128]);
+        // 8-byte header (pktid int32, off uint16, len uint16) + payload
+        MessageBuf buf = new MessageBuf();
+        buf.addint32(42);     // pktid
+        buf.adduint16(0);     // off
+        buf.adduint16(120);   // total len
+        for(int i = 0; i < 120; i++) buf.addint8((byte) 0);
+        MessageBuf msg = new MessageBuf(buf.fin());
         ProtoEvent evt = ProtoDecoder.decodeMapData(msg);
         assertEquals(ProtoEvent.Direction.IN, evt.dir);
         assertEquals(ProtoEvent.Category.MAP, evt.category);
         assertEquals("MAPDATA", evt.typeName);
-        assertTrue(evt.summary.contains("128 bytes"));
+        assertTrue(evt.summary.contains("pkt=42"));
+        assertTrue(evt.summary.contains("frag=120B"));
     }
 
     // --- decodeOutgoing ---
