@@ -131,6 +131,15 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 	if(w != null) w.refreshMemorized();
     }
 
+    public static final Comparator<Entry> selcmp = (a, b) -> Boolean.compare(b.mark.a, a.mark.a);
+    private final Column<Entry> selcol;
+    {
+	int cbw = CheckBox.sbox.sz().x + UI.scale(10);
+	selcol = new Column<>("\u2713", selcmp, 1);
+	selcol.w = cbw;
+	selcol.x = 0;
+    }
+
     @SafeVarargs
     public static <E extends Entry>  List<Column<? super E>> initcols(Column<? super E>... attrs) {
 	for(int i = 0, x = CheckBox.sbox.sz().x + UI.scale(10); i < attrs.length; i++) {
@@ -184,6 +193,17 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
     protected abstract List<Column<? super T>> cols();
 
     public void drawcols(GOut g) {
+	if((selcol == mousecol) && (selcol.order != null)) {
+	    g.chcolor(255, 255, 0, 16);
+	    g.frect2(new Coord(selcol.x, 0), new Coord(selcol.x + selcol.w, sz.y));
+	    g.chcolor();
+	}
+	if(selcol == ordercol) {
+	    g.chcolor(255, 255, 0, 16);
+	    g.frect2(new Coord(selcol.x, 0), new Coord(selcol.x + selcol.w, sz.y));
+	    g.chcolor();
+	}
+	g.aimage(selcol.head(), new Coord(selcol.x + (selcol.w / 2), HEADH / 2), 0.5, 0.5);
 	Column prev = null;
 	for(Column col : cols()) {
 	    if((prev != null) && !prev.r) {
@@ -216,6 +236,8 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
     public Column<? super T> onhead(Coord c) {
 	if((c.y < 0) || (c.y >= HEADH))
 	    return(null);
+	if((c.x >= selcol.x) && (c.x < selcol.x + selcol.w))
+	    return(selcol);
 	for(Column<? super T> col : cols()) {
 	    if((c.x >= col.x) && (c.x < col.x + col.w))
 		return(col);
