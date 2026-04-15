@@ -89,6 +89,23 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 	for(T e : entries.values()) e.mark.set(!e.mark.a);
     }
 
+    public void clearGobHighlight(UID id) {
+	if(ui == null || ui.sess == null) return;
+	OCache oc = ui.sess.glob.oc;
+	synchronized(oc) {
+	    for(Gob g : oc) {
+		CattleId cid = g.getattr(CattleId.class);
+		if(cid == null || !cid.id.equals(id)) continue;
+		GobHighlight h = g.getattr(GobHighlight.class);
+		if(h != null && h.isPersistent()) {
+		    h.setPersistent(false);
+		    g.delattr(GobHighlight.class);
+		}
+		break;
+	    }
+	}
+    }
+
     public void clearAllCattleHighlights() {
 	if(ui == null || ui.sess == null) return;
 	OCache oc = ui.sess.glob.oc;
@@ -292,6 +309,7 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
     public void delentry(UID id) {
 	T entry = entries.remove(id);
 	if(entry == null) return;
+	clearGobHighlight(id);
 	entry.destroy();
 	dirty = true;
 	entryseq++;
