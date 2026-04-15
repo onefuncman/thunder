@@ -93,7 +93,11 @@ public class Text implements Disposable {
 	}
 
 	public int advance(int pos) {
-	    return(m.stringWidth(text.substring(0, pos)));
+	    // pos can transiently exceed text length when the caret buffer is
+	    // mutated between render and draw (e.g. a server uimsg clearing the
+	    // line). Clamp rather than crash the render loop.
+	    int end = Math.max(0, Math.min(pos, text.length()));
+	    return(m.stringWidth(text.substring(0, end)));
 	}
 
 	public int charat(int x) {
