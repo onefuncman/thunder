@@ -1,5 +1,6 @@
 /build
 /bin
+/play
 /local-config.properties
 /local-boot.properties
 /build.properties
