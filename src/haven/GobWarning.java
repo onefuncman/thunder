@@ -4,6 +4,7 @@ import haven.render.RenderTree;
 
 import java.awt.*;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static haven.GobWarning.WarnMethod.*;
@@ -37,9 +38,9 @@ public class GobWarning extends GAttrib implements RenderTree.Node {
     }
     
     private static WarnTarget categorize(Gob gob) {
-	if(gob.is(GobTag.FOE) && !gob.anyOf(GobTag.DEAD, GobTag.KO)) {
+	if(gob.is(GobTag.FOE) && !gob.anyOf(GobTag.DEAD, GobTag.KO) && !isMannequin(gob)) {
 	    return player;
-	} else if(gob.is(GobTag.AGGRESSIVE) && !gob.anyOf(GobTag.DEAD, GobTag.KO)) {
+	} else if(gob.is(GobTag.AGGRESSIVE) && !gob.anyOf(GobTag.DEAD, GobTag.KO) && !isSkull(gob)) {
 	    return animal;
 	} else if(gob.is(GobTag.GEM)) {
 	    return gem;
@@ -47,6 +48,26 @@ public class GobWarning extends GAttrib implements RenderTree.Node {
 	    return midges;
 	}
 	return null;
+    }
+
+    private static boolean isMannequin(Gob gob) {
+	Drawable d = gob.getattr(Drawable.class);
+	if(!(d instanceof Composite)) {return false;}
+	List<Composited.ED> equ = ((Composite) d).nequ;
+	if(equ == null) {return false;}
+	try {
+	    for(Composited.ED ed : equ) {
+		if(ed == null || ed.res == null || ed.res.res == null) {continue;}
+		String name = ed.res.res.get().name;
+		if(name != null && name.contains("mannequin-stand")) {return true;}
+	    }
+	} catch(Loading ignored) {}
+	return false;
+    }
+
+    private static boolean isSkull(Gob gob) {
+	String name = gob.resid();
+	return name != null && name.contains("skull");
     }
     
     public enum WarnTarget {
