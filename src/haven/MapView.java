@@ -118,9 +118,9 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	public void resized() {
 	    float field = 0.5f;
 	    float aspect = ((float)sz.y) / ((float)sz.x);
-	    proj = Projection.frustum(-field, field, -aspect * field, aspect * field, 1, 2000);
+	    proj = Projection.frustum(-field, field, -aspect * field, aspect * field, 1, 5000);
 	}
-	
+
 	public void apply(Pipe p) {
 	    proj.apply(p);
 	    view.apply(p);
@@ -249,7 +249,7 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	    
 	    float field = field(elev);
 	    view = haven.render.Camera.pointed(curc.add(camoff).add(0.0f, 0.0f, h), dist(elev), elev, angl);
-	    proj = Projection.frustum(-field, field, -ca * field, ca * field, 1, 2000);
+	    proj = Projection.frustum(-field, field, -ca * field, ca * field, 1, 5000);
 	}
 	
 	public float angle() {
