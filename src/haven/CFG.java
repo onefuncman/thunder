@@ -217,6 +217,9 @@ public class CFG<T> {
     public static final CFG<Integer> PROTO_RETRO_WINDOW_SEC = new CFG<>("debug.proto_inspector.retro_window_sec", 300);
     public static final CFG<Integer> PROTO_RETRO_MAX_EVENTS = new CFG<>("debug.proto_inspector.retro_max_events", 100000);
 
+    public static final CFG<Integer> ANIM_FRAME_SKIP = new CFG<>("perf.anim_frame_skip", 0);
+    public static final CFG<Double> GOB_INFO_TICK_INTERVAL = new CFG<>("perf.gob_info_tick_interval", 0.25, new com.google.gson.reflect.TypeToken<Double>(){});
+
     private static final String CONFIG_JSON = "config.json";
     private static final Map<Object, Object> cfg;
     private static final Map<String, Object> cache = new HashMap<>();

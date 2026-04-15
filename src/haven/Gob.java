@@ -51,10 +51,15 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
     public final Glob glob;
     private boolean disposed = false;
     final Map<Class<? extends GAttrib>, GAttrib> attr = new HashMap<Class<? extends GAttrib>, GAttrib>();
+    private volatile GAttrib[] attrSnapshot = null;
+    private volatile boolean stateDirty = true;
     public final Collection<Overlay> ols = new ArrayList<Overlay>();
     public final Collection<RenderTree.Slot> slots = new ArrayList<>(1);
     public int updateseq = 0, lastolid = 0;
-    private final Collection<SetupMod> setupmods = new ArrayList<>();
+    private final Collection<SetupMod> setupmods = new ArrayList<SetupMod>() {
+	public boolean add(SetupMod e) { stateDirty = true; if(placed != null) placed.dirty = true; return super.add(e); }
+	public boolean remove(Object o) { stateDirty = true; if(placed != null) placed.dirty = true; return super.remove(o); }
+    };
     private final LinkedList<Runnable> deferred = new LinkedList<>();
     private Loader.Future<?> deferral = null;
     private final Object removalLock = new Object();
@@ -529,6 +534,20 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 	this(glob, c, -1);
     }
     
+    private GAttrib[] getAttrSnapshot() {
+	GAttrib[] snap = attrSnapshot;
+	if(snap == null) {
+	    synchronized (this.attr) {
+		snap = attrSnapshot;
+		if(snap == null) {
+		    snap = this.attr.values().toArray(new GAttrib[0]);
+		    attrSnapshot = snap;
+		}
+	    }
+	}
+	return snap;
+    }
+
     private Map<Class<? extends GAttrib>, GAttrib> cloneattrs() {
 	synchronized (this.attr) {
 	    return new HashMap<>(this.attr);
@@ -536,8 +555,7 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
     }
     
     public void ctick(double dt) {
-	Map<Class<? extends GAttrib>, GAttrib> attr = cloneattrs();
-	for(GAttrib a : attr.values())
+	for(GAttrib a : getAttrSnapshot())
 	    a.ctick(dt);
 	for(Iterator<Overlay> i = ols.iterator(); i.hasNext();) {
 	    Overlay ol = i.next();
@@ -758,8 +776,7 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
     }
     
     public void tick() {
-	Map<Class<? extends GAttrib>, GAttrib> attr = cloneattrs();
-	for (GAttrib a : attr.values())
+	for(GAttrib a : getAttrSnapshot())
 	    a.tick();
     }
     
@@ -802,6 +819,7 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 	}
 	this.rc = c;
 	this.a = a;
+	placed.dirty = true;
     }
     
     public Boolean isMe() {
@@ -897,6 +915,7 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
     private void setattr(Class<? extends GAttrib> ac, GAttrib a) {
 	GAttrib prev;
 	synchronized (attr) {
+	    attrSnapshot = null;
 	    prev = attr.remove(ac);
 	    if(prev != null) {
 		if((prev instanceof RenderTree.Node) && (prev.slots != null))
@@ -1050,6 +1069,8 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
     }
     
     private void updstate() {
+	if(!stateDirty)
+	    return;
 	GobState nst;
 	try {
 	    nst = new GobState();
@@ -1062,8 +1083,10 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 		    slot.ostate(nst);
 		this.curstate = nst;
 	    } catch(Loading l) {
+		return;
 	    }
 	}
+	stateDirty = false;
     }
     
     public void added(RenderTree.Slot slot) {
@@ -1199,6 +1222,7 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 	 * is in fact more general. */
 	private final Collection<RenderTree.Slot> slots = new java.util.concurrent.CopyOnWriteArrayList<>();
 	private Placement cur;
+	volatile boolean dirty = true;
 	
 	private Placed() {}
 	
@@ -1290,6 +1314,8 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 	}
 	
 	public void autotick(double dt) {
+	    if(!dirty && moving == null)
+		return;
 	    synchronized(Gob.this) {
 		Placement np;
 		try {
@@ -1299,6 +1325,7 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 		}
 		if(!Utils.eq(this.cur, np))
 		    update(np);
+		dirty = false;
 	    }
 	}
 	
@@ -1550,6 +1577,8 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
     public void colorUpdated() {status.update(StatusType.color);}
     
     public void markerUpdated() {status.update(StatusType.marker);}
+
+    public void placementDirty() {placed.dirty = true;}
     
     private static void updateStatus(UI ui, long gobId, StatusType type) {
 	Gob gob = ui.sess.glob.oc.getgob(gobId);

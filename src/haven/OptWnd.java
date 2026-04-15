@@ -841,7 +841,7 @@ public class OptWnd extends WindowX {
 	int y = 0;
 	mrow = Math.max(mrow, row);
 	Widget prev;
-	int x = PANEL_POS.mul(colum - 1, 0).x;
+	int x = UI.scale(PANEL_POS.mul(colum - 1, 0)).x;
 	
 	y += UI.scale((mrow + 1) * PANEL_POS.y);
 	if(gopts) {
@@ -1312,7 +1312,7 @@ public class OptWnd extends WindowX {
 	panel.add(new CFGBox("Critters", CFG.DISPLAY_AURA_CRITTERS), x + tx + H_STEP, y);
     
 	my = Math.max(my, y);
-	
+
 	panel.add(new PButton(UI.scale(200), "Back", 27, main), new Coord(0, my + UI.scale(35)));
 	panel.pack();
 	title.c.x = (panel.sz.x - title.sz.x) / 2;
