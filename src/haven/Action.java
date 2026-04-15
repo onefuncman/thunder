@@ -24,6 +24,7 @@ public enum Action {
     TOGGLE_CURSOR(GameUI::toggleHand, "Toggle cursor item", "Hide/show item on a cursor. Allows you to walk with item on cursor when hidden."),
     TOGGLE_STUDY(GameUI::toggleStudy, "Toggle study window"),
     FILTER(GameUI::toggleFilter, "Show item filter"),
+    SEARCH_GOBS(GameUI::toggleGobSearch, "Search gobs by resource ID", "Opens a window that highlights gobs in render distance whose resource ID contains the entered substring."),
     SORT_INVENTORY(InventorySorter::sortAll, "Sort all opened inventories"),
     TOGGLE_GOB_INFO(CFG.DISPLAY_GOB_INFO, "Display info", "Display crop/tree growth and object health overlay."),
     TOGGLE_GOB_HITBOX(Hitbox::toggle, "Display hitboxes"),

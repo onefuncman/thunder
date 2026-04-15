@@ -84,6 +84,7 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
     public BuddyWnd buddies;
     public EquipProxy eqproxyHandBelt, eqproxyPouchBack;
     public FilterWnd filter;
+    public GobSearchWnd gobSearch;
     public haven.proto.ProtoInspector protoInspector;
     public haven.proto.StateInspector stateInspector;
     public haven.proto.StatsPanel statsPanel;
@@ -695,6 +696,13 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	    filter = add(new FilterWnd(), ClientUtils.getScreenCenter(ui));
 	}
 	filter.toggle();
+    }
+
+    public void toggleGobSearch() {
+	if(gobSearch == null) {
+	    gobSearch = add(new GobSearchWnd(), ClientUtils.getScreenCenter(ui));
+	}
+	gobSearch.toggle();
     }
 
     public void toggleProtoInspector() {
