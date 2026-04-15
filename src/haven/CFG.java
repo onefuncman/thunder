@@ -214,6 +214,8 @@ public class CFG<T> {
 
     // Protocol Debug
     public static final CFG<Integer> PROTO_INSPECTOR_MAX_EVENTS = new CFG<>("debug.proto_inspector.max_events", 10000);
+    public static final CFG<Integer> PROTO_RETRO_WINDOW_SEC = new CFG<>("debug.proto_inspector.retro_window_sec", 300);
+    public static final CFG<Integer> PROTO_RETRO_MAX_EVENTS = new CFG<>("debug.proto_inspector.retro_max_events", 100000);
 
     private static final String CONFIG_JSON = "config.json";
     private static final Map<Object, Object> cfg;

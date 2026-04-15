@@ -13,6 +13,9 @@ public class ProtoInspector extends GameUI.Hidewnd {
     private final CheckBox showIn, showOut;
     private final TextEntry searchBox;
     private final Button pauseBtn, clearBtn, recordBtn, bookmarkBtn;
+    private final CheckBox retroBox, retroAutoBox;
+    private final Button retroDumpBtn;
+    private final Label retroStatus;
     private boolean paused = false;
     private final Session sess;
     private Consumer<ProtoEvent> listener;
@@ -88,6 +91,26 @@ public class ProtoInspector extends GameUI.Hidewnd {
 		addBookmark();
 	    }
 	}, x, y);
+
+	y += UI.scale(24);
+	x = 0;
+
+	retroBox = add(new CheckBox("Retro capture", false), x, y);
+	retroBox.changed(this::onRetroToggle);
+	x += retroBox.sz.x + UI.scale(8);
+
+	retroAutoBox = add(new CheckBox("Auto-dump (5m)", false), x, y);
+	retroAutoBox.changed(this::onRetroAutoToggle);
+	x += retroAutoBox.sz.x + UI.scale(8);
+
+	retroDumpBtn = add(new Button(UI.scale(80), "Dump now") {
+	    public void click() {
+		dumpRetroNow();
+	    }
+	}, x, y);
+	x += retroDumpBtn.sz.x + UI.scale(8);
+
+	retroStatus = add(new Label(""), x, y + UI.scale(2));
 
 	y += UI.scale(24);
 
@@ -174,6 +197,33 @@ public class ProtoInspector extends GameUI.Hidewnd {
 	}
     }
 
+    private void onRetroToggle(boolean on) {
+	if(sess.protoBus == null) return;
+	sess.protoBus.retro.setEnabled(on);
+	if(!on && retroAutoBox.a) {
+	    retroAutoBox.a = false;
+	}
+    }
+
+    private void onRetroAutoToggle(boolean on) {
+	if(sess.protoBus == null) return;
+	if(on && !sess.protoBus.retro.isEnabled()) {
+	    retroAutoBox.a = false;
+	    return;
+	}
+	sess.protoBus.retro.setAutoDump(on);
+    }
+
+    private void dumpRetroNow() {
+	if(sess.protoBus == null) return;
+	try {
+	    Path path = sess.protoBus.retro.dumpNow();
+	    retroStatus.settext("Wrote " + path.getFileName());
+	} catch(Exception e) {
+	    retroStatus.settext("Dump failed: " + e.getMessage());
+	}
+    }
+
     private void addBookmark() {
 	if(sess.protoBus == null) return;
 	EnhancedRecorder rec = sess.protoBus.recorder;
@@ -194,6 +244,8 @@ public class ProtoInspector extends GameUI.Hidewnd {
 		listener = this::onEvent;
 		sess.protoBus.addListener(listener);
 	    }
+	    retroBox.a = sess.protoBus.retro.isEnabled();
+	    retroAutoBox.a = sess.protoBus.retro.isAutoDump();
 	}
     }
 
@@ -230,8 +282,13 @@ public class ProtoInspector extends GameUI.Hidewnd {
 	if(sess.protoBus != null) {
 	    ProtoStats stats = sess.protoBus.stats;
 	    String recStatus = sess.protoBus.recorder.isRecording() ? " | REC" : "";
-	    statusLabel.settext(String.format("Events: %d | Rate: %.0f/s | BW: %.1f KB/s | Total: %d%s",
-					      eventCount, stats.getRate(), stats.getBandwidth() / 1024.0, stats.getTotalMessages(), recStatus));
+	    RetroCapture retro = sess.protoBus.retro;
+	    String retroTxt = "";
+	    if(retro.isEnabled()) {
+		retroTxt = String.format(" | retro: %d ev%s", retro.size(), retro.isAutoDump() ? " auto" : "");
+	    }
+	    statusLabel.settext(String.format("Events: %d | Rate: %.0f/s | BW: %.1f KB/s | Total: %d%s%s",
+					      eventCount, stats.getRate(), stats.getBandwidth() / 1024.0, stats.getTotalMessages(), recStatus, retroTxt));
 	}
     }
 

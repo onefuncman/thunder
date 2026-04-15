@@ -16,6 +16,7 @@ public class ProtoBus implements Transport.Callback {
     private final List<Consumer<ProtoEvent>> listeners = new ArrayList<>();
     public final ProtoStats stats = new ProtoStats();
     public final EnhancedRecorder recorder;
+    public final RetroCapture retro;
     private final Session sess;
 
     public ProtoBus(Session sess) {
@@ -23,6 +24,7 @@ public class ProtoBus implements Transport.Callback {
 	this.maxHistory = CFG.PROTO_INSPECTOR_MAX_EVENTS.get();
 	this.history = new ProtoEvent[maxHistory];
 	this.recorder = new EnhancedRecorder(sess);
+	this.retro = new RetroCapture(sess);
     }
 
     public boolean isCapturing() { return captureRefs.get() > 0; }
