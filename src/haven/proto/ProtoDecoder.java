@@ -161,8 +161,23 @@ public class ProtoDecoder {
 	    }
 	    case RMessage.RMSG_MAPIV: {
 		b.category(ProtoEvent.Category.MAP);
-		b.summary("Map invalidation (" + size + " bytes)");
-		b.detail("Map invalidation blob, " + size + " bytes");
+		int type = msg.uint8();
+		if(type == 0) {
+		    Coord c = msg.coord();
+		    b.summary(String.format("Map invalidate grid %s", c));
+		    b.detail(String.format("Map invalidation\n  Type: 0 (single grid)\n  Coord: %s", c));
+		} else if(type == 1) {
+		    Coord ul = msg.coord();
+		    Coord lr = msg.coord();
+		    b.summary(String.format("Map trim rect %s..%s", ul, lr));
+		    b.detail(String.format("Map invalidation\n  Type: 1 (trim rect)\n  UL: %s\n  LR: %s", ul, lr));
+		} else if(type == 2) {
+		    b.summary("Map trim all");
+		    b.detail("Map invalidation\n  Type: 2 (trim all)");
+		} else {
+		    b.summary(String.format("Map invalidation unknown type %d (%d bytes)", type, size));
+		    b.detail(String.format("Map invalidation\n  Type: %d (unknown)\n  Size: %d bytes", type, size));
+		}
 		break;
 	    }
 	    case RMessage.RMSG_GLOBLOB: {
@@ -368,11 +383,78 @@ public class ProtoDecoder {
 	    }
 	    case OCache.OD_REM:
 		return "remove";
-	    case OCache.OD_CMPPOSE:
-	    case OCache.OD_CMPMOD:
+	    case OCache.OD_CMPPOSE: {
+		int pfl = attr.uint8();
+		int pseq = attr.uint8();
+		boolean interp = (pfl & 1) != 0;
+		StringBuilder sb = new StringBuilder();
+		sb.append(String.format("pseq=%d interp=%b", pseq, interp));
+		if((pfl & 2) != 0)
+		    sb.append(" poses=").append(decodePoseList(attr, sess));
+		if((pfl & 4) != 0) {
+		    sb.append(" tposes=").append(decodePoseList(attr, sess));
+		    float ttime = attr.uint8() / 10.0f;
+		    sb.append(String.format(" ttime=%.1f", ttime));
+		}
+		return sb.toString();
+	    }
+	    case OCache.OD_CMPMOD: {
+		StringBuilder sb = new StringBuilder("mods=[");
+		boolean firstMod = true;
+		while(true) {
+		    int modid = attr.uint16();
+		    if(modid == 65535) break;
+		    if(!firstMod) sb.append(",");
+		    firstMod = false;
+		    sb.append(resName(sess, modid)).append("{tex:");
+		    boolean firstTex = true;
+		    while(true) {
+			int resid = attr.uint16();
+			if(resid == 65535) break;
+			String sdt = "";
+			if((resid & 0x8000) != 0) {
+			    resid &= ~0x8000;
+			    int sdtlen = attr.uint8();
+			    attr.bytes(sdtlen);
+			    sdt = "{sdt:" + sdtlen + "}";
+			}
+			if(!firstTex) sb.append(",");
+			firstTex = false;
+			sb.append(resName(sess, resid)).append(sdt);
+		    }
+		    sb.append("}");
+		}
+		sb.append("]");
+		return sb.toString();
+	    }
 	    case OCache.OD_CMPEQU: {
-		int bytes = attr.rt - attr.rh;
-		return bytes + " bytes";
+		StringBuilder sb = new StringBuilder("equ=[");
+		boolean first = true;
+		while(true) {
+		    int h = attr.uint8();
+		    if(h == 255) break;
+		    int ef = h & 0x80;
+		    int et = h & 0x7f;
+		    String at = attr.string();
+		    int resid = attr.uint16();
+		    String sdt = "";
+		    if((resid & 0x8000) != 0) {
+			resid &= ~0x8000;
+			int sdtlen = attr.uint8();
+			attr.bytes(sdtlen);
+			sdt = "{sdt:" + sdtlen + "}";
+		    }
+		    String off = "";
+		    if((ef & 128) != 0) {
+			int x = attr.int16(), y = attr.int16(), z = attr.int16();
+			off = String.format(" off=(%.3f,%.3f,%.3f)", x / 1000.0f, y / 1000.0f, z / 1000.0f);
+		    }
+		    if(!first) sb.append(",");
+		    first = false;
+		    sb.append(String.format("{et=%d at=\"%s\" res=%s%s%s}", et, at, resName(sess, resid), sdt, off));
+		}
+		sb.append("]");
+		return sb.toString();
 	    }
 	    default: {
 		int bytes = attr.rt - attr.rh;
@@ -384,18 +466,70 @@ public class ProtoDecoder {
 	}
     }
 
+    private static String decodePoseList(OCache.AttrDelta attr, Session sess) {
+	StringBuilder sb = new StringBuilder("[");
+	boolean first = true;
+	while(true) {
+	    int resid = attr.uint16();
+	    if(resid == 65535) break;
+	    String sdt = "";
+	    if((resid & 0x8000) != 0) {
+		resid &= ~0x8000;
+		int sdtlen = attr.uint8();
+		attr.bytes(sdtlen);
+		sdt = "{sdt:" + sdtlen + "}";
+	    }
+	    if(!first) sb.append(",");
+	    first = false;
+	    sb.append(resName(sess, resid)).append(sdt);
+	}
+	sb.append("]");
+	return sb.toString();
+    }
+
     public static ProtoEvent decodeMapData(Message msg) {
 	double now = Utils.rtime();
 	int size = msg.rt - msg.rh;
+	int savedRh = msg.rh;
+	String summary, detail;
+	try {
+	    int pktid = msg.int32();
+	    int off = msg.uint16();
+	    int len = msg.uint16();
+	    int fragSize = size - 8;
+	    summary = String.format("Map data pkt=%d off=%d/%d frag=%dB", pktid, off, len, fragSize);
+	    detail = String.format("Map data fragment\n  Packet ID: %d\n  Offset: %d\n  Total length: %d\n  Fragment size: %d bytes",
+				   pktid, off, len, fragSize);
+	} catch(Exception e) {
+	    summary = String.format("Map data (%d bytes, decode error: %s)", size, e.getMessage());
+	    detail = String.format("Map data\n  Size: %d bytes\n  Error: %s", size, e.getMessage());
+	} finally {
+	    msg.rh = savedRh;
+	}
 	return new ProtoEvent.Builder()
 	    .timestamp(now)
 	    .dir(ProtoEvent.Direction.IN)
 	    .category(ProtoEvent.Category.MAP)
 	    .typeName("MAPDATA")
 	    .typeId(Session.MSG_MAPDATA)
-	    .summary(String.format("Map data (%d bytes)", size))
-	    .detail(String.format("Map data\n  Size: %d bytes", size))
+	    .summary(summary)
+	    .detail(detail)
 	    .sizeBytes(size)
+	    .build();
+    }
+
+    public static ProtoEvent decodeMapGrid(Coord gc, int sizeBytes, boolean applied) {
+	double now = Utils.rtime();
+	String state = applied ? "applied" : "discarded (not requested)";
+	return new ProtoEvent.Builder()
+	    .timestamp(now)
+	    .dir(ProtoEvent.Direction.IN)
+	    .category(ProtoEvent.Category.MAP)
+	    .typeName("MAPGRID")
+	    .typeId(-2)
+	    .summary(String.format("Map grid %s %s (%d bytes)", gc, state, sizeBytes))
+	    .detail(String.format("Map grid assembled\n  Grid coord: %s\n  State: %s\n  Payload size: %d bytes", gc, state, sizeBytes))
+	    .sizeBytes(sizeBytes)
 	    .build();
     }
 

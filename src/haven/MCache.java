@@ -1114,6 +1114,7 @@ public class MCache implements MapSource {
     }
     
     public void mapdata2(Message msg) {
+	int payloadSize = msg.rt - msg.rh;
 	Coord c = msg.coord();
 	Grid g = null;
 	synchronized(grids) {
@@ -1130,6 +1131,8 @@ public class MCache implements MapSource {
 		}
 	    }
 	}
+	if(sess != null && sess.protoBus != null)
+	    sess.protoBus.mapgrid(c, payloadSize, g != null);
 	if(CFG.STORE_MAP.get() && g != null) {
 	    MapDumper.dump(this, g);
 	}

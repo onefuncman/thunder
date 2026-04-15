@@ -62,6 +62,15 @@ public class ProtoBus implements Transport.Callback {
 	}
     }
 
+    public void mapgrid(Coord gc, int sizeBytes, boolean applied) {
+	if(!isCapturing()) return;
+	try {
+	    ProtoEvent evt = ProtoDecoder.decodeMapGrid(gc, sizeBytes, applied);
+	    pending.add(evt);
+	} catch(Exception e) {
+	}
+    }
+
     public void recordOutgoing(int widgetId, String name, Object[] args) {
 	if(!isCapturing()) return;
 	try {
