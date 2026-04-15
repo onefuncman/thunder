@@ -186,16 +186,22 @@ public class StreamBufferPoolTest {
 		    try {
 			start.await();
 			for(int i = 0; (i < iterations) && (failure.get() == null); i++) {
-			    ByteBuffer buf = pool.get();
+			    // Acquire: pool.get + heldCount.inc must be atomic relative to
+			    // the release pair, otherwise a racing acquirer can see all pool
+			    // slots used (before this thread bumped heldCount) and force a
+			    // spurious allocation — breaking the "alloc <= peakHeld" invariant.
+			    ByteBuffer buf;
+			    int held;
 			    synchronized(heldBy) {
+				buf = pool.get();
 				Thread prev = heldBy.put(buf, Thread.currentThread());
 				if(prev != null) {
 				    failure.compareAndSet(null,
 					"buffer handed out twice: held by " + prev + " and " + Thread.currentThread());
 				    return;
 				}
+				held = heldCount.incrementAndGet();
 			    }
-			    int held = heldCount.incrementAndGet();
 			    int prevPeak;
 			    do {
 				prevPeak = peakHeld.get();
@@ -205,11 +211,13 @@ public class StreamBufferPoolTest {
 			    // brief use; force a memory barrier
 			    buf.put(0, (byte)(i & 0x7f));
 
+			    // Release: paired so a racing acquirer can't see heldCount
+			    // already decremented while the slot is still marked used.
 			    synchronized(heldBy) {
 				heldBy.remove(buf);
+				pool.put(buf);
+				heldCount.decrementAndGet();
 			    }
-			    heldCount.decrementAndGet();
-			    pool.put(buf);
 			}
 		    } catch(InterruptedException e) {
 			Thread.currentThread().interrupt();
