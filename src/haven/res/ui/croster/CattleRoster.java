@@ -546,10 +546,15 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 
     private void applyCastratedSelection(RosterWindow wnd, boolean selectCastrated) {
 	applyMark(e -> true, false);
+	int hits = 0;
 	for(T e : entries.values()) {
 	    Boolean v = wnd.castrated.get(e.id);
 	    if(v == null) continue;
-	    if(selectCastrated == v.booleanValue()) e.mark.set(true);
+	    if(selectCastrated == v.booleanValue()) { e.mark.set(true); hits++; }
+	}
+	if(hits == 0 && ui != null && ui.gui != null) {
+	    String what = selectCastrated ? "castrated" : "noncastrated";
+	    ui.gui.error("No " + what + " animals found within render distance.");
 	}
     }
 

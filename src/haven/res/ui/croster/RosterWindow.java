@@ -106,11 +106,12 @@ public class RosterWindow extends Window {
 	private Coord chevronPos(Coord chevSz) {
 	    int x, y;
 	    if(collapsed) {
-		int capW = (cap != null) ? cap.sz().x : 0;
+		int capW = (cap != null) ? Window.cf.render(BASE_TITLE).sz().x : 0;
+		int capH = (cap != null) ? cap.sz().y : chevSz.y;
 		x = cpo.x + capW + UI.scale(3);
 		int max = sz.x - cbtn.sz.x - chevSz.x - UI.scale(4);
 		x = Math.min(x, max);
-		y = (cbtn.sz.y - chevSz.y) / 2;
+		y = cpo.y + (capH - chevSz.y) / 2;
 	    } else {
 		x = unfoldedX(chevSz.x);
 		y = (cbtn.sz.y - chevSz.y) / 2 + UI.scale(5);
@@ -261,10 +262,17 @@ public class RosterWindow extends Window {
 	    collapsed = true;
 	    int capW = Window.cf.render(BASE_TITLE).sz().x;
 	    int chevW = chevTex().sz().x;
-	    int w = Window.cpo.x + capW + chevW + Window.cbtni[0].getWidth() + UI.scale(16);
+	    int spaceW = Math.max(1, Window.cf.render(" ").sz().x);
+	    int pad = (int)Math.ceil((chevW + UI.scale(8)) / (double)spaceW);
+	    StringBuilder tail = new StringBuilder();
+	    for(int i = 0; i < pad; i++) tail.append(' ');
+	    chcap(BASE_TITLE + tail);
+	    int paddedCapW = Window.cf.render(BASE_TITLE + tail).sz().x;
+	    int w = Window.cpo.x + paddedCapW + Window.cbtni[0].getWidth() + UI.scale(12);
 	    resize(new Coord(w, UI.scale(16)));
 	} else {
 	    collapsed = false;
+	    chcap(BASE_TITLE);
 	    for(TypeButton b : buttons) b.show();
 	    cbHighlight.show();
 	    cbHideClosed.show();
