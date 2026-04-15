@@ -38,7 +38,16 @@ public class GobWarning extends GAttrib implements RenderTree.Node {
     }
     
     private static WarnTarget categorize(Gob gob) {
-	if(gob.is(GobTag.FOE) && !gob.anyOf(GobTag.DEAD, GobTag.KO) && !isMannequin(gob)) {
+	if(gob.is(GobTag.FOE) && !gob.anyOf(GobTag.DEAD, GobTag.KO)) {
+	    Mannequin m = mannequinCheck(gob);
+	    if(m == Mannequin.YES) {return null;}
+	    if(m == Mannequin.PENDING) {
+		// Composite equipment hasn't loaded yet. Suppress the player
+		// warning for now and re-run on the next tick so a mannequin
+		// doesn't briefly masquerade as an enemy.
+		gob.tagsUpdated();
+		return null;
+	    }
 	    return player;
 	} else if(gob.is(GobTag.AGGRESSIVE) && !gob.anyOf(GobTag.DEAD, GobTag.KO) && !isSkull(gob)) {
 	    return animal;
@@ -50,22 +59,35 @@ public class GobWarning extends GAttrib implements RenderTree.Node {
 	return null;
     }
 
-    private static boolean isMannequin(Gob gob) {
+    private enum Mannequin {YES, NO, PENDING}
+
+    private static Mannequin mannequinCheck(Gob gob) {
 	Drawable d = gob.getattr(Drawable.class);
-	if(!(d instanceof Composite)) {return false;}
+	if(!(d instanceof Composite)) {return Mannequin.NO;}
 	Composite cmp = (Composite) d;
-	return hasMannequinStand(cmp.nequ) || hasMannequinStand(cmp.comp != null ? cmp.comp.cequ : null);
+	try {
+	    if(scanForMannequinStand(cmp.nequ)) {return Mannequin.YES;}
+	    if(cmp.comp != null && scanForMannequinStand(cmp.comp.cequ)) {return Mannequin.YES;}
+	    return Mannequin.NO;
+	} catch(Loading l) {
+	    return Mannequin.PENDING;
+	}
+    }
+
+    // Throws Loading when any equipment resource is still resolving, so the
+    // caller can distinguish "no mannequin-stand" from "don't know yet".
+    private static boolean scanForMannequinStand(List<Composited.ED> equ) {
+	if(equ == null) {return false;}
+	for(Composited.ED ed : equ) {
+	    if(ed == null || ed.res == null || ed.res.res == null) {continue;}
+	    if(isMannequinStandRes(ed.res.res.get().name)) {return true;}
+	}
+	return false;
     }
 
     public static boolean hasMannequinStand(List<Composited.ED> equ) {
-	if(equ == null) {return false;}
-	try {
-	    for(Composited.ED ed : equ) {
-		if(ed == null || ed.res == null || ed.res.res == null) {continue;}
-		if(isMannequinStandRes(ed.res.res.get().name)) {return true;}
-	    }
-	} catch(Loading ignored) {}
-	return false;
+	try {return scanForMannequinStand(equ);}
+	catch(Loading l) {return false;}
     }
 
     public static boolean isMannequinStandRes(String resname) {
