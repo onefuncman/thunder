@@ -288,10 +288,17 @@ public class RosterWindow extends Window {
 
     public void wdgmsg(Widget sender, String msg, Object... args) {
 	if((sender == this) && msg.equals("close")) {
-	    this.hide();
+	    show(false);
 	    return;
 	}
 	super.wdgmsg(sender, msg, args);
+    }
+
+    @Override
+    public void hide() {
+	boolean wasVisible = visible;
+	super.hide();
+	if(wasVisible && hideWhenClosed) clearAllHighlights();
     }
 }
 
