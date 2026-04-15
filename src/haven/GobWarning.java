@@ -53,16 +53,23 @@ public class GobWarning extends GAttrib implements RenderTree.Node {
     private static boolean isMannequin(Gob gob) {
 	Drawable d = gob.getattr(Drawable.class);
 	if(!(d instanceof Composite)) {return false;}
-	List<Composited.ED> equ = ((Composite) d).nequ;
+	Composite cmp = (Composite) d;
+	return hasMannequinStand(cmp.nequ) || hasMannequinStand(cmp.comp != null ? cmp.comp.cequ : null);
+    }
+
+    public static boolean hasMannequinStand(List<Composited.ED> equ) {
 	if(equ == null) {return false;}
 	try {
 	    for(Composited.ED ed : equ) {
 		if(ed == null || ed.res == null || ed.res.res == null) {continue;}
-		String name = ed.res.res.get().name;
-		if(name != null && name.contains("mannequin-stand")) {return true;}
+		if(isMannequinStandRes(ed.res.res.get().name)) {return true;}
 	    }
 	} catch(Loading ignored) {}
 	return false;
+    }
+
+    public static boolean isMannequinStandRes(String resname) {
+	return resname != null && resname.contains("mannequin-stand");
     }
 
     private static boolean isSkull(Gob gob) {
