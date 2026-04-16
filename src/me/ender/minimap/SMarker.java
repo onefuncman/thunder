@@ -9,28 +9,30 @@ import java.util.Iterator;
 import java.util.List;
 
 public class SMarker extends Marker {
-    public final long oid;
+    public final UID oid;
     public final Resource.Saved res;
-    
+    public byte[] data;
+
     public List<QuestCondition> questConditions = new ArrayList<>();
     public Iterator<QuestCondition> questIterator;
-    
-    public SMarker(long seg, Coord tc, String nm, long oid, Resource.Saved res) {
+
+    public SMarker(long seg, Coord tc, String nm, UID oid, Resource.Saved res, byte[] data) {
 	super(seg, tc, nm);
 	this.oid = oid;
 	this.res = res;
+	this.data = data;
 	questIterator = Utils.circularIterator(questConditions);
     }
-    
+
     @Override
     public boolean equals(Object o) {
 	if(this == o) return true;
 	if(o == null || getClass() != o.getClass()) return false;
 	if(!super.equals(o)) return false;
 	SMarker sMarker = (SMarker) o;
-	return oid == sMarker.oid && res.equals(sMarker.res);
+	return Objects.equals(oid, sMarker.oid) && res.equals(sMarker.res);
     }
-    
+
     @Override
     public void draw(GOut g, Coord c, Text tip, final float scale, final MapFile file) {
 	try {
@@ -52,7 +54,7 @@ public class SMarker extends Marker {
 	    }
 	} catch (Loading ignored) {}
     }
-    
+
     @Override
     public Area area() {
 	try {
@@ -65,7 +67,7 @@ public class SMarker extends Marker {
 	    return null;
 	}
     }
-    
+
     @Override
     public int hashCode() {
 	return Objects.hash(super.hashCode(), oid, res);

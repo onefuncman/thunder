@@ -351,7 +351,7 @@ public class MappingClient {
 			if(md.m instanceof SMarker) {
 			    o.put("type", "shared");
 			    try {
-				o.put("id", ((SMarker) md.m).oid);
+				o.put("id", ((SMarker) md.m).oid.bits);
 			    } catch (Exception ex)
 			    {
 				o.put("id", 0);
