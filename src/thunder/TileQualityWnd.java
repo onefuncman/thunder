@@ -46,7 +46,7 @@ public class TileQualityWnd extends WindowX {
 	    @Override
 	    public void changed(boolean val) {
 		segmentOnly = val;
-		refresh(false);
+		refresh();
 	    }
 	}, 0, h);
 	segmentOnlyBox.a = segmentOnly;
@@ -56,11 +56,11 @@ public class TileQualityWnd extends WindowX {
 	sortLabel = add(new Label("Sort: quality"), UI.scale(135), h);
 	add(new Button(UI.scale(50), "Quality") {
 	    @Override
-	    public void click() {sortMode = Sort.QUALITY; sortLabel.settext("Sort: quality"); refresh(false);}
+	    public void click() {sortMode = Sort.QUALITY; sortLabel.settext("Sort: quality"); refresh();}
 	}, UI.scale(220), h - UI.scale(2));
 	add(new Button(UI.scale(60), "Distance") {
 	    @Override
-	    public void click() {sortMode = Sort.DISTANCE; sortLabel.settext("Sort: distance"); refresh(false);}
+	    public void click() {sortMode = Sort.DISTANCE; sortLabel.settext("Sort: distance"); refresh();}
 	}, UI.scale(275), h - UI.scale(2))
 	    .settip("Tile-distance from your current position. Only valid within your current map segment - a segment is a contiguous explored area (e.g. the surface, or one cave system). Tiles in other segments show '-' since their relative position is unknown.", UI.scale(280));
 	h += UI.scale(20);
@@ -69,7 +69,7 @@ public class TileQualityWnd extends WindowX {
 	list = add(new EntryList(UI.scale(320), 14), UI.scale(135), h);
 	pack();
 
-	refresh(true);
+	refresh();
     }
 
     public static void toggle(UI ui) {
@@ -91,7 +91,7 @@ public class TileQualityWnd extends WindowX {
     public void tick(double dt) {
 	super.tick(dt);
 	if(lastSeq != TileQuality.seq || !Objects.equals(lastKind, TileQuality.selectedKind)) {
-	    refresh(false);
+	    refresh();
 	} else if(!entries.isEmpty()) {
 	    updateDistances();
 	}
@@ -139,20 +139,21 @@ public class TileQualityWnd extends WindowX {
 	}
     }
 
-    private void refresh(boolean rebuildKinds) {
+    private void refresh() {
 	TileQuality tq = TileQuality.current();
 	List<TileQuality.TileSnapshot> snaps = (tq == null) ? Collections.emptyList() : tq.snapshotAll();
 	PlayerLoc me = playerLoc();
 	MapFile file = (ui != null && ui.gui != null && ui.gui.mapfile != null) ? ui.gui.mapfile.file : null;
 
-	if(rebuildKinds) {
-	    Set<String> kinds = new TreeSet<>();
-	    for(TileQuality.TileSnapshot s : snaps) {kinds.addAll(s.kinds.keySet());}
-	    List<String> kindOpts = new ArrayList<>(kinds.size() + 1);
-	    kindOpts.add(ALL);
-	    kindOpts.addAll(kinds);
+	Set<String> kinds = new TreeSet<>();
+	for(TileQuality.TileSnapshot s : snaps) {kinds.addAll(s.kinds.keySet());}
+	List<String> kindOpts = new ArrayList<>(kinds.size() + 1);
+	kindOpts.add(ALL);
+	kindOpts.addAll(kinds);
+	if(!kindOpts.equals(kindList.items)) {
+	    String prevSel = kindList.sel;
 	    kindList.setItems(kindOpts);
-	    kindList.sel = ALL;
+	    kindList.sel = (prevSel != null && kindOpts.contains(prevSel)) ? prevSel : ALL;
 	}
 
 	String filter = TileQuality.selectedKind;
