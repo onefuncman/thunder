@@ -235,4 +235,152 @@ public class RosterLogicTest {
 	assertFalse(RosterLogic.applyResize(col, 20, 50, -40));
 	assertEquals(20, col.w);
     }
+
+    // ----------------------------------------------------------------------
+    // shiftClickRange
+    // ----------------------------------------------------------------------
+
+    private static boolean[] marks(String s) {
+	boolean[] m = new boolean[s.length()];
+	for(int i = 0; i < s.length(); i++) m[i] = (s.charAt(i) == 'x');
+	return(m);
+    }
+
+    private static String str(boolean[] m) {
+	StringBuilder sb = new StringBuilder();
+	for(boolean b : m) sb.append(b ? 'x' : '.');
+	return(sb.toString());
+    }
+
+    @Test
+    void shiftClickWithNoExistingSelectionJustMarksClicked() {
+	boolean[] m = marks("......");
+	RosterLogic.shiftClickRange(m, 3);
+	assertEquals("...x..", str(m));
+    }
+
+    @Test
+    void shiftClickFromSingleSelectionFillsRangeDownward() {
+	boolean[] m = marks("x.....");
+	RosterLogic.shiftClickRange(m, 4);
+	assertEquals("xxxxx.", str(m));
+    }
+
+    @Test
+    void shiftClickFromSingleSelectionFillsRangeUpward() {
+	boolean[] m = marks(".....x");
+	RosterLogic.shiftClickRange(m, 1);
+	assertEquals(".xxxxx", str(m));
+    }
+
+    @Test
+    void shiftClickBetweenTwoSelectionsFillsTheWholeSpan() {
+	boolean[] m = marks("x.........x");
+	RosterLogic.shiftClickRange(m, 2);
+	// Clicking between two selections fills everything between them,
+	// regardless of which side is closer.
+	assertEquals("xxxxxxxxxxx", str(m));
+
+	m = marks("x.........x");
+	RosterLogic.shiftClickRange(m, 8);
+	assertEquals("xxxxxxxxxxx", str(m));
+    }
+
+    @Test
+    void shiftClickBetweenEquidistantSelectionsFillsBothSides() {
+	boolean[] m = marks("x...x");
+	RosterLogic.shiftClickRange(m, 2);
+	assertEquals("xxxxx", str(m));
+    }
+
+    @Test
+    void shiftClickOnAlreadySelectedRowStillExtendsFromNearestOther() {
+	boolean[] m = marks("x...x..");
+	RosterLogic.shiftClickRange(m, 4);
+	// Row 4 already selected; nearest other (row 0) fills the gap.
+	assertEquals("xxxxx..", str(m));
+    }
+
+    @Test
+    void shiftClickPreservesUnrelatedMarks() {
+	boolean[] m = marks(".x...x.....x");
+	RosterLogic.shiftClickRange(m, 9);
+	// Between anchors at idx 5 and idx 11; fill the whole span.
+	// Row 1's selection is outside the span and left alone.
+	assertEquals(".x...xxxxxxx", str(m));
+    }
+
+    @Test
+    void shiftClickOutOfBoundsIsNoOp() {
+	boolean[] m = marks("x...x");
+	RosterLogic.shiftClickRange(m, -1);
+	assertEquals("x...x", str(m));
+	RosterLogic.shiftClickRange(m, 5);
+	assertEquals("x...x", str(m));
+    }
+
+    @Test
+    void shiftClickOnEmptyIsNoOp() {
+	boolean[] m = new boolean[0];
+	RosterLogic.shiftClickRange(m, 0);
+	assertEquals(0, m.length);
+    }
+
+    // ----------------------------------------------------------------------
+    // selectToTop / selectToBottom
+    // ----------------------------------------------------------------------
+
+    @Test
+    void selectToTopFromMultipleSelectionFillsUpToFirstSelected() {
+	boolean[] m = marks("....x..x..x..");
+	assertTrue(RosterLogic.selectToTop(m));
+	assertEquals("xxxxx..x..x..", str(m));
+    }
+
+    @Test
+    void selectToTopWithSelectionAtTopIsIdempotent() {
+	boolean[] m = marks("x....x.");
+	assertTrue(RosterLogic.selectToTop(m));
+	assertEquals("x....x.", str(m));
+    }
+
+    @Test
+    void selectToTopWithNothingSelectedReturnsFalse() {
+	boolean[] m = marks(".....");
+	assertFalse(RosterLogic.selectToTop(m));
+	assertEquals(".....", str(m));
+    }
+
+    @Test
+    void selectToBottomFromMultipleSelectionFillsFromLastSelectedDown() {
+	boolean[] m = marks("..x..x..x....");
+	assertTrue(RosterLogic.selectToBottom(m));
+	assertEquals("..x..x..xxxxx", str(m));
+    }
+
+    @Test
+    void selectToBottomWithSelectionAtBottomIsIdempotent() {
+	boolean[] m = marks(".x....x");
+	assertTrue(RosterLogic.selectToBottom(m));
+	assertEquals(".x....x", str(m));
+    }
+
+    @Test
+    void selectToBottomWithNothingSelectedReturnsFalse() {
+	boolean[] m = marks(".....");
+	assertFalse(RosterLogic.selectToBottom(m));
+	assertEquals(".....", str(m));
+    }
+
+    @Test
+    void selectToTopAndBottomOnSingleRowRosterNoOps() {
+	boolean[] m = marks(".");
+	assertFalse(RosterLogic.selectToTop(m));
+	assertFalse(RosterLogic.selectToBottom(m));
+	m = marks("x");
+	assertTrue(RosterLogic.selectToTop(m));
+	assertEquals("x", str(m));
+	assertTrue(RosterLogic.selectToBottom(m));
+	assertEquals("x", str(m));
+    }
 }

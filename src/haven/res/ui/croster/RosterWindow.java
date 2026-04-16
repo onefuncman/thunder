@@ -317,6 +317,10 @@ public class RosterWindow extends Window {
 	    toggleCollapsed();
 	    return(true);
 	}
+	if((ev.mods & KeyMatch.S) != 0 && lastShown != null) {
+	    if(ev.code == ev.awt.VK_UP)   return(lastShown.selectToTop());
+	    if(ev.code == ev.awt.VK_DOWN) return(lastShown.selectToBottom());
+	}
 	return(false);
     }
 

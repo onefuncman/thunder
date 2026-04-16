@@ -106,4 +106,51 @@ public class RosterLogic {
 	col.w = nw;
 	return(true);
     }
+
+    /**
+     * Range-select from a shift-click. Mutates {@code marks} in place.
+     * If {@code clicked} sits between two already-marked indices, fills the
+     * entire span from the nearest upward anchor to the nearest downward
+     * anchor (inclusive). If only one side has a marked anchor, fills from
+     * that anchor to the clicked index. If nothing else is marked, only the
+     * clicked index is set.
+     */
+    public static void shiftClickRange(boolean[] marks, int clicked) {
+	if(clicked < 0 || clicked >= marks.length) return;
+	int up = -1;
+	for(int i = clicked - 1; i >= 0; i--) if(marks[i]) { up = i; break; }
+	int down = -1;
+	for(int i = clicked + 1; i < marks.length; i++) if(marks[i]) { down = i; break; }
+	int lo, hi;
+	if(up >= 0 && down >= 0) { lo = up; hi = down; }
+	else if(up >= 0) { lo = up; hi = clicked; }
+	else if(down >= 0) { lo = clicked; hi = down; }
+	else { marks[clicked] = true; return; }
+	for(int i = lo; i <= hi; i++) marks[i] = true;
+    }
+
+    /**
+     * Extend the selection from the topmost currently-marked index up to index
+     * 0, inclusive. Returns false (and does nothing) if no index is marked.
+     */
+    public static boolean selectToTop(boolean[] marks) {
+	int first = -1;
+	for(int i = 0; i < marks.length; i++) if(marks[i]) { first = i; break; }
+	if(first < 0) return(false);
+	for(int i = 0; i <= first; i++) marks[i] = true;
+	return(true);
+    }
+
+    /**
+     * Extend the selection from the bottommost currently-marked index down to
+     * the last index, inclusive. Returns false (and does nothing) if no index
+     * is marked.
+     */
+    public static boolean selectToBottom(boolean[] marks) {
+	int last = -1;
+	for(int i = marks.length - 1; i >= 0; i--) if(marks[i]) { last = i; break; }
+	if(last < 0) return(false);
+	for(int i = last; i < marks.length; i++) marks[i] = true;
+	return(true);
+    }
 }

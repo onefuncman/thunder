@@ -105,6 +105,42 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 	for(T e : entries.values()) e.mark.set(!e.mark.a);
     }
 
+    private boolean[] currentMarks() {
+	boolean[] marks = new boolean[display.size()];
+	for(int i = 0; i < marks.length; i++) marks[i] = display.get(i).mark.a;
+	return(marks);
+    }
+
+    private void applyMarks(boolean[] marks) {
+	for(int i = 0; i < marks.length; i++) {
+	    if(marks[i] && !display.get(i).mark.a) display.get(i).mark.set(true);
+	}
+    }
+
+    public void shiftClickSelect(Entry clicked) {
+	int idx = display.indexOf(clicked);
+	if(idx < 0) return;
+	boolean[] marks = currentMarks();
+	thunder.roster.RosterLogic.shiftClickRange(marks, idx);
+	applyMarks(marks);
+    }
+
+    public boolean selectToTop() {
+	if(display.isEmpty()) return(false);
+	boolean[] marks = currentMarks();
+	if(!thunder.roster.RosterLogic.selectToTop(marks)) return(false);
+	applyMarks(marks);
+	return(true);
+    }
+
+    public boolean selectToBottom() {
+	if(display.isEmpty()) return(false);
+	boolean[] marks = currentMarks();
+	if(!thunder.roster.RosterLogic.selectToBottom(marks)) return(false);
+	applyMarks(marks);
+	return(true);
+    }
+
     public void clearGobHighlight(UID id) {
 	if(ui == null || ui.sess == null) return;
 	OCache oc = ui.sess.glob.oc;

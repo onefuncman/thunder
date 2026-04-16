@@ -86,6 +86,13 @@ public class Entry extends Widget {
 	    logDebug();
 	    return(true);
 	}
+	if(ev.b == 1 && ui.modshift) {
+	    CattleRoster<?> rost = getparent(CattleRoster.class);
+	    if(rost != null) {
+		rost.shiftClickSelect(this);
+		return(true);
+	    }
+	}
 	if(ev.propagate(this) || super.mousedown(ev))
 	    return(true);
 	CattleRoster<?> rost = getparent(CattleRoster.class);
