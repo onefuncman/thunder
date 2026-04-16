@@ -312,9 +312,8 @@
     <delete dir="build/test-classes" />
   </target>
 
-  <target name="clean" depends="clean-assets, clean-code, clean-tests">
+  <target name="clean" depends="clean-assets, clean-code, clean-tests, clean-bin">
     <delete dir="lib/ext" />
-    <delete dir="bin" />
   </target>
 
 
@@ -322,6 +321,42 @@
     <delete dir="build/classes" />
     <delete dir="build/classes-lib" />
     <delete file="build/hafen.jar" />
+  </target>
+
+  <!-- Delete only artifacts written by the `bin` target, preserving user runtime
+       state (config.json, workshop-client.properties, steam_appid.txt, etc.). -->
+  <target name="clean-bin">
+    <delete>
+      <fileset dir="bin" erroronmissingdir="false">
+	<include name="hafen.jar" />
+	<include name="client-res.jar" />
+	<include name="hafen-res.jar" />
+	<include name="builtin-res.jar" />
+	<include name="gluegen-rt*.jar" />
+	<include name="jogl-all*.jar" />
+	<include name="lwjgl*.jar" />
+	<include name="steamworks4j*.jar" />
+	<include name="haven-config.properties" />
+      </fileset>
+    </delete>
+  </target>
+
+  <!-- Standalone; not wired into `clean`. Mirrors clean-bin for the `play`
+       sandbox, preserving user runtime state there. -->
+  <target name="clean-play">
+    <delete>
+      <fileset dir="play" erroronmissingdir="false">
+	<include name="hafen.jar" />
+	<include name="client-res.jar" />
+	<include name="hafen-res.jar" />
+	<include name="builtin-res.jar" />
+	<include name="gluegen-rt*.jar" />
+	<include name="jogl-all*.jar" />
+	<include name="lwjgl*.jar" />
+	<include name="steamworks4j*.jar" />
+	<include name="haven-config.properties" />
+      </fileset>
+    </delete>
   </target>
 
   <target name="clean-assets">
