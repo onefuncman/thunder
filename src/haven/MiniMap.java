@@ -418,6 +418,7 @@ public class MiniMap extends Widget {
 	public static final Resource.Image flagbg, flagfg;
 	public static final Coord flagcc;
 	public final Marker m;
+	public final Widget wdg;
 	public Text tip;
 	public Area hit;
 	private Resource.Image img;
@@ -431,11 +432,17 @@ public class MiniMap extends Widget {
 	    flagcc = UI.scale(flag.layer(Resource.negc).cc);
 	}
 
-	public DisplayMarker(Marker marker, final UI ui) {
+	public DisplayMarker(Widget wdg, Marker marker, final UI ui) {
+	    this.wdg = wdg;
 	    this.m = marker;
 	    checkTip(marker.tip(ui));
 	    if(marker instanceof PMarker)
 		this.hit = Area.sized(flagcc.inv(), UI.scale(flagbg.sz));
+	    if(marker instanceof SMarker && wdg != null) {
+		SMarker sm = (SMarker) marker;
+		if(sm.owner == null)
+		    sm.owner = Widget.wdgctx.curry(wdg);
+	    }
 	}
 
 	public void draw(GOut g, Coord c, final float scale, final UI ui, final MapFile file, final boolean canShowName) {
@@ -679,7 +686,7 @@ public class MiniMap extends Widget {
 			ArrayList<DisplayMarker> marks = new ArrayList<>();
 			for(Marker mark : file.markers) {
 			    if((mark.seg == this.seg.id) && mapext.contains(mark.tc))
-				marks.add(new DisplayMarker(mark, ui));
+				marks.add(new DisplayMarker(wdg, mark, ui));
 			}
 			marks.trimToSize();
 			markers = (marks.size() == 0) ? Collections.emptyList() : marks;
