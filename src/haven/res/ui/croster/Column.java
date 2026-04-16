@@ -15,6 +15,7 @@ public class Column <E extends Entry> {
     public final String tip;
     public final Comparator<? super E> order;
     public int w, x;
+    public int minw = UI.scale(12);
     public boolean r;
 
     public Column(String name, Comparator<? super E> order, int w) {

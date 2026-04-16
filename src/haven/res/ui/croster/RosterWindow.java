@@ -25,17 +25,20 @@ public class RosterWindow extends Window {
     private boolean packing = false;
     private static final String PREF_HIGHLIGHT = "croster/highlight";
     private static final String PREF_HIDE_CLOSED = "croster/hide-when-closed";
+    private static final String PREF_MILK_ASSIST = "croster/milking-assist";
     private static final String BASE_TITLE = "Cattle Roster";
     private static final String CAP_TIP = "Double-click title to collapse/expand";
     private static final Resource handcurs = Resource.local().loadwait("gfx/hud/curs/hand");
     public boolean highlighting;
     public boolean hideWhenClosed;
-    private CheckBox cbHighlight, cbHideClosed;
+    public boolean milkingAssist;
+    private CheckBox cbHighlight, cbHideClosed, cbMilkAssist;
 
     RosterWindow() {
 	super(Coord.z, BASE_TITLE, true);
 	highlighting = Utils.getprefb(PREF_HIGHLIGHT, false);
 	hideWhenClosed = Utils.getprefb(PREF_HIDE_CLOSED, false);
+	milkingAssist = Utils.getprefb(PREF_MILK_ASSIST, false);
 	cbHighlight = add(new CheckBox("Highlight") {
 		{a = highlighting;}
 		public void set(boolean v) {
@@ -56,6 +59,15 @@ public class RosterWindow extends Window {
 		}
 	    });
 	cbHideClosed.settip("Hide names, selections, and highlights while the roster window is closed");
+	cbMilkAssist = add(new CheckBox("Milking assist") {
+		{a = milkingAssist;}
+		public void set(boolean v) {
+		    this.a = v;
+		    milkingAssist = v;
+		    Utils.setprefb(PREF_MILK_ASSIST, v);
+		}
+	    });
+	cbMilkAssist.settip("Auto-deselect animals after they are milked");
     }
 
     public void clearAllHighlights() {
@@ -215,12 +227,13 @@ public class RosterWindow extends Window {
     }
 
     private void relayoutCheckboxes() {
-	if(cbHighlight == null || cbHideClosed == null || collapsed) return;
+	if(cbHighlight == null || cbHideClosed == null || cbMilkAssist == null || collapsed) return;
 	Area ca = (deco != null) ? deco.contarea() : null;
 	int rightEdge = (ca != null) ? ca.sz().x : sz.x;
 	int cbY = btny + UI.scale(6);
 	cbHighlight.move(new Coord(rightEdge - cbHighlight.sz.x, cbY));
 	cbHideClosed.move(new Coord(cbHighlight.c.x - cbHideClosed.sz.x - UI.scale(12), cbY));
+	cbMilkAssist.move(new Coord(cbHideClosed.c.x - cbMilkAssist.sz.x - UI.scale(12), cbY));
     }
 
     @Override
@@ -259,6 +272,7 @@ public class RosterWindow extends Window {
 	    for(TypeButton b : buttons) b.hide();
 	    cbHighlight.hide();
 	    cbHideClosed.hide();
+	    cbMilkAssist.hide();
 	    collapsed = true;
 	    int capW = Window.cf.render(BASE_TITLE).sz().x;
 	    int chevW = chevTex().sz().x;
@@ -276,6 +290,7 @@ public class RosterWindow extends Window {
 	    for(TypeButton b : buttons) b.show();
 	    cbHighlight.show();
 	    cbHideClosed.show();
+	    cbMilkAssist.show();
 	    if(lastShown != null) show(lastShown);
 	    else if(!buttons.isEmpty()) buttons.get(0).click();
 	    Coord target = (uncollapsedSz != null) ? uncollapsedSz : new Coord(sz.x, UI.scale(300));

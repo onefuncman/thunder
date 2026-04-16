@@ -6,6 +6,7 @@ import haven.render.*;
 import java.util.*;
 import java.util.function.*;
 import java.lang.reflect.Field;
+import java.awt.Font;
 import haven.MenuGrid.Pagina;
 import haven.rx.Reactor;
 import rx.Subscription;
@@ -16,6 +17,9 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
     public static final int WIDTH = UI.scale(900);
     public static final Comparator<Entry> namecmp = (a, b) -> a.name.compareTo(b.name);
     public static final int HEADH = UI.scale(40);
+    // Larger foundry for the Select-by dropdown and selection count.
+    public static final Text.Foundry SB_FND = new Text.Foundry(Text.sans.deriveFont(Font.BOLD, UI.scale(14f))).aa(true);
+    private static final int COUNT_RESERVED_CHARS = 9;
     public final Map<UID, T> entries = new HashMap<>();
     public final Scrollbar sb;
     public final Widget entrycont;
@@ -23,12 +27,12 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
     public List<T> display = Collections.emptyList();
     public boolean dirty = true;
     public Comparator<? super T> order = namecmp;
-    public Column<? super T> mousecol, ordercol;
-    public boolean revorder;
+    public Column<? super T> mousecol, ordercol, ordercol2;
+    public boolean revorder, revorder2;
     private Button btnRemove;
-    private Button btnAll, btnNone, btnInvert, btnClear;
+    private Button btnAll, btnNone, btnInvert, btnClear, btnRecolor;
     private Dropbox<SelAction> selDrop;
-    private Label countLbl;
+    private CountLabel countLbl;
     private int lastSel = -1, lastTotal = -1;
 
     public CattleRoster() {
@@ -44,11 +48,13 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 		      btnAll.pos("ur").adds(5, 0));
 	btnInvert = add(new Button(bw, "Invert", false).action(this::invertSel),
 			btnNone.pos("ur").adds(5, 0));
-	selDrop = add(new SelDrop(UI.scale(140)), btnInvert.pos("ur").adds(5, 0));
+	btnRecolor = add(new Button(bw, "Recolor...", false).action(this::openRecolor),
+			 btnInvert.pos("ur").adds(5, 0));
+	btnRecolor.settip("Recolor all selected cattle (drives per-cattle color picker)");
+	selDrop = add(new SelDrop(UI.scale(170)), btnRecolor.pos("ur").adds(5, 0));
 	selDrop.change(SelAction.PICK);
-	countLbl = add(new Label("0/0"), selDrop.pos("ur").adds(8, 4));
 	btnClear = add(new Button(UI.scale(100), "Refresh Names", false).action(this::clearNames),
-		       countLbl.pos("ur").adds(10, -4));
+		       selDrop.pos("ur").adds(5, 0));
 	btnClear.settip("Prune names to current roster");
 	btnRemove = adda(new Button(UI.scale(150), "Remove selected", false).action(() -> {
 	    Collection<Object> args = new ArrayList<>();
@@ -58,6 +64,8 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 	    }
 	    wdgmsg("rm", args.toArray(new Object[0]));
 	}), entrycont.pos("br").adds(0, 5), 1, 0);
+	countLbl = add(new CountLabel());
+	placeCountLbl();
 	pack();
     }
 
@@ -72,11 +80,19 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 	btnAll.c = bl;
 	btnNone.c = btnAll.pos("ur").adds(5, 0);
 	btnInvert.c = btnNone.pos("ur").adds(5, 0);
-	selDrop.c = btnInvert.pos("ur").adds(5, 0);
-	countLbl.c = selDrop.pos("ur").adds(8, 4);
-	btnClear.c = countLbl.pos("ur").adds(10, -4);
+	btnRecolor.c = btnInvert.pos("ur").adds(5, 0);
+	selDrop.c = btnRecolor.pos("ur").adds(5, 0);
+	btnClear.c = selDrop.pos("ur").adds(5, 0);
 	btnRemove.c = entrycont.pos("br").adds(-btnRemove.sz.x, 5);
+	placeCountLbl();
 	dirty = true;
+    }
+
+    private void placeCountLbl() {
+	if(countLbl == null || btnRemove == null) return;
+	int gap = UI.scale(10);
+	int y = btnRemove.c.y + (btnRemove.sz.y - countLbl.sz.y) / 2;
+	countLbl.c = new Coord(btnRemove.c.x - countLbl.sz.x - gap, y);
     }
 
     private void applyMark(Predicate<? super T> p, boolean val) {
@@ -194,10 +210,16 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 	this.display = display;
     }
 
+    private Comparator<? super T> effectiveOrder() {
+	Comparator<? super T> primary = (ordercol != null) ? ordercol.order : null;
+	Comparator<? super T> secondary = (ordercol2 != null && ordercol2 != ordercol) ? ordercol2.order : null;
+	return(thunder.roster.RosterLogic.combineOrder(primary, revorder, secondary, revorder2, namecmp));
+    }
+
     public void tick(double dt) {
 	if(dirty) {
 	    List<T> ndisp = new ArrayList<>(entries.values());
-	    ndisp.sort(order);
+	    ndisp.sort(effectiveOrder());
 	    redisplay(ndisp);
 	    dirty = false;
 	}
@@ -205,7 +227,9 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 	for(T e : entries.values()) if(e.mark.a) sel++;
 	if(sel != lastSel || tot != lastTotal) {
 	    lastSel = sel; lastTotal = tot;
+	    Coord prev = countLbl.sz;
 	    countLbl.settext(sel + "/" + tot);
+	    if(!countLbl.sz.equals(prev)) placeCountLbl();
 	}
 	super.tick(dt);
     }
@@ -241,6 +265,10 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 		g.chcolor(255, 255, 0, 16);
 		g.frect2(new Coord(col.x, 0), new Coord(col.x + col.w, sz.y));
 		g.chcolor();
+	    } else if(col == ordercol2) {
+		g.chcolor(255, 255, 0, 8);
+		g.frect2(new Coord(col.x, 0), new Coord(col.x + col.w, sz.y));
+		g.chcolor();
 	    }
 	    Tex head = col.head();
 	    g.aimage(head, new Coord(col.x + (col.w / 2), HEADH / 2), 0.5, 0.5);
@@ -265,25 +293,91 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 	return(null);
     }
 
+    // --- Column resize via header edge drag ---
+    private static final int RESIZE_GRAB = UI.scale(4);
+    private static final Resource HRES_CURSOR = Resource.local().loadwait("gfx/hud/curs/hand");
+    private Column<? super T> resizingCol;
+    private int grabStartX, grabStartW;
+    private UI.Grab resizeGrab;
+
+    private Column<? super T> columnAtEdge(Coord c) {
+	if((c.y < 0) || (c.y >= HEADH)) return(null);
+	for(Column<? super T> col : cols()) {
+	    int edge = col.x + col.w;
+	    if((c.x >= edge - RESIZE_GRAB) && (c.x <= edge + RESIZE_GRAB)) return(col);
+	}
+	return(null);
+    }
+
+    private void packColumns() {
+	int x = CheckBox.sbox.sz().x + UI.scale(10);
+	for(Column<? super T> col : cols()) {
+	    col.x = x;
+	    x += col.w;
+	    x += UI.scale(col.r ? 5 : 1);
+	}
+    }
+
+    @Override
+    public Resource getcurss(Coord c) {
+	if((resizingCol != null) || (columnAtEdge(c) != null))
+	    return(HRES_CURSOR);
+	return(super.getcurss(c));
+    }
+
     public void mousemove(MouseMoveEvent ev) {
 	super.mousemove(ev);
+	if(resizingCol != null) {
+	    int nw = Math.max(resizingCol.minw, grabStartW + (ev.c.x - grabStartX));
+	    if(nw != resizingCol.w) {
+		resizingCol.w = nw;
+		packColumns();
+		dirty = true;
+	    }
+	    return;
+	}
 	mousecol = onhead(ev.c);
     }
 
     public boolean mousedown(MouseDownEvent ev) {
-	Column<? super T> col = onhead(ev.c);
 	if(ev.b == 1) {
-	    if((col != null) && (col.order != null)) {
+	    Column<? super T> edge = columnAtEdge(ev.c);
+	    if(edge != null) {
+		resizingCol = edge;
+		grabStartX = ev.c.x;
+		grabStartW = edge.w;
+		resizeGrab = ui.grabmouse(this);
+		return(true);
+	    }
+	}
+	Column<? super T> col = onhead(ev.c);
+	if((col != null) && (col.order != null)) {
+	    if(ev.b == 1) {
 		revorder = (col == ordercol) ? !revorder : false;
-		this.order = col.order;
-		if(revorder)
-		    this.order = this.order.reversed();
 		ordercol = col;
+		ordercol2 = null;
+		revorder2 = false;
+		dirty = true;
+		return(true);
+	    } else if(ev.b == 3) {
+		if(col == ordercol) return(true); // primary; ignore right-click on it
+		revorder2 = (col == ordercol2) ? !revorder2 : false;
+		ordercol2 = col;
 		dirty = true;
 		return(true);
 	    }
 	}
 	return(super.mousedown(ev));
+    }
+
+    public boolean mouseup(MouseUpEvent ev) {
+	if(resizingCol != null && ev.b == 1) {
+	    resizingCol = null;
+	    if(resizeGrab != null) {resizeGrab.remove(); resizeGrab = null;}
+	    dirty = true;
+	    return(true);
+	}
+	return(super.mouseup(ev));
     }
 
     public boolean mousewheel(MouseWheelEvent ev) {
@@ -326,8 +420,14 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 	    addentry(parse(args));
 	} else if(msg == "upd") {
 	    T entry = parse(args);
+	    T old = entries.get(entry.id);
+	    boolean wasMarked = (old != null) && old.mark.a;
+	    boolean wasLactating = boolField(old, "lactate");
+	    boolean nowLactating = boolField(entry, "lactate");
 	    delentry(entry.id);
 	    addentry(entry);
+	    if(thunder.roster.RosterLogic.shouldRestoreMark(wasMarked, wasLactating, nowLactating, milkingAssist()))
+		entry.mark.set(true);
 	} else if(msg == "rm") {
 	    delentry((UID)args[0]);
 	} else if(msg == "addto") {
@@ -415,6 +515,21 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 	};
     }
 
+    private static boolean boolField(Object e, String name) {
+	if(e == null) return(false);
+	Field f = findField(e.getClass(), name);
+	if(f == null) return(false);
+	try {
+	    Object v = f.get(e);
+	    return (v instanceof Boolean) && ((Boolean)v).booleanValue();
+	} catch(IllegalAccessException ignored) { return(false); }
+    }
+
+    private boolean milkingAssist() {
+	RosterWindow w = getparent(RosterWindow.class);
+	return(w != null && w.milkingAssist);
+    }
+
     private static Field findField(Class<?> cls, String name) {
 	while(cls != null) {
 	    try {
@@ -466,6 +581,163 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 	    } catch(IllegalAccessException ignored) {}
 	}
 	return(false);
+    }
+
+    private void openRecolor() {
+	if(ui == null || entries.isEmpty()) return;
+	boolean anySelected = false;
+	for(T e : entries.values()) { if(e.mark.a) {anySelected = true; break;} }
+	if(!anySelected) {
+	    if(ui.gui != null) ui.gui.error("Recolor: no cattle selected.");
+	    return;
+	}
+	ui.root.add(new SetColorWnd(), ui.mc);
+    }
+
+    // Resource name identifying the cattle info window opened on right-click.
+    // The window widget's Avaview child has avagob matching the cattle gob.
+    private Widget findCattleInfoWindow(long gobid) {
+	if(ui == null || ui.gui == null) return(null);
+	for(Widget c = ui.gui.child; c != null; c = c.next) {
+	    if(!(c instanceof Window)) continue;
+	    if(hasMatchingAvaview(c, gobid)) return(c);
+	}
+	return(null);
+    }
+
+    private static boolean hasMatchingAvaview(Widget parent, long gobid) {
+	for(Widget c = parent.child; c != null; c = c.next) {
+	    if(c instanceof ProxyFrame) {
+		Object inner = ((ProxyFrame<?>)c).ch;
+		if(inner instanceof Avaview && ((Avaview)inner).avagob == gobid) return(true);
+	    }
+	    if(c instanceof Avaview && ((Avaview)c).avagob == gobid) return(true);
+	    if(hasMatchingAvaview(c, gobid)) return(true);
+	}
+	return(false);
+    }
+
+    private static BuddyWnd.GroupSelector findGroupSelector(Widget root) {
+	for(Widget c = root.child; c != null; c = c.next) {
+	    if(c instanceof BuddyWnd.GroupSelector) return((BuddyWnd.GroupSelector)c);
+	    BuddyWnd.GroupSelector r = findGroupSelector(c);
+	    if(r != null) return(r);
+	}
+	return(null);
+    }
+
+    // Pre-flight + run accounting for a recolor batch. Pure data class so
+    // unit tests can drive the workflow without wiring a UI.
+    public static class RecolorReport {
+	public final int selected;     // entries the user had marked
+	public final int alreadyColor; // already at target color; skipped
+	public final int offscreen;    // no CattleId gob in OCache; can't recolor
+	public final int attempted;    // sent to the worker
+	public int recolored;          // worker succeeded
+	public int windowMissed;       // right-click sent, no info window opened
+	public int grpMissed;          // window opened, no GroupSelector found
+	RecolorReport(int selected, int alreadyColor, int offscreen, int attempted) {
+	    this.selected = selected; this.alreadyColor = alreadyColor;
+	    this.offscreen = offscreen; this.attempted = attempted;
+	}
+	public String summary() {
+	    StringBuilder sb = new StringBuilder();
+	    sb.append("Recolor: ").append(recolored).append("/").append(attempted).append(" done");
+	    if(alreadyColor > 0) sb.append(", ").append(alreadyColor).append(" already that color");
+	    if(offscreen > 0) sb.append(", ").append(offscreen).append(" not in render");
+	    if(windowMissed > 0) sb.append(", ").append(windowMissed).append(" window timeout");
+	    if(grpMissed > 0) sb.append(", ").append(grpMissed).append(" no color picker");
+	    return(sb.append(".").toString());
+	}
+    }
+
+    private void recolorSelected(int color) {
+	if(scanning) return;
+	if(ui == null || ui.sess == null || ui.gui == null || ui.gui.map == null) return;
+
+	int selCount = 0, alreadyColor = 0;
+	Set<UID> selectedOnscreen = new HashSet<>();
+	List<Long> targets = new ArrayList<>();
+	OCache oc = ui.sess.glob.oc;
+	synchronized(oc) {
+	    for(T e : entries.values()) {
+		if(!e.mark.a) continue;
+		selCount++;
+		if(e.grp == color) { alreadyColor++; continue; }
+	    }
+	    for(Gob g : oc) {
+		CattleId cid = g.getattr(CattleId.class);
+		if(cid == null) continue;
+		T e = entries.get(cid.id);
+		if(e == null || !e.mark.a) continue;
+		if(e.grp == color) continue;
+		selectedOnscreen.add(cid.id);
+		targets.add(g.id);
+	    }
+	}
+	int needRecolor = selCount - alreadyColor;
+	int offscreen = needRecolor - selectedOnscreen.size();
+	RecolorReport report = new RecolorReport(selCount, alreadyColor, offscreen, targets.size());
+	if(selCount == 0) { ui.gui.error("Recolor: no cattle selected."); return; }
+	if(targets.isEmpty()) { ui.gui.error(report.summary()); return; }
+	if(offscreen > 0) ui.gui.error("Recolor: " + offscreen + " selected cattle not in render; proceeding with " + targets.size() + ".");
+
+	scanning = true;
+	Thread t = new Thread(() -> {
+	    try {
+		for(long gobid : targets) {
+		    if(ui == null) break;
+		    recolorOne(gobid, color, report);
+		}
+		if(ui != null && ui.gui != null)
+		    ui.gui.error(report.summary());
+	    } finally {
+		scanning = false;
+	    }
+	}, "CattleRecolor");
+	t.setDaemon(true);
+	t.start();
+    }
+
+    private void recolorOne(long gobid, int color, RecolorReport report) {
+	Gob gob;
+	OCache oc = ui.sess.glob.oc;
+	synchronized(oc) {
+	    gob = oc.getgob(gobid);
+	}
+	if(gob == null) { report.windowMissed++; return; }
+	ui.gui.map.click(gob, 3);
+	Widget cattleWnd = null;
+	long deadline = System.currentTimeMillis() + 2000;
+	while(System.currentTimeMillis() < deadline) {
+	    cattleWnd = findCattleInfoWindow(gobid);
+	    if(cattleWnd != null) break;
+	    try { Thread.sleep(40); } catch(InterruptedException e) { report.windowMissed++; return; }
+	}
+	if(cattleWnd == null) { report.windowMissed++; return; }
+	BuddyWnd.GroupSelector grp = findGroupSelector(cattleWnd);
+	if(grp == null) { report.grpMissed++; ((Window)cattleWnd).reqclose(); return; }
+	grp.select(color);
+	((Window)cattleWnd).reqclose();
+	report.recolored++;
+	try { Thread.sleep(100); } catch(InterruptedException e) { /* done */ }
+    }
+
+    private class SetColorWnd extends Window {
+	SetColorWnd() {
+	    super(Coord.z, "Recolor selected");
+	    justclose = true;
+	    add(new Label("Pick a color:"), UI.scale(5), UI.scale(5));
+	    final SetColorWnd self = this;
+	    BuddyWnd.GroupSelector sel = new BuddyWnd.GroupSelector(-1) {
+		    public void changed(int group) {
+			recolorSelected(group);
+			self.reqdestroy();
+		    }
+		};
+	    add(sel, UI.scale(5), UI.scale(25));
+	    pack();
+	}
     }
 
     private void scanCastration(boolean selectCastrated) {
@@ -558,15 +830,25 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 	}
     }
 
+    private static final Map<SelAction, Tex> selDropLabelTex = new EnumMap<>(SelAction.class);
+    private static Tex selDropLabel(SelAction it) {
+	Tex t = selDropLabelTex.get(it);
+	if(t == null) selDropLabelTex.put(it, t = SB_FND.render(it.label).tex());
+	return(t);
+    }
+
     private class SelDrop extends Dropbox<SelAction> {
 	private boolean suppress = false;
-	SelDrop(int w) { super(w, 12, UI.scale(16)); }
+	SelDrop(int w) { super(w, 12, Math.max(UI.scale(20), SB_FND.height() + UI.scale(4))); }
 	private List<SelAction> available() {
 	    return(Arrays.asList(SelAction.values()));
 	}
 	protected SelAction listitem(int i) { return(available().get(i)); }
 	protected int listitems() { return(available().size()); }
-	protected void drawitem(GOut g, SelAction it, int i) { g.atext(it.label, UI.scale(3, 8), 0, 0.5); }
+	protected void drawitem(GOut g, SelAction it, int i) {
+	    Tex t = selDropLabel(it);
+	    g.image(t, new Coord(UI.scale(4), (itemh - t.sz().y) / 2));
+	}
 	public void change(SelAction it) {
 	    super.change(it);
 	    if(suppress) return;
@@ -585,6 +867,31 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 	    suppress = true;
 	    change(SelAction.PICK);
 	    suppress = false;
+	}
+    }
+
+    // Right-aligned count label with reserved width for COUNT_RESERVED_CHARS characters.
+    private static class CountLabel extends Widget {
+	private Tex tex;
+	private final int reservedW;
+
+	CountLabel() {
+	    super(Coord.z);
+	    StringBuilder wide = new StringBuilder();
+	    for(int i = 0; i < COUNT_RESERVED_CHARS; i++) wide.append('8');
+	    reservedW = SB_FND.strsize(wide.toString()).x;
+	    settext("0/0");
+	}
+
+	void settext(String s) {
+	    if(tex != null) tex.dispose();
+	    tex = SB_FND.render(s).tex();
+	    resize(new Coord(Math.max(reservedW, tex.sz().x), tex.sz().y));
+	}
+
+	public void draw(GOut g) {
+	    if(tex == null) return;
+	    g.image(tex, new Coord(sz.x - tex.sz().x, (sz.y - tex.sz().y) / 2));
 	}
     }
 

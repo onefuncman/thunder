@@ -2267,6 +2267,7 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
     
     public void click(Gob gob, int button, Coord mouse, int modflags) {
 	if(button == 3) {FlowerMenu.lastGob(gob);}
+	thunder.MilkingAssist.onGobRightClick(gob, button);
 	Coord mc = gob.rc.floor(posres);
 	click(gob.rc, button, mouse, mc, button, modflags, 0, (int) gob.id, mc, 0, -1);
     }
