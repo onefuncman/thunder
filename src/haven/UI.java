@@ -114,7 +114,7 @@ public class UI {
 	    || name.contains("character sheet")
 	    || name.contains("belt")
 	    || name.contains("equipment")
-	    || name.contains("study")) {
+	    || (name.contains("study") && !name.contains("desk"))) {
 	    return;
 	}
 	EXT_INVENTORIES.add(wdg);

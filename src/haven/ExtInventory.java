@@ -591,15 +591,42 @@ public class ExtInventory extends Widget {
 	    if(!all) {
 		WItem item = items.get(0);
 		if(!item.disposed()) {
-		    item.item.wdgmsg(action, args);
+		    dispatch(item, action, args);
 		}
 	    } else {
 		for (WItem item : items) {
 		    if(!item.disposed()) {
-			item.item.wdgmsg(action, args);
+			dispatch(item, action, args);
 		    }
 		}
 	    }
+	}
+
+	// For invxf2, per-item count=1 against an ItemStack leaves the last item
+	// behind. Resolve the containing ItemStack (either the WItem's contents
+	// when stacks are packed, or the parent when UI_STACK_EXT_INV_UNPACK is on)
+	// and send one invxf2 per target with count = stack size.
+	private static void dispatch(WItem item, String action, Object[] args) {
+	    if("invxf2".equals(action) && args.length > 2) {
+		Widget stack = null;
+		if(Reflect.is(item.item.contents, "haven.res.ui.stackinv.ItemStack")) {
+		    stack = item.item.contents;
+		} else if(Reflect.is(item.parent, "haven.res.ui.stackinv.ItemStack")) {
+		    stack = item.parent;
+		}
+		if(stack != null) {
+		    List<?> order = Reflect.getFieldValue(stack, "order", List.class);
+		    if(order != null && !order.isEmpty()) {
+			GItem first = (GItem) order.get(0);
+			int count = order.size();
+			for(int t = 2; t < args.length; t++) {
+			    first.wdgmsg("invxf2", 0, count, args[t]);
+			}
+			return;
+		    }
+		}
+	    }
+	    item.item.wdgmsg(action, args);
 	}
 	
 	@Override
