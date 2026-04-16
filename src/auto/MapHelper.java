@@ -54,12 +54,23 @@ public class MapHelper {
 	if(!(tl instanceof WaterTile)) {
 	    return false;
 	}
-	
+
 	Resource res = mcache.tilesetr(t);
 	if(res == null) {
 	    return false;
 	}
-	
+
 	return res.name.equals("gfx/tiles/water") || res.name.equals("gfx/tiles/deep");
+    }
+
+    public static boolean isSaltWaterTile(GameUI gui, Coord tc) {
+	MCache mcache = gui.ui.sess.glob.map;
+	int t = mcache.gettile(tc);
+	Resource res = mcache.tilesetr(t);
+	if(res == null) {
+	    return false;
+	}
+	String n = res.name;
+	return n.equals("gfx/tiles/owater") || n.equals("gfx/tiles/odeep") || n.equals("gfx/tiles/odeeper");
     }
 }

@@ -27,6 +27,11 @@ public class TileQualityWnd extends WindowX {
     private long lastSeq = -1;
     private String lastKind = "<unset>";
     private List<Entry> entries = Collections.emptyList();
+    // Constructor runs before the widget is attached to a UI, so the first
+    // refresh() has no player and segmentOnly silently shows nothing. When
+    // added() fires we force a retry; playerLoc() may still be momentarily
+    // null then, so also keep retrying in tick() until we see a player.
+    private boolean awaitingPlayer = false;
 
     public TileQualityWnd() {
 	super(Coord.z, "Tile Quality");
@@ -88,9 +93,16 @@ public class TileQualityWnd extends WindowX {
     }
 
     @Override
+    protected void added() {
+	super.added();
+	awaitingPlayer = true;
+	refresh();
+    }
+
+    @Override
     public void tick(double dt) {
 	super.tick(dt);
-	if(lastSeq != TileQuality.seq || !Objects.equals(lastKind, TileQuality.selectedKind)) {
+	if(awaitingPlayer || lastSeq != TileQuality.seq || !Objects.equals(lastKind, TileQuality.selectedKind)) {
 	    refresh();
 	} else if(!entries.isEmpty()) {
 	    updateDistances();
@@ -143,21 +155,15 @@ public class TileQualityWnd extends WindowX {
 	TileQuality tq = TileQuality.current();
 	List<TileQuality.TileSnapshot> snaps = (tq == null) ? Collections.emptyList() : tq.snapshotAll();
 	PlayerLoc me = playerLoc();
+	if(me != null) {awaitingPlayer = false;}
 	MapFile file = (ui != null && ui.gui != null && ui.gui.mapfile != null) ? ui.gui.mapfile.file : null;
 
-	Set<String> kinds = new TreeSet<>();
-	for(TileQuality.TileSnapshot s : snaps) {kinds.addAll(s.kinds.keySet());}
-	List<String> kindOpts = new ArrayList<>(kinds.size() + 1);
-	kindOpts.add(ALL);
-	kindOpts.addAll(kinds);
-	if(!kindOpts.equals(kindList.items)) {
-	    String prevSel = kindList.sel;
-	    kindList.setItems(kindOpts);
-	    kindList.sel = (prevSel != null && kindOpts.contains(prevSel)) ? prevSel : ALL;
-	}
+	// Resolve segment info up front so the kind list and entry list filter consistently.
+	// If segmentOnly is on but we can't resolve the player's segment, show nothing --
+	// otherwise the window lies by saying "segment only" while displaying everything.
+	boolean hideAll = segmentOnly && me == null;
 
-	String filter = TileQuality.selectedKind;
-	List<Entry> entries = new ArrayList<>();
+	List<ResolvedSnap> resolved = new ArrayList<>();
 	for(TileQuality.TileSnapshot s : snaps) {
 	    long entrySeg = -1;
 	    Coord entrySegTc = null;
@@ -172,18 +178,40 @@ public class TileQualityWnd extends WindowX {
 		    }
 		} finally {file.lock.readLock().unlock();}
 	    }
-	    if(segmentOnly && me != null && entrySeg != me.segId) {continue;}
+	    if(hideAll) {continue;}
+	    if(segmentOnly && entrySeg != me.segId) {continue;}
+	    resolved.add(new ResolvedSnap(s, entrySeg, entrySegTc));
+	}
 
+	Set<String> kinds = new TreeSet<>();
+	for(ResolvedSnap r : resolved) {kinds.addAll(r.snap.kinds.keySet());}
+	List<String> kindOpts = new ArrayList<>(kinds.size() + 1);
+	kindOpts.add(ALL);
+	kindOpts.addAll(kinds);
+	if(!kindOpts.equals(kindList.items)) {
+	    String prevSel = kindList.sel;
+	    kindList.setItems(kindOpts);
+	    if(prevSel != null && !kindOpts.contains(prevSel)) {
+		kindList.sel = ALL;
+		TileQuality.setSelectedKind(null);
+	    } else if(prevSel == null) {
+		kindList.sel = ALL;
+	    }
+	}
+
+	String filter = TileQuality.selectedKind;
+	List<Entry> entries = new ArrayList<>();
+	for(ResolvedSnap r : resolved) {
 	    int dist = -1;
-	    if(me != null && entrySegTc != null && entrySeg == me.segId) {
-		int dx = entrySegTc.x - me.segTc.x;
-		int dy = entrySegTc.y - me.segTc.y;
+	    if(me != null && r.entrySegTc != null && r.entrySeg == me.segId) {
+		int dx = r.entrySegTc.x - me.segTc.x;
+		int dy = r.entrySegTc.y - me.segTc.y;
 		dist = (int) Math.round(Math.sqrt((double) dx * dx + (double) dy * dy));
 	    }
 
-	    for(Map.Entry<String, Short> ke : s.kinds.entrySet()) {
+	    for(Map.Entry<String, Short> ke : r.snap.kinds.entrySet()) {
 		if(filter != null && !filter.equals(ke.getKey())) {continue;}
-		entries.add(new Entry(s.gridId, s.tileIdx, ke.getKey(), ke.getValue(), entrySeg, entrySegTc, dist));
+		entries.add(new Entry(r.snap.gridId, r.snap.tileIdx, ke.getKey(), ke.getValue(), r.entrySeg, r.entrySegTc, dist));
 	    }
 	}
 	entries.sort((a, b) -> {
@@ -222,6 +250,17 @@ public class TileQualityWnd extends WindowX {
 	Coord tc = info.sc.mul(cmaps).add(tx, ty);
 	ui.gui.mapfile.view.center(new MiniMap.SpecLocator(info.seg, tc));
 	if(!ui.gui.mapfile.visible()) {ui.gui.mapfile.show();}
+    }
+
+    private static class ResolvedSnap {
+	final TileQuality.TileSnapshot snap;
+	final long entrySeg;
+	final Coord entrySegTc;
+	ResolvedSnap(TileQuality.TileSnapshot snap, long entrySeg, Coord entrySegTc) {
+	    this.snap = snap;
+	    this.entrySeg = entrySeg;
+	    this.entrySegTc = entrySegTc;
+	}
     }
 
     static class Entry {

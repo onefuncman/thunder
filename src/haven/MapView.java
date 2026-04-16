@@ -2395,6 +2395,8 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 		Object[] args = {pc, mc.floor(posres), ui.modflags()};
 		if(inf != null)
 		    args = Utils.extend(args, inf.clickargs());
+		Gob clicked = (inf != null) ? Gob.from(inf.ci) : null;
+		thunder.TileQuality.markPendingFillFromMap(ui.gui, mc, clicked);
 		wdgmsg("itemact", args);
 	    }
 	}.run();

@@ -44,6 +44,10 @@ public class TileQuality {
     private final Map<Long, Map<Integer, Map<String, Short>>> grids = new HashMap<>();
     public final MapFile file;
 
+    // Fill detection doesn't get a cursor-clear like mine/dig, so a TTL gates
+    // attribution. 5s matches MilkingAssist and covers observed round-trip.
+    private static final long FILL_TTL_MS = 5000;
+
     // At most one action is in flight at a time: a new click replaces it,
     // and it's cleared when the paginae cursor goes away. Items that were
     // captured into `retries` keep their own copy of the action, so clearing
@@ -103,11 +107,25 @@ public class TileQuality {
     static class PendingAction {
 	final byte group;
 	final Coord2d rc;
+	final long deadline; // 0 = no TTL
 
 	PendingAction(byte group, Coord2d rc) {
+	    this(group, rc, 0);
+	}
+
+	PendingAction(byte group, Coord2d rc, long deadline) {
 	    this.group = group;
 	    this.rc = rc;
+	    this.deadline = deadline;
 	}
+
+	boolean expired() {
+	    return deadline > 0 && System.currentTimeMillis() > deadline;
+	}
+    }
+
+    private static boolean isFillGroup(byte group) {
+	return group == GROUP_FILL_WATER || group == GROUP_FILL_SPRING_WATER || group == GROUP_FILL_SALT_WATER;
     }
 
     /** Called from MapView.Selector.mmousedown — captures mine/dig click based on current root cursor. */
@@ -131,6 +149,50 @@ public class TileQuality {
 	ui.gui.tileQuality.setPending(GROUP_MINE, gob.rc);
     }
 
+    /**
+     * Called from MapView.iteminteract's Hittest.hit() -- player clicked map while holding an item.
+     * If the target is a recognized water source (well gob, or fresh/salt water tile), mark a
+     * pending fill action keyed to the source's tile. The hand item's subsequent `tt` update
+     * will carry Contents with the water quality, which we attribute back here.
+     */
+    public static void markPendingFillFromMap(GameUI gui, Coord2d mc, Gob clickedGob) {
+	if(gui == null || gui.tileQuality == null) {return;}
+	byte group;
+	Coord2d rc;
+	byte gobGroup = (clickedGob == null) ? -1 : groupForWaterGob(clickedGob);
+	if(gobGroup >= 0) {
+	    group = gobGroup;
+	    rc = clickedGob.rc;
+	} else {
+	    Coord tc = mc.floor(MCache.tilesz);
+	    if(auto.MapHelper.isSaltWaterTile(gui, tc)) {
+		group = GROUP_FILL_SALT_WATER;
+		rc = mc;
+	    } else if(auto.MapHelper.isFreshWaterTile(gui, tc)) {
+		group = GROUP_FILL_WATER;
+		rc = mc;
+	    } else {
+		return; // not a water source; don't mark
+	    }
+	}
+	long deadline = System.currentTimeMillis() + FILL_TTL_MS;
+	gui.tileQuality.setPending(new PendingAction(group, rc, deadline));
+    }
+
+    /** Maps a clicked water-source gob to a fill group, or -1 if unknown. */
+    private static byte groupForWaterGob(Gob gob) {
+	try {
+	    Resource res = gob.getres();
+	    if(res == null) {return -1;}
+	    String n = res.name;
+	    if("gfx/terobjs/wellspring".equals(n)) {return GROUP_FILL_SPRING_WATER;}
+	    if("gfx/terobjs/well".equals(n)) {return GROUP_FILL_WATER;}
+	    return -1;
+	} catch (Loading ignore) {
+	    return -1;
+	}
+    }
+
     private static byte groupForCursor(Indir<Resource> cursor) {
 	if(cursor == null) {return -1;}
 	String name;
@@ -145,8 +207,12 @@ public class TileQuality {
     }
 
     private void setPending(byte group, Coord2d rc) {
+	setPending(new PendingAction(group, rc));
+    }
+
+    private void setPending(PendingAction action) {
 	synchronized (lock) {
-	    currentPending = new PendingAction(group, rc);
+	    currentPending = action;
 	}
     }
 
@@ -191,6 +257,10 @@ public class TileQuality {
 	PendingAction action;
 	synchronized (gui.tileQuality.lock) {
 	    action = gui.tileQuality.currentPending;
+	    if(action != null && action.expired()) {
+		gui.tileQuality.currentPending = null;
+		action = null;
+	    }
 	}
 	if(action == null) {return;}
 	gui.tileQuality.resolveItem(item, gui, action);
@@ -210,7 +280,7 @@ public class TileQuality {
     }
 
     private void resolveItem(GItem item, GameUI gui, PendingAction action) {
-	if(!isInMainInventory(item, gui)) {return;}
+	if(!isEligibleItem(item, gui, action)) {return;}
 
 	String key;
 	try {
@@ -245,6 +315,21 @@ public class TileQuality {
 	recordQuality(grid.id, tc, val, key);
     }
 
+    private static boolean isEligibleItem(GItem item, GameUI gui, PendingAction action) {
+	if(isFillGroup(action.group)) {
+	    return isInHand(item, gui);
+	}
+	return isInMainInventory(item, gui);
+    }
+
+    private static boolean isInHand(GItem item, GameUI gui) {
+	if(gui == null || gui.hand == null) {return false;}
+	for(GameUI.DraggedItem di : gui.hand) {
+	    if(di != null && di.item == item) {return true;}
+	}
+	return false;
+    }
+
     private static boolean isInMainInventory(GItem item, GameUI gui) {
 	if(gui.maininv == null) {return false;}
 	Widget w = item.parent;
@@ -268,14 +353,27 @@ public class TileQuality {
 	    return classifyMinedItem(item);
 	} else if(action.group == GROUP_DIG) {
 	    return KEY_DIG;
-	} else if(action.group == GROUP_FILL_WATER) {
-	    return KEY_WATER;
-	} else if(action.group == GROUP_FILL_SPRING_WATER) {
-	    return KEY_SPRING_WATER;
-	} else if(action.group == GROUP_FILL_SALT_WATER) {
-	    return KEY_SALT_WATER;
+	} else if(isFillGroup(action.group)) {
+	    return classifyFilledItem(item, action.group);
 	}
 	return null;
+    }
+
+    /**
+     * Only classify when the container actually holds liquid content -- filters out
+     * unrelated tt updates on the hand item. Content quality is read via `item.quality()`
+     * which falls back to `contains.q` when the container has content.
+     */
+    private static String classifyFilledItem(GItem item, byte group) {
+	item.info(); // force parse; throws Loading if not ready so we retry
+	ItemData.Content content = item.contains.get();
+	if(content == null || content.empty() || content.q == null || content.q.isEmpty()) {return null;}
+	switch (group) {
+	    case GROUP_FILL_WATER: return KEY_WATER;
+	    case GROUP_FILL_SPRING_WATER: return KEY_SPRING_WATER;
+	    case GROUP_FILL_SALT_WATER: return KEY_SALT_WATER;
+	    default: return null;
+	}
     }
 
     /** Throws Loading if the item's info isn't ready yet (gems need the name text). */
