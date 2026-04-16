@@ -74,6 +74,30 @@ public class TileQuality {
 	current = this;
     }
 
+    /** Walks all known grids and renames matching keys. Returns the number of entries changed. */
+    public int renameKey(String oldKey, String newKey) {
+	if(oldKey.equals(newKey)) {return 0;}
+	int total = 0;
+	synchronized (lock) {
+	    for(Long id : new ArrayList<>(gridIds)) {
+		if(!grids.containsKey(id) && !loadGrid(id)) {continue;}
+		Map<Integer, Map<String, Short>> grid = grids.get(id);
+		if(grid == null) {continue;}
+		boolean dirty = false;
+		for(Map<String, Short> tile : grid.values()) {
+		    Short val = tile.remove(oldKey);
+		    if(val == null) {continue;}
+		    Short existing = tile.get(newKey);
+		    if(existing == null || val > existing) {tile.put(newKey, val);}
+		    dirty = true;
+		    total++;
+		}
+		if(dirty) {storeGrid(id, grid);}
+	    }
+	}
+	return total;
+    }
+
     // --- Pending action management ---
 
     static class PendingAction {
@@ -188,7 +212,13 @@ public class TileQuality {
     private void resolveItem(GItem item, GameUI gui, PendingAction action) {
 	if(!isInMainInventory(item, gui)) {return;}
 
-	String key = classifyItem(item, action);
+	String key;
+	try {
+	    key = classifyItem(item, action);
+	} catch (Loading l) {
+	    synchronized (lock) {retries.put(item, action);}
+	    return;
+	}
 	if(key == null) {return;}
 
 	double q;
@@ -248,6 +278,7 @@ public class TileQuality {
 	return null;
     }
 
+    /** Throws Loading if the item's info isn't ready yet (gems need the name text). */
     private static String classifyMinedItem(GItem item) {
 	String resname = item.resname();
 	if(resname.isEmpty()) {return null;}
@@ -257,12 +288,28 @@ public class TileQuality {
 	    case "gfx/invobjs/petrifiedshell": return KEY_SHELL;
 	    case "gfx/invobjs/quarryquartz": return KEY_QUARTZ;
 	    case "gfx/invobjs/catgold": return KEY_CATGOLD;
+	    case "gfx/invobjs/gems/gemstone": return classifyGem(item);
 	}
 
 	if(resname.startsWith("gfx/invobjs/")) {
 	    return KEY_STONE_PREFIX + resname.substring("gfx/invobjs/".length());
 	}
 	return null;
+    }
+
+    /**
+     * Gem items share one res (gems/gemstone); the specific gem (Onyx, Ruby, ...) is in the
+     * ItemInfo.Name text like "Fair Smooth Onyx" where the final word is the gem type.
+     * Throws Loading if info isn't parsed yet.
+     */
+    private static String classifyGem(GItem item) {
+	List<ItemInfo> info = item.info(); // may throw Loading
+	ItemInfo.Name name = ItemInfo.find(ItemInfo.Name.class, info);
+	if(name == null || name.original == null) {return null;}
+	String[] parts = name.original.trim().split("\\s+");
+	if(parts.length == 0) {return null;}
+	String gem = parts[parts.length - 1].toLowerCase();
+	return gem.isEmpty() ? null : gem;
     }
 
     // --- Display ---
@@ -281,7 +328,9 @@ public class TileQuality {
 	    case KEY_WATER: return "Water";
 	    case KEY_SPRING_WATER: return "Spring Water";
 	    case KEY_SALT_WATER: return "Salt Water";
-	    default: return key;
+	    default:
+		if(key.isEmpty()) {return key;}
+		return Character.toUpperCase(key.charAt(0)) + key.substring(1);
 	}
     }
 
