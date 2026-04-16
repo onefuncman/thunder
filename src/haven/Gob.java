@@ -214,17 +214,18 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 	Pipe.Op op = null;
 	Color c = null;
 	
-	void color(Color c) {
+	boolean color(Color c) {
 	    if(Objects.equals(c, this.c)) {
-		return;
+		return false;
 	    }
-	    
+
 	    if(c == null) {
 		op = null;
 	    } else {
 		op = new MixColor(c);
 	    }
 	    this.c = c;
+	    return true;
 	}
 	
 	@Override
@@ -1709,7 +1710,8 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 		}
 	    }
 	}
-	customColor.color(c);
+	if(customColor.color(c))
+	    stateDirty = true;
     }
     
     private void updateMarkerSprite() {
