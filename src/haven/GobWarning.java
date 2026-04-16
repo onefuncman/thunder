@@ -19,7 +19,8 @@ public class GobWarning extends GAttrib implements RenderTree.Node {
 	tgt = categorize(gob);
 	if(tgt != null) {
 	    if(WarnCFG.get(tgt, message)) {
-		gob.glob.sess.ui.message(String.format("%s spotted!", tgt.message), tgt.mcol, UI.ErrorMessage.sfx);
+		String label = (tgt == player && isSkeleton(gob)) ? "Skeleton" : tgt.message;
+		gob.glob.sess.ui.message(String.format("%s spotted!", label), tgt.mcol, UI.ErrorMessage.sfx);
 	    }
 	    radius = new ColoredRadius(gob, tgt.radius, tgt.scol, tgt.ecol);
 	} else {
@@ -97,6 +98,30 @@ public class GobWarning extends GAttrib implements RenderTree.Node {
     private static boolean isSkull(Gob gob) {
 	String name = gob.resid();
 	return name != null && name.contains("skull");
+    }
+
+    // Skeleton NPCs share the player base (gfx/borka/body) but carry a
+    // gfx/borka/skeleton model in their composite. Best-effort: if composite
+    // models haven't loaded yet, fall back to the generic "Player" label.
+    private static boolean isSkeleton(Gob gob) {
+	Drawable d = gob.getattr(Drawable.class);
+	if(!(d instanceof Composite)) {return false;}
+	Composite cmp = (Composite) d;
+	try {
+	    if(scanForSkeletonModel(cmp.nmod)) {return true;}
+	    if(cmp.comp != null && scanForSkeletonModel(cmp.comp.cmod)) {return true;}
+	} catch(Loading l) { /* fall through */ }
+	return false;
+    }
+
+    private static boolean scanForSkeletonModel(List<Composited.MD> mods) {
+	if(mods == null) {return false;}
+	for(Composited.MD md : mods) {
+	    if(md == null || md.mod == null) {continue;}
+	    String name = md.mod.get().name;
+	    if("gfx/borka/skeleton".equals(name)) {return true;}
+	}
+	return false;
     }
     
     public enum WarnTarget {
