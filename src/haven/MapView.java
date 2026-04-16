@@ -475,7 +475,9 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 		vm = Location.makexlate(new Matrix4f(), corr).mul1(vm);
 	    }
 	    view = new haven.render.Camera(vm);
-	    proj = Projection.ortho(-field, field, -field * aspect, field * aspect, 1, 5000);
+	    float far = Math.max(5000, field * 20);
+	    float near = Math.min(1, -(field * aspect / (float)Math.tan(elev)));
+	    proj = Projection.ortho(-field, field, -field * aspect, field * aspect, near, far);
 	}
 	
 	public float angle() {
@@ -1915,6 +1917,15 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	    camoff.y = (float)((Math.random() - 0.5) * shake);
 	    camoff.z = (float)((Math.random() - 0.5) * shake);
 	    camera.tick(dt);
+	    if(CFG.EXTENDED_ORTHO_VIEW.get() && camera instanceof OrthoCam) {
+		OrthoCam oc = (OrthoCam)camera;
+		float chunksz = MCache.cutsz.x * (float)MCache.tilesz.x;
+		float groundreach = oc.field / (float)Math.sin(oc.elev);
+		int nview = (int)Math.ceil(groundreach / chunksz) + 2;
+		view = Math.max(2, nview);
+	    } else {
+		view = 2;
+	    }
 	} catch(Loading e) {
 	    e.boostprio(5);
 	    camload = e;
