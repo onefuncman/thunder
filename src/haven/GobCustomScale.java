@@ -9,14 +9,12 @@ public class GobCustomScale implements Gob.SetupMod {
     private Pipe.Op op = null;
     private int scale = 100;
     
-    public void update(Gob gob) {
+    public boolean update(Gob gob) {
+	Pipe.Op prev = op;
 	String res = gob.resid();
 	if(res == null) {
 	    op = null;
-	    return;
-	}
-	
-	if(res.equals(ResName.CUPBOARD)) {
+	} else if(res.equals(ResName.CUPBOARD)) {
 	    update(CFG.DISPLAY_SCALE_CUPBOARDS.get());
 	} else if(Utils.WALLS_TO_RESIZE.contains(res)) {
 	    update(CFG.DISPLAY_SCALE_WALLS.get());
@@ -25,6 +23,7 @@ public class GobCustomScale implements Gob.SetupMod {
 	} else if(res.startsWith("gfx/terobjs/bushes/")) {
 	    update2(CFG.DISPLAY_SCALE_BUSHES.get());
 	}
+	return op != prev;
     }
     
     private void update(int percent) {

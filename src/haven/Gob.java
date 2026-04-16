@@ -1635,7 +1635,8 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 	}
 	
 	if(status.updated(StatusType.drawable)) {
-	    customScale.update(this);
+	    if(customScale.update(this))
+		stateDirty = true;
 	}
 	
 	if(status.updated(StatusType.drawable, StatusType.id, StatusType.icon)) {
