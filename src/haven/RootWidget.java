@@ -28,6 +28,7 @@ package haven;
 
 import integrations.mapv4.MappingClient;
 import me.ender.gob.GobEffects;
+import thunder.TileQuality;
 
 import java.util.*;
 import java.awt.Color;
@@ -161,6 +162,7 @@ public class RootWidget extends ConsoleHost implements UI.Notice.Handler, Widget
 	}
 	if(msg == "curs") {
 	    ui.sess.character.updateCursor(cursor);
+	    TileQuality.onRootCursorChange(cursor, ui.gui);
 	}
     }
     

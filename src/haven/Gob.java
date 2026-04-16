@@ -710,6 +710,8 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 			processDmg(sdt.clone());
 		    } else if(res.name.equals("gfx/fx/dowse")) {
 			ProspectingWnd.overlay(this, item);
+		    } else if(res.name.equals("gfx/terobjs/mineout") && !item.old) {
+			thunder.TileQuality.onMineoutOverlay(this);
 		    }
 //		    System.out.printf("overlayAdded: '%s'%n", res.name);
 		}

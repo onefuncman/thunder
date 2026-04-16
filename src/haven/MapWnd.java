@@ -175,7 +175,11 @@ public class MapWnd extends WindowX implements Console.Directory {
 	btn = topbar.add(new ICheckBox("gfx/hud/mmap/heightmap", "", "-d", "-h"), btn.pos("bl"))
 	    .changed(a -> toggleol("heightmap", a))
 	    .settip("Enable Heightmap");
-	
+
+	btn = topbar.add(new Button(UI.scale(20), "Q"), btn.pos("bl"))
+	    .action(() -> thunder.TileQualityWnd.toggle(ui));
+	btn.tooltip = RichText.render("Tile Quality search & overlay", 0);
+
 	topbar.pack();
 	tool = add(new Toolbox2());;
 	compact(Utils.getprefb("compact-map", false));
@@ -352,10 +356,12 @@ public class MapWnd extends WindowX implements Console.Directory {
 			img = disp.tileimg();
 		    } else {
 			img = disp.olimg(tag);
-			
+
 		    }
 		    if (tag == "heightmap")
 			alpha = 200;
+		    if (tag == thunder.TileQuality.OVERLAY_TAG)
+			alpha = 220;
 		    if(img != null) {
 			g.chcolor(255, 255, 255, alpha);
 			g.image(img, ul, UI.scale(img.sz()).mul(scale));

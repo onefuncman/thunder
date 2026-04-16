@@ -36,6 +36,7 @@ import me.ender.ClientUtils;
 import me.ender.QuestHelper;
 import me.ender.StatMeterWdg;
 import me.ender.minimap.*;
+import thunder.TileQuality;
 import me.ender.timer.Timer;
 
 import java.util.*;
@@ -79,7 +80,9 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
     public CharWnd chrwdg;
     public MapWnd2 mapfile;
     public Minesweeper minesweeper;
+    public TileQuality tileQuality;
     public TileHighlight.TileHighlightCFG tileHighlight;
+    public thunder.TileQualityWnd tileQualityWnd;
     private Widget qqview;
     public BuddyWnd buddies;
     public EquipProxy eqproxyHandBelt, eqproxyPouchBack;
@@ -1209,6 +1212,7 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 		mapfile.show(Utils.getprefb("wndvis-map", false));
 		add(mapfile, Utils.getprefc("wndc-map", new Coord(50, 50)));
 		minesweeper = new Minesweeper(file);
+		tileQuality = new TileQuality(file);
 	    }
 	    placemmap();
 	} else if(place == "menu") {

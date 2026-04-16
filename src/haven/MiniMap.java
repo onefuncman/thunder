@@ -532,15 +532,33 @@ public class MiniMap extends Widget {
 	    CachedTileOverlay(Function<MapFile.DataGrid, Defer.Future<Tex>> src) {
 		super(src);
 	    }
-	    
+
 	    @Override
 	    protected boolean valid() {
 		return this.seq == TileHighlight.seq;
 	    }
-	    
+
 	    @Override
 	    protected Defer.Future<Tex> getNext(DataGrid grid) {
 	        this.seq = TileHighlight.seq;
+		return super.getNext(grid);
+	    }
+	}
+
+	class CachedTileQualityOverlay extends MiniMap.DisplayGrid.CachedImage {
+	    private long seq = -1;
+	    CachedTileQualityOverlay(Function<MapFile.DataGrid, Defer.Future<Tex>> src) {
+		super(src);
+	    }
+
+	    @Override
+	    protected boolean valid() {
+		return this.seq == thunder.TileQuality.seq;
+	    }
+
+	    @Override
+	    protected Defer.Future<Tex> getNext(DataGrid grid) {
+		this.seq = thunder.TileQuality.seq;
 		return super.getNext(grid);
 	    }
 	}
@@ -581,6 +599,12 @@ public class MiniMap extends Widget {
 		{
 		    if (tag == "heightmap")
 			olimg_c.put(tag, ret = new CachedImage(grid -> Defer.later(() -> new TexI(grid.heightrender(sc.mul(cmaps), tag)))));
+		    else if (tag == thunder.TileQuality.OVERLAY_TAG)
+			olimg_c.put(tag, ret = new CachedTileQualityOverlay(grid -> Defer.later(() -> {
+			    thunder.TileQuality tq = thunder.TileQuality.current();
+			    if(tq == null || !(grid instanceof MapFile.Grid)) {return new TexI(PUtils.rasterimg(PUtils.imgraster(cmaps)));}
+			    return new TexI(tq.olrender(((MapFile.Grid) grid).id));
+			})));
 		    else
 			olimg_c.put(tag, ret = new CachedImage(grid -> Defer.later(() -> new TexI(grid.olrender(sc.mul(cmaps), tag)))));
 		}

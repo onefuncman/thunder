@@ -128,7 +128,7 @@ public class CustomCursors {
 	}
     }
     
-    private static boolean isMining(UI ui) {
+    public static boolean isMining(UI ui) {
 	Indir<Resource> cursor = ui.root.cursor;
 	if(cursor == null) {return false;}
 	try {

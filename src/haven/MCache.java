@@ -31,6 +31,7 @@ import java.util.function.*;
 import java.lang.ref.*;
 import haven.render.*;
 import me.ender.minimap.Minesweeper;
+import thunder.TileQuality;
 
 /* XXX: This whole file is a bit of a mess and could use a bit of a
  * rewrite some rainy day. Synchronization especially is quite hairy. */
@@ -1223,6 +1224,7 @@ public class MCache implements MapSource {
 	    gridwait.wnotify();
 	}
 	Minesweeper.trim(sess, null);
+	TileQuality.trim(sess, null);
     }
     
     public void trim(Coord ul, Coord lr) {
@@ -1248,6 +1250,7 @@ public class MCache implements MapSource {
 	    gridwait.wnotify();
 	}
 	Minesweeper.trim(sess, removed);
+	TileQuality.trim(sess, removed);
     }
     
     public void request(Coord gc) {

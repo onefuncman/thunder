@@ -29,6 +29,7 @@ package haven;
 import me.ender.Reflect;
 import me.ender.alchemy.AlchemyData;
 import me.ender.alchemy.AlchemyItemFilter;
+import thunder.TileQuality;
 import rx.functions.Action0;
 
 import java.util.*;
@@ -218,6 +219,7 @@ public class GItem extends AWidget implements ItemInfo.SpriteOwner, GSprite.Owne
 	hoverset = false;
 	testMatch();
 	processInfoChange();
+	TileQuality.onItemTick(this);
     }
     
     public final ItemInfo.AttrCache<ItemData.Content> contains = new ItemInfo.AttrCache<>(this::info, ItemInfo.AttrCache.cache(ItemInfo::getContent), ItemData.Content.EMPTY);
@@ -371,6 +373,7 @@ public class GItem extends AWidget implements ItemInfo.SpriteOwner, GSprite.Owne
 	    infoDirty = true;
 	    meterUpdated = System.currentTimeMillis();
 	    if(sendttupdate){wdgmsg("ttupdate");}
+	    TileQuality.onItemInfoUpdate(this);
 	} else if(name == "meter") {
 	    meterUpdated = System.currentTimeMillis();
 	    meter = Utils.iv(args[0]);

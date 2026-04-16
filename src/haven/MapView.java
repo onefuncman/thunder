@@ -48,6 +48,7 @@ import haven.rx.Reactor;
 import me.ender.ChatCommands;
 import me.ender.CustomCursors;
 import me.ender.minimap.Minesweeper;
+import thunder.TileQuality;
 
 public class MapView extends PView implements DTarget, Console.Directory, Widget.CursorQuery.Handler {
     public static boolean clickdb = false;
@@ -2286,10 +2287,11 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 		ui.gui.pathQueue.click(cc);
 	    }
 	}
-	if(send)
+	if(send) {
 	    wdgmsg("click", args);
+	}
     }
-    
+
     public void grab(Grabber grab) {
 	this.grab = grab;
     }
@@ -2533,6 +2535,9 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 		mgrab = ui.grabmouse(MapView.this);
 		ol = glob.map.new RectOverlay(selol, Area.sized(sc, new Coord(1, 1)));
 		glob.map.add(ol);
+		if(button == 1) {
+		    TileQuality.markPendingForClick(new Coord2d(mc), MapView.this.ui.gui);
+		}
 		return(true);
 	    }
 	}
