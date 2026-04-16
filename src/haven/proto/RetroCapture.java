@@ -122,7 +122,7 @@ public class RetroCapture {
     }
 
     private Path dumpTargetPath() {
-	Path dir = Debug.somedir("proto-recordings");
+	Path dir = Utils.path(System.getProperty("user.dir", ".")).resolve("proto-recordings");
 	java.io.File dirFile = dir.toFile();
 	if(!dirFile.exists()) dirFile.mkdirs();
 	String filename = String.format("retro-%tY%<tm%<td-%<tH%<tM%<tS.jsonl", new java.util.Date());
