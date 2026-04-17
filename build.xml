@@ -95,6 +95,7 @@
       <pathelement path="lib/rxjava-1.1.5.jar" />
     <pathelement path="lib/sqlite-jdbc-3.42.0.0.jar" />
       </classpath>
+      <exclude name="test/**" />
       <compilerarg if:set="explicit-annotations" value="-proc:full" />
       <compilerarg value="-Xlint:unchecked" />
       <compilerarg value="-Xlint:deprecation" />
@@ -245,6 +246,35 @@
       <arg value="/k" />
       <arg value="java -cp bin/hafen.jar haven.SteamWorkshop upload bin" />
     </exec>
+  </target>
+
+  <target name="compile-tests" depends="hafen-client">
+    <mkdir dir="build/test-classes" />
+    <javac srcdir="src/test/java" destdir="build/test-classes" debug="on"
+	   includeantruntime="no">
+      <classpath>
+	<pathelement path="build/classes" />
+	<pathelement path="lib/junit-platform-console-standalone-1.10.2.jar" />
+	<pathelement path="lib/ext/jogl/jogl-all.jar" />
+	<pathelement path="lib/ext/jogl/gluegen-rt.jar" />
+	<pathelement path="lib/ext/lwjgl/lwjgl-fat.jar" />
+	<pathelement path="lib/ext/lwjgl/lwjgl-awt.jar" />
+	<pathelement path="lib/ext/lwjgl/lwjgl-opengl-fat.jar" />
+	<pathelement path="lib/ext/steamworks/steamworks4j.jar" />
+	<pathelement path="lib/jglob.jar" />
+      </classpath>
+      <compilerarg value="-Xlint:unchecked" />
+      <compilerarg value="-Xlint:-options" />
+    </javac>
+  </target>
+
+  <target name="test" depends="compile-tests">
+    <java jar="lib/junit-platform-console-standalone-1.10.2.jar" fork="true" failonerror="true">
+      <arg value="--class-path" />
+      <arg value="build/test-classes${path.separator}build/classes${path.separator}lib/jglob.jar" />
+      <arg value="--scan-classpath" />
+      <arg value="build/test-classes" />
+    </java>
   </target>
 
   <target name="clean">
