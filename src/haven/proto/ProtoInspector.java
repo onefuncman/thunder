@@ -5,6 +5,8 @@ import java.awt.Color;
 import java.nio.file.*;
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class ProtoInspector extends GameUI.Hidewnd {
     private final ProtoEventList eventList;
@@ -16,6 +18,17 @@ public class ProtoInspector extends GameUI.Hidewnd {
     private final CheckBox retroBox, retroAutoBox;
     private final Button retroDumpBtn;
     private final Label retroStatus;
+    private final CheckBox hideMovement, hideStats;
+
+    // OBJDATA flag-only events dominated by OD_MOVE/OD_LINSTEP make up ~93% of recorded traffic;
+    // an event is "movement noise" when *every* flag it carries is in this set.
+    private static final Set<String> MOVEMENT_FLAGS = new HashSet<>(Arrays.asList(
+	"OD_MOVE", "OD_LINSTEP", "OD_LINBEG", "OD_CMPEQU"));
+    // WDGMSG names that are stat-bar / tooltip spam (~85% of RMSG_WDGMSG).
+    private static final Set<String> STAT_WDGMSGS = new HashSet<>(Arrays.asList(
+	"glut", "tip", "set", "tt", "prog", "max"));
+    private static final Pattern OD_FLAG = Pattern.compile("OD_[A-Z]+");
+    private static final Pattern WDGMSG_NAME = Pattern.compile("msg '([^']+)'");
     private boolean paused = false;
     private final Session sess;
     private Consumer<ProtoEvent> listener;
@@ -113,6 +126,21 @@ public class ProtoInspector extends GameUI.Hidewnd {
 	retroStatus = add(new Label(""), x, y + UI.scale(2));
 
 	y += UI.scale(24);
+	x = 0;
+
+	add(new Label("Hide noise:"), x, y + UI.scale(2));
+	x += UI.scale(70);
+
+	hideMovement = add(new CheckBox("Movement", false), x, y);
+	hideMovement.tooltip = Text.render("Hide OBJDATA events carrying only movement flags (OD_MOVE, OD_LINSTEP, OD_LINBEG, OD_CMPEQU). Events with OD_CMPPOSE or other flags remain visible.");
+	hideMovement.changed(a -> applyFilters());
+	x += hideMovement.sz.x + UI.scale(12);
+
+	hideStats = add(new CheckBox("Stat updates", false), x, y);
+	hideStats.tooltip = Text.render("Hide stat-bar / tooltip WDGMSGs (glut, tip, set, tt, prog, max).");
+	hideStats.changed(a -> applyFilters());
+
+	y += UI.scale(24);
 
 	int listH = H - y - UI.scale(90);
 	int itemH = new Text.Foundry(Text.mono, 10).height() + UI.scale(4);
@@ -155,12 +183,31 @@ public class ProtoInspector extends GameUI.Hidewnd {
 	if(catBox != null && !catBox.a) return false;
 	if(evt.dir == ProtoEvent.Direction.IN && !showIn.a) return false;
 	if(evt.dir == ProtoEvent.Direction.OUT && !showOut.a) return false;
+	if(hideMovement.a && isMovementOnly(evt)) return false;
+	if(hideStats.a && isStatWdgmsg(evt)) return false;
 	if(!search.isEmpty()) {
 	    if(!evt.summary.toLowerCase().contains(search) &&
 	       !evt.typeName.toLowerCase().contains(search))
 		return false;
 	}
 	return true;
+    }
+
+    private static boolean isMovementOnly(ProtoEvent evt) {
+	if(!"OBJDATA".equals(evt.typeName)) return false;
+	Matcher m = OD_FLAG.matcher(evt.summary);
+	boolean anyFlag = false;
+	while(m.find()) {
+	    anyFlag = true;
+	    if(!MOVEMENT_FLAGS.contains(m.group())) return false;
+	}
+	return anyFlag;
+    }
+
+    private static boolean isStatWdgmsg(ProtoEvent evt) {
+	if(!"RMSG_WDGMSG".equals(evt.typeName)) return false;
+	Matcher m = WDGMSG_NAME.matcher(evt.summary);
+	return m.find() && STAT_WDGMSGS.contains(m.group(1));
     }
 
     public void clearEvents() {
