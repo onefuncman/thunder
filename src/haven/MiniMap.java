@@ -414,78 +414,114 @@ public class MiniMap extends Widget {
 	}
     }
 
-    public static class DisplayMarker {
-	public static final Resource.Image flagbg, flagfg;
-	public static final Coord flagcc;
+    public static class DisplayMarker implements ItemInfo.Owner, ItemInfo.Name.Dynamic {
 	public final Marker m;
 	public final Widget wdg;
 	public Text tip;
 	public Area hit;
-	private Resource.Image img;
-	private Coord imgsz;
-	private Coord cc;
-
-	static {
-	    Resource flag = Resource.local().loadwait("gfx/hud/mmap/flag");
-	    flagbg = flag.layer(Resource.imgc, 1);
-	    flagfg = flag.layer(Resource.imgc, 0);
-	    flagcc = UI.scale(flag.layer(Resource.negc).cc);
-	}
 
 	public DisplayMarker(Widget wdg, Marker marker, final UI ui) {
 	    this.wdg = wdg;
 	    this.m = marker;
 	    checkTip(marker.tip(ui));
-	    if(marker instanceof PMarker)
-		this.hit = Area.sized(flagcc.inv(), UI.scale(flagbg.sz));
-	    if(marker instanceof SMarker && wdg != null) {
-		SMarker sm = (SMarker) marker;
-		if(sm.owner == null)
-		    sm.owner = Widget.wdgctx.curry(wdg);
+	}
+
+	private static final OwnerContext.ClassResolver<DisplayMarker> ctxr = new OwnerContext.ClassResolver<DisplayMarker>()
+	    .add(Marker.class, m -> m.m)
+	    .add(Widget.class, m -> m.wdg)
+	    .add(UI.class, m -> m.wdg.ui)
+	    .add(Glob.class, m -> m.wdg.ui.sess.glob)
+	    .add(Session.class, m -> m.wdg.ui.sess);
+	public <T> T context(Class<T> cl) {
+	    return(ctxr.context(cl, this));
+	}
+
+	public String name() {
+	    return(m.nm);
+	}
+
+	private GobIcon.Icon icon = null;
+	public GobIcon.Icon icon() {
+	    if(icon == null) {
+		if(m instanceof PMarker) {
+		    icon = new Flag(this, ((PMarker)m).color, m.nm);
+		} else if(m instanceof SMarker) {
+		    SMarker sm = (SMarker)m;
+		    Resource res = sm.res.get();
+		    byte[] sdt = sm.data == null ? new byte[0] : sm.data;
+		    icon = GobIcon.getfac(res).create(this, res, new MessageBuf(sdt));
+		}
 	    }
+	    return(icon);
+	}
+
+	private List<ItemInfo> info = null;
+	public List<ItemInfo> info() {
+	    if(info == null) {
+		GobIcon.Icon ic = icon();
+		if(ic == null) {return Collections.emptyList();}
+		Object[] raw = ic.info(this);
+		info = ItemInfo.buildinfo(this, raw);
+	    }
+	    return(info);
+	}
+
+	private BufferedImage tooltipImg = null;
+	public BufferedImage tooltip() {
+	    if(tooltipImg == null) {
+		try {
+		    List<ItemInfo> in = info();
+		    if(in != null && !in.isEmpty())
+			tooltipImg = ItemInfo.longtip(in);
+		} catch(Loading l) {}
+	    }
+	    if(tooltipImg != null) {return tooltipImg;}
+	    return(tip != null ? tip.img : null);
 	}
 
 	public void draw(GOut g, Coord c, final float scale, final UI ui, final MapFile file, final boolean canShowName) {
 	    if (CFG.PVP_MAP.get()) {
-		if (m instanceof CustomMarker)
-		    if (Utils.PVP_MODE_MARKERS.contains(((CustomMarker) m).res.name))
-			m.draw(g, c, canShowName ? tip : null, scale, file);
-		if (m instanceof SMarker)
-		    if (Utils.PVP_MODE_MARKERS.contains(((SMarker) m).res.name))
-			m.draw(g, c, canShowName ? tip : null, scale, file);
+		if (m instanceof CustomMarker && Utils.PVP_MODE_MARKERS.contains(((CustomMarker) m).res.name))
+		    m.draw(g, c, canShowName ? tip : null, scale, file);
+		else if (m instanceof SMarker && Utils.PVP_MODE_MARKERS.contains(((SMarker) m).res.name))
+		    drawIcon(g, c, canShowName, scale, file);
 		return;
 	    }
-	    if(Config.always_true) {
-		checkTip(m.tip(ui));
-		if(visible()) {m.draw(g, c, canShowName ? tip : null, scale, file);}
-		return;
-	    }
-	    if(m instanceof PMarker) {
-		Coord ul = c.sub(flagcc);
-		g.chcolor(((PMarker)m).color);
-		g.image(flagfg, ul);
-		g.chcolor();
-		g.image(flagbg, ul);
-	    } else if(m instanceof SMarker) {
-		SMarker sm = (SMarker)m;
-		try {
-		    if(cc == null) {
-			Resource res = sm.res.get();
-			img = res.flayer(Resource.imgc);
-			Resource.Neg neg = res.layer(Resource.negc);
-			cc = (neg != null) ? neg.cc : img.ssz.div(2);
-			if(hit == null)
-			    hit = Area.sized(cc.inv(), img.ssz);
-		    }
-		} catch(Loading l) {
-		} catch(Exception e) {
-		    cc = Coord.z;
-		}
-		if(img != null)
-		    g.image(img, c.sub(cc));
-	    }
+	    if(!visible()) {return;}
+	    checkTip(m.tip(ui));
+	    drawQuestHighlight(g, c);
+	    drawIcon(g, c, canShowName, scale, file);
 	}
-	
+
+	private void drawIcon(GOut g, Coord c, boolean canShowName, float scale, MapFile file) {
+	    try {
+		GobIcon.Icon ic = icon();
+		if(ic != null) {
+		    ic.draw(g, c);
+		    if(canShowName && tip != null && CFG.MMAP_SHOW_MARKER_NAMES.get()) {
+			g.aimage(tip.tex(), c.addy(UI.scale(3)), 0.5, 0);
+		    }
+		} else {
+		    m.draw(g, c, canShowName ? tip : null, scale, file);
+		}
+	    } catch(Loading l) {}
+	}
+
+	private void drawQuestHighlight(GOut g, Coord c) {
+	    if(!(m instanceof SMarker)) {return;}
+	    SMarker sm = (SMarker) m;
+	    if(!CFG.QUESTHELPER_HIGHLIGHT_QUESTGIVERS.get() || sm.questConditions.isEmpty()) {return;}
+	    try {
+		Resource.Image img = sm.res.loadsaved().layer(Resource.imgc);
+		if(img == null) {return;}
+		for(QuestCondition item : new ArrayList<>(sm.questConditions)) {
+		    g.chcolor(item.questGiverMarkerColor());
+		    g.fellipse(c, img.ssz.div(2).sub(1, 1));
+		}
+		g.chcolor();
+	    } catch(Loading ignored) {}
+	}
+
 	private void checkTip(final String nm) {
 	    if (CFG.QUESTHELPER_SHOW_TASKS_IN_TOOLTIP.get() && m instanceof SMarker) {
 		StringBuilder sb = new StringBuilder(nm);
@@ -499,23 +535,18 @@ public class MiniMap extends Widget {
 	    } else if (tip == null || !tip.text.equals(nm))
 		tip = Text.renderstroked(nm, Color.WHITE, Color.BLACK);
 	}
-	
-	private Area hit(final UI ui) {
-	    if (visible()) {
-		if(hit == null)
-		    hit = m.area();
-		return hit;
-	    } else {
-		return null;
-	    }
+
+	public boolean checkhit(Coord c) {
+	    try {
+		GobIcon.Icon ic = icon();
+		if(ic != null) {return ic.checkhit(c);}
+	    } catch(Loading l) {}
+	    Area a = (hit != null) ? hit : m.area();
+	    return a != null && a.contains(c);
 	}
 
 	private boolean visible() {
 	    return true;
-	}
-
-	public BufferedImage tooltip() {
-	    return(tip != null ? tip.img : null);
 	}
     }
 
@@ -1013,8 +1044,8 @@ public class MiniMap extends Widget {
 	    if(dgrid == null)
 		continue;
 	    for(DisplayMarker mark : dgrid.markers(false, ui)) {
-	        Area hit = mark.hit(ui);
-		if((hit != null) && hit.contains(tc.sub(mark.m.tc).div(scalef())) && !filter(mark))
+		Coord rel = tc.sub(mark.m.tc).div(scalef());
+		if(mark.checkhit(rel) && !filter(mark))
 		    return(mark);
 	    }
 	}
