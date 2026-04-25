@@ -36,6 +36,8 @@ import haven.Config;
 public class TickList implements RenderList<TickList.TickNode> {
     private static volatile boolean cachedDisableYulelights = CFG.DISABLE_YULELIGHTS_FX.get();
     static { CFG.DISABLE_YULELIGHTS_FX.observe(cfg -> cachedDisableYulelights = cfg.get()); }
+    private static volatile boolean cachedParallelTick = CFG.PARALLEL_TICK.get();
+    static { CFG.PARALLEL_TICK.observe(cfg -> cachedParallelTick = cfg.get()); }
 
     private static boolean isYuleAnimFlare(Entry ent) {
 	if(!cachedDisableYulelights) return false;
@@ -158,7 +160,7 @@ public class TickList implements RenderList<TickList.TickNode> {
 			}
 		}
 	    };
-	    if(!Config.par.get())
+	    if(!Config.par.get() || !cachedParallelTick)
 		copy.forEach(task);
 	    else
 		copy.parallelStream().forEach(task);
@@ -183,7 +185,7 @@ public class TickList implements RenderList<TickList.TickNode> {
 		}
 	    }
 	};
-	if(!Config.par.get()) {
+	if(!Config.par.get() || !cachedParallelTick) {
 	    copy.forEach(ent -> task.accept(ent, g));
 	} else {
 	    Collection<Render> subs = new ArrayList<>();
