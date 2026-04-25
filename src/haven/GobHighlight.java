@@ -32,6 +32,12 @@ public class GobHighlight extends GAttrib implements Gob.SetupMod {
 	return(persistent || (System.currentTimeMillis() - start) <= duration);
     }
 
+    @Override
+    public void ctick(double dt) {
+	if(persistent || System.currentTimeMillis() - start <= duration + cycle)
+	    gob.markStateDirty();
+    }
+
     public Pipe.Op gobstate() {
 	if(persistent) {
 	    Color c = CFG.COLOR_CATTLE_HIGHLIGHT.get();
