@@ -1197,6 +1197,9 @@ public class OptWnd extends WindowX {
 	y += STEP;
 	panel.add(new CFGBox("Hide in-game character portrait", CFG.HIDE_GAMEUI_PORTRAIT, "Removes the live 3D character portrait from the top-left HUD. Reduces per-frame GPU/CPU cost. Requires reconnect to take effect."), x, y);
 
+	y += STEP;
+	panel.add(new CFGBox("Disable yulelights flicker & sound", CFG.DISABLE_YULELIGHTS_FX, "Stops the bulb-flicker animation and silences the bell ambience on christmas-light decorations. Bulbs stay visible (static). Reduces stutter near decorated trees. Audio change requires reconnect."), x, y);
+
 
 	y += STEP;
 	panel.add(new CFGBox("Colorize ridge tiles", CFG.DISPLAY_RIDGE_BOX, "Makes it easier to properly approach ridge for climbing"), x, y);

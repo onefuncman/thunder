@@ -225,6 +225,7 @@ public class CFG<T> {
     public static final CFG<Boolean> FREEZE_DOMESTIC_ANIM = new CFG<>("perf.freeze_domestic_anim", false);
     public static final CFG<Boolean> HIDE_DOMESTIC_ANIMALS = new CFG<>("perf.hide_domestic_animals", false);
     public static final CFG<Boolean> HIDE_GAMEUI_PORTRAIT = new CFG<>("display.hide_gameui_portrait", false);
+    public static final CFG<Boolean> DISABLE_YULELIGHTS_FX = new CFG<>("display.disable_yulelights_fx", true);
     public static final CFG<Boolean> MAP_COMPACT_LOCKED = new CFG<>("map.compact_locked", false);
 
     private static final String CONFIG_JSON = "config.json";

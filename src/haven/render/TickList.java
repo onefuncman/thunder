@@ -34,6 +34,19 @@ import haven.Composited;
 import haven.Config;
 
 public class TickList implements RenderList<TickList.TickNode> {
+    private static volatile boolean cachedDisableYulelights = CFG.DISABLE_YULELIGHTS_FX.get();
+    static { CFG.DISABLE_YULELIGHTS_FX.observe(cfg -> cachedDisableYulelights = cfg.get()); }
+
+    private static boolean isYuleAnimFlare(Entry ent) {
+	if(!cachedDisableYulelights) return false;
+	if(!ent.tick.getClass().getName().contains("AnimFlare") || !(ent.tick instanceof haven.Sprite)) return false;
+	haven.Sprite spr = (haven.Sprite)ent.tick;
+	try {
+	    return spr.res != null && spr.res.name != null && spr.res.name.contains("yule");
+	} catch(Throwable t) { return false; }
+    }
+
+
     private final Map<Ticking, Entry> cur = new HashMap<>();
 
     private static class Entry {
@@ -133,6 +146,8 @@ public class TickList implements RenderList<TickList.TickNode> {
 		copy = new ArrayList<>(cur.values());
 	    }
 	    Consumer<Entry> task = ent -> {
+		if(isYuleAnimFlare(ent))
+		    return;
 		if(ent.mon == null) {
 		    ent.tick.autotick(dt);
 		} else {
