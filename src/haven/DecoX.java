@@ -225,7 +225,9 @@ public class DecoX extends Window.DefaultDeco {
 	    Window wnd = decoX.wndx();
 	    Text cap = decoX.cap;
 	    if((cap == null) || (!Objects.equals(cap.text, wnd.cap))) {
+		if(cap != null) cap.dispose();
 		cap = (wnd.cap == null) ? null : cf.render(wnd.cap);
+		decoX.cap = cap;
 		decoX.cmw = (cap == null) ? 0 : cap.sz().x;
 		decoX.cpsz = Coord.of(cl.sz().x + decoX.cmw + cr.sz().x, cm.sz.y);
 		decoX.cmw = decoX.cmw - (cl.sz().x) - UI.scale(5);
