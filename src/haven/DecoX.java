@@ -182,15 +182,18 @@ public class DecoX extends Window.DefaultDeco {
 	private static final Coord mrgn = UI.scale(1, 1);
 	private static final double cay = 0.5;
 	public static final Text.Forge cf = new PUtils.BlurFurn(new PUtils.TexFurn(new Text.Foundry(Text.serif, 14).aa(true), WindowX.ctex),
+	    UI.rscale(0.75), UI.rscale(1.0), new Color(96, 96, 0));
+	public static final Text.Forge ncf = new PUtils.BlurFurn(new PUtils.TexFurn(new Text.Foundry(Text.serif, 14).aa(true), WindowX.ctex),
 	    UI.rscale(0.75), UI.rscale(1.0), Color.BLACK);
-	
+
 	public static final BufferedImage[] cbtni = new BufferedImage[]{
 	    Resource.loadsimg("gfx/hud/btn-close"),
 	    Resource.loadsimg("gfx/hud/btn-close-d"),
 	    Resource.loadsimg("gfx/hud/btn-close-h")
 	};
-	
+
 	private static final IBox wbox = new IBox.Scaled("gfx/hud/wnd", "tl", "tr", "bl", "br", "extvl", "extvr", "extht", "exthb");
+	private boolean cfocus;
 	
 	@Override
 	public void apply(WindowX wndX, DecoX decoX) {
@@ -224,9 +227,9 @@ public class DecoX extends Window.DefaultDeco {
 	public void drawframe(GOut g, DecoX decoX) {
 	    Window wnd = decoX.wndx();
 	    Text cap = decoX.cap;
-	    if((cap == null) || (!Objects.equals(cap.text, wnd.cap))) {
+	    if((cap == null) || (!Objects.equals(cap.text, wnd.cap)) || (cfocus != wnd.hasfocus)) {
 		if(cap != null) cap.dispose();
-		cap = (wnd.cap == null) ? null : cf.render(wnd.cap);
+		cap = (wnd.cap == null) ? null : ((cfocus = wnd.hasfocus) ? cf : ncf).render(wnd.cap);
 		decoX.cap = cap;
 		decoX.cmw = (cap == null) ? 0 : cap.sz().x;
 		decoX.cpsz = Coord.of(cl.sz().x + decoX.cmw + cr.sz().x, cm.sz.y);
