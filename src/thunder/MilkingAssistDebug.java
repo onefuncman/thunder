@@ -174,8 +174,9 @@ public final class MilkingAssistDebug implements Feature {
 		if(args.length < 2) throw new Exception("usage: dev.milk.fire <uid_decimal_or_hex>");
 		UID uid = parseUid(args[1]);
 		MilkingAssist.debugSetPending(uid);
-		cons.out.println("milk: pending set to uid=" + uid + " (ttl="
-				 + MilkingAssist.PENDING_TTL_MS + "ms)");
+		MilkingAssist.Pending p = MilkingAssist.debugPeekPending();
+		long ttl = (p != null) ? (p.deadline - System.currentTimeMillis()) : 0;
+		cons.out.println("milk: pending set to uid=" + uid + " (ttl=" + ttl + "ms)");
 	    });
 	verbs.put("clear", (cons, args) -> {
 		MilkingAssist.debugClearPending();
