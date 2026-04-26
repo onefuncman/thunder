@@ -2936,6 +2936,7 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 		if(gob != null) {
 		    if(clickb == 3) {
 			Reactor.GOB_INTERACT.onNext(gob);
+			thunder.MilkingAssist.onGobRightClick(gob, clickb);
 		    }
 		    if(ui.gui.mapfile.domark) {
 			ui.gui.mapfile.addMarker(gob);
@@ -3108,6 +3109,7 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 		    args = Utils.extend(args, inf.clickargs());
 		Gob clicked = (inf != null) ? Gob.from(inf.ci) : null;
 		thunder.TileQuality.markPendingFillFromMap(ui.gui, mc, clicked);
+		thunder.MilkingAssist.onItemInteract(clicked);
 		wdgmsg("itemact", args);
 	    }
 	}.run();

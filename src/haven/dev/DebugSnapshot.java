@@ -35,9 +35,7 @@ public final class DebugSnapshot {
     public static Path write(String feature, JSONObject body) throws IOException {
 	if(feature == null || body == null)
 	    throw new IllegalArgumentException("feature and body must be non-null");
-	Path dir = Utils.path(System.getProperty("user.dir", "."))
-	    .resolve("dev-snapshots").resolve(feature);
-	Files.createDirectories(dir);
+	Path dir = featureDir(feature);
 	String name = String.format("%tY%<tm%<td-%<tH%<tM%<tS-%<tL.jsonl", new Date());
 	Path file = dir.resolve(name);
 	try(Writer w = Files.newBufferedWriter(file, CREATE, TRUNCATE_EXISTING)) {
@@ -49,6 +47,30 @@ public final class DebugSnapshot {
 	    w.write(body.toString());   w.write('\n');
 	}
 	return file;
+    }
+
+    /**
+     * Write a fresh per-dump file containing the pretty-printed JSON body.
+     * Used by {@code dev.<feature>.dump} so each invocation lands in its own
+     * timestamped file instead of dumping to the chat console.
+     */
+    public static Path writeDump(String feature, JSONObject body) throws IOException {
+	if(feature == null || body == null)
+	    throw new IllegalArgumentException("feature and body must be non-null");
+	String name = String.format("dump-%tY%<tm%<td-%<tH%<tM%<tS-%<tL.json", new Date());
+	Path file = featureDir(feature).resolve(name);
+	try(Writer w = Files.newBufferedWriter(file, CREATE, TRUNCATE_EXISTING)) {
+	    w.write(body.toString(2));
+	    w.write('\n');
+	}
+	return file;
+    }
+
+    private static Path featureDir(String feature) throws IOException {
+	Path dir = Utils.path(System.getProperty("user.dir", "."))
+	    .resolve("dev-snapshots").resolve(feature);
+	Files.createDirectories(dir);
+	return dir;
     }
 
     private DebugSnapshot() {}

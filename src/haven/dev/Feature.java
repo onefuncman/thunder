@@ -54,4 +54,14 @@ public interface Feature {
      * {@code dump}/{@code snapshot} pair (e.g. {@code fire}, {@code clear}).
      */
     default Map<String, Console.Command> extraVerbs() { return Collections.emptyMap(); }
+
+    /**
+     * Optional per-feature one-shot protocol capture. When non-null,
+     * {@link DevFeature#register} adds a {@code dev.<name>.capture} verb
+     * that calls {@link FeatureCapture#arm}. The feature itself decides
+     * where to call {@link FeatureCapture#beginIfArmed} (typically at the
+     * start of an action) and {@link FeatureCapture#endIfActive} (on
+     * resolve, expire, or other terminal state).
+     */
+    default FeatureCapture protoCapture() { return null; }
 }

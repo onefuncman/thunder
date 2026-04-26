@@ -167,6 +167,14 @@ public class RosterWindow extends Window {
 	rmseq++;
     }
 
+    public void unmemorize(UID id) {
+	if(id == null) return;
+	synchronized(memorized) {
+	    if(!memorized.remove(id)) return;
+	}
+	rmseq++;
+    }
+
     public void refreshMemorized() {
 	synchronized(memorized) {
 	    memorized.clear();

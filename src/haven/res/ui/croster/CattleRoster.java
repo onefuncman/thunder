@@ -440,6 +440,8 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 	T entry = entries.remove(id);
 	if(entry == null) return;
 	clearGobHighlight(id);
+	RosterWindow w = getparent(RosterWindow.class);
+	if(w != null) w.unmemorize(id);
 	entry.destroy();
 	dirty = true;
 	entryseq++;
@@ -458,11 +460,9 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 	    T entry = parse(args);
 	    T old = entries.get(entry.id);
 	    boolean wasMarked = (old != null) && old.mark.a;
-	    boolean wasLactating = boolField(old, "lactate");
-	    boolean nowLactating = boolField(entry, "lactate");
 	    delentry(entry.id);
 	    addentry(entry);
-	    if(thunder.roster.RosterLogic.shouldRestoreMark(wasMarked, wasLactating, nowLactating, milkingAssist()))
+	    if(wasMarked)
 		entry.mark.set(true);
 	} else if(msg == "rm") {
 	    delentry((UID)args[0]);
@@ -549,21 +549,6 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 	    } catch(IllegalAccessException ignored) {}
 	    return(false);
 	};
-    }
-
-    private static boolean boolField(Object e, String name) {
-	if(e == null) return(false);
-	Field f = findField(e.getClass(), name);
-	if(f == null) return(false);
-	try {
-	    Object v = f.get(e);
-	    return (v instanceof Boolean) && ((Boolean)v).booleanValue();
-	} catch(IllegalAccessException ignored) { return(false); }
-    }
-
-    private boolean milkingAssist() {
-	RosterWindow w = getparent(RosterWindow.class);
-	return(w != null && w.milkingAssist);
     }
 
     private static Field findField(Class<?> cls, String name) {

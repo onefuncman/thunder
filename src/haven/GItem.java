@@ -366,7 +366,6 @@ public class GItem extends AWidget implements ItemInfo.SpriteOwner, GSprite.Owne
 		sdt = (args.length > 1) ? new MessageBuf((byte[])args[1]) : MessageBuf.nil;
 		spr = null;
 	    }
-	    thunder.MilkingAssist.onItemChres(this);
 	} else if(name == "tt") {
 	    info = null;
 	    rawinfo = new ItemInfo.Raw(args);
@@ -376,7 +375,6 @@ public class GItem extends AWidget implements ItemInfo.SpriteOwner, GSprite.Owne
 	    meterUpdated = System.currentTimeMillis();
 	    if(sendttupdate){wdgmsg("ttupdate");}
 	    TileQuality.onItemInfoUpdate(this);
-	    thunder.MilkingAssist.onItemInfoUpdate(this);
 	} else if(name == "meter") {
 	    meterUpdated = System.currentTimeMillis();
 	    meter = Utils.iv(args[0]);

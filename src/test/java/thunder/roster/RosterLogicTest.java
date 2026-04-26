@@ -12,40 +12,6 @@ import static org.junit.jupiter.api.Assertions.*;
 public class RosterLogicTest {
 
     // ----------------------------------------------------------------------
-    // shouldRestoreMark
-    // ----------------------------------------------------------------------
-
-    @Test
-    void unmarkedEntryStaysUnmarked() {
-	assertFalse(RosterLogic.shouldRestoreMark(false, true, false, true));
-	assertFalse(RosterLogic.shouldRestoreMark(false, false, false, false));
-    }
-
-    @Test
-    void markedEntryWithoutMilkingAssistAlwaysRestores() {
-	assertTrue(RosterLogic.shouldRestoreMark(true, true, false, false));  // lactate flipped
-	assertTrue(RosterLogic.shouldRestoreMark(true, true, true, false));   // no flip
-	assertTrue(RosterLogic.shouldRestoreMark(true, false, false, false));
-    }
-
-    @Test
-    void milkingAssistDropsMarkOnLactateFlip() {
-	assertFalse(RosterLogic.shouldRestoreMark(true, true, false, true));
-    }
-
-    @Test
-    void milkingAssistKeepsMarkWhenLactateUnchanged() {
-	assertTrue(RosterLogic.shouldRestoreMark(true, true, true, true));
-	assertTrue(RosterLogic.shouldRestoreMark(true, false, false, true));
-    }
-
-    @Test
-    void milkingAssistKeepsMarkWhenLactateGainedNotLost() {
-	// false -> true is not a milk-completion signal.
-	assertTrue(RosterLogic.shouldRestoreMark(true, false, true, true));
-    }
-
-    // ----------------------------------------------------------------------
     // combineOrder
     // ----------------------------------------------------------------------
 

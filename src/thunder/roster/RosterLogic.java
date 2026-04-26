@@ -12,29 +12,6 @@ public class RosterLogic {
     private RosterLogic() {}
 
     /**
-     * Mark-preservation decision for {@code "upd"} messages on the roster.
-     *
-     * <p>The server sends {@code upd} whenever a roster entry's data changes
-     * (name, quality, lactate, branding, etc). The old entry is destroyed and
-     * a fresh one is added, so its {@code mark} checkbox state would normally
-     * be lost. We restore it unless the update represents a completed milking
-     * (lactate flipped true -> false) and milking-assist is enabled, in which
-     * case we leave the new entry unmarked so it disappears from the active
-     * selection.
-     *
-     * @return true if the caller should re-apply the old mark state to the
-     *         newly-added entry.
-     */
-    public static boolean shouldRestoreMark(boolean wasMarked,
-					    boolean wasLactating,
-					    boolean nowLactating,
-					    boolean milkingAssistOn) {
-	if(!wasMarked) return(false);
-	boolean justMilked = wasLactating && !nowLactating;
-	return(!(milkingAssistOn && justMilked));
-    }
-
-    /**
      * Build the effective sort comparator from a user-selected primary and
      * (optional) secondary. Either may be null. {@code tieBreaker} is appended
      * when the primary is non-null and differs from the tie-breaker itself,

@@ -139,6 +139,7 @@ public class RootWidget extends ConsoleHost implements UI.Notice.Handler, Widget
 	    Indir<Resource> resid = ui.sess.getresv(args[a++]);
 	    double vol = (args.length > a) ? Utils.dv(args[a++]) : 1.0;
 	    double spd = (args.length > a) ? Utils.dv(args[a++]) : 1.0;
+	    thunder.MilkingAssist.onSfx(ui, resid);
 	    ui.sess.glob.loader.defer(() -> {
 		Audio.CS clip = Audio.fromres(resid.get());
 		if(spd != 1.0)

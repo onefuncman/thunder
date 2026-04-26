@@ -10,6 +10,7 @@ import haven.UI;
 import haven.UID;
 import haven.dev.DevFeature;
 import haven.dev.Feature;
+import haven.dev.FeatureCapture;
 import haven.res.ui.croster.CattleRoster;
 import haven.res.ui.croster.Entry;
 import haven.res.ui.croster.RosterWindow;
@@ -36,6 +37,7 @@ public final class MilkingAssistDebug implements Feature {
 
     public String name() { return "milk"; }
     public CFG<Boolean> toggle() { return CFG.DEBUG_MILKING_ASSIST; }
+    public FeatureCapture protoCapture() { return MilkingAssist.get().capture(); }
 
     /** Build the JSON snapshot used by dump, snapshot, and (read back) the painter. */
     public JSONObject capture() {
