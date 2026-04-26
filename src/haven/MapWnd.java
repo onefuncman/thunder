@@ -261,6 +261,9 @@ public class MapWnd extends WindowX implements Console.Directory {
     }
 
     private static final int btnw = UI.scale(95);
+    // TODO: this class is never instantiated (Toolbox2 is the live one) but kami's
+    // tree only has the equivalent of Toolbox2. Investigate whether this is dead
+    // code to delete, or a Thunder-specific layout that should be wired up.
     public class Toolbox extends Widget {
 	public final MarkerList list;
 	private final Frame listf;
