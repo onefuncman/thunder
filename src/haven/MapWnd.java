@@ -273,9 +273,11 @@ public class MapWnd extends WindowX implements Console.Directory {
     }
 
     private static final int btnw = UI.scale(95);
-    // TODO: this class is never instantiated (Toolbox2 is the live one) but kami's
-    // tree only has the equivalent of Toolbox2. Investigate whether this is dead
-    // code to delete, or a Thunder-specific layout that should be wired up.
+    // Not instantiated. Kept as a loftar-merge shim: loftar still uses this
+    // class as his live Toolbox, so his upstream changes apply here cleanly.
+    // Translate them into Toolbox2 (the live class below) post-merge. Removing
+    // this would force conflict resolution on every loftar merge that touches
+    // marker UI. Pattern dates to Ender's 2021 cfb4bb7f7 rework.
     public class Toolbox extends Widget {
 	public final MarkerList list;
 	private final Frame listf;
