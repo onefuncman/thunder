@@ -88,6 +88,7 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
     private enum Direction {
 	WEST, EAST, NORTH, SOUTH
     }
+
     
     public abstract class Camera implements Pipe.Op {
 	protected haven.render.Camera view = new haven.render.Camera(Matrix4f.identity());
@@ -503,6 +504,10 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
     public static KeyBinding kb_camin    = KeyBinding.get("cam-in",    KeyMatchFake.forcode(KeyEvent.VK_UP, 0));
     public static KeyBinding kb_camout   = KeyBinding.get("cam-out",   KeyMatchFake.forcode(KeyEvent.VK_DOWN, 0));
     public static KeyBinding kb_camreset = KeyBinding.get("cam-reset", KeyMatchFake.forcode(KeyEvent.VK_HOME, 0));
+    public static final KeyBinding kb_plobSnapLeft  = KeyBinding.get("plob-snap-left",  KeyMatch.forchar('Q', 0));
+    public static final KeyBinding kb_plobSnapRight = KeyBinding.get("plob-snap-right", KeyMatch.forchar('E', 0));
+    public static final KeyBinding kb_plobSnapUp    = KeyBinding.get("plob-snap-up",    KeyMatch.forchar('W', 0));
+    public static final KeyBinding kb_plobSnapDown  = KeyBinding.get("plob-snap-down",  KeyMatch.forchar('S', 0));
     public class SOrthoCam extends OrthoCam {
 	private Coord dragorig = null;
 	private float anglorig;
@@ -1950,7 +1955,10 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	    Coord2d nc;
 	    if((modflags & UI.MOD_SHIFT) == 0)
 		nc = mc.floor(tilesz).mul(tilesz).add(tilesz.div(2));
-	    else if(plobpgran > 0)
+	    else if(plobpgran > 0 && !plob.forceFine)
+		// forceFine (set after a snap keypress) disables sub-tile quantization so the
+		// abutted sub-pixel position survives the next mouse twitch instead of jumping
+		// to the nearest 1/plobpgran cell.
 		nc = mc.div(tilesz).mul(plobpgran).roundf().div(plobpgran).mul(tilesz);
 	    else
 		nc = mc;
@@ -1978,6 +1986,9 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
     
     public class Plob extends Gob {
 	public PlobAdjust adjust = new StdPlace();
+	// Set true after the first snap keypress for this placer; tells StdPlace.adjust to skip
+	// quantization so post-snap mouse nudges preserve the abutted sub-pixel position.
+	public boolean forceFine = false;
 	Coord lastmc = null;
 	RenderTree.Slot slot;
 	
@@ -2009,14 +2020,15 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	
 	private class Adjust extends Maptest {
 	    int modflags;
-	    
+
 	    Adjust(Coord c, int modflags) {
 		super(c);
 		this.modflags = modflags;
 	    }
-	    
+
 	    public void hit(Coord pc, Coord2d mc) {
-		adjust.adjust(Plob.this, pc, mc, modflags);
+		int mf = forceFine ? (modflags | UI.MOD_SHIFT) : modflags;
+		adjust.adjust(Plob.this, pc, mc, mf);
 		lastmc = pc;
 	    }
 	}
@@ -2206,7 +2218,613 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	protected abstract void hit(Coord pc, Coord2d mc, ClickData inf);
 	protected void nohit(Coord pc) {}
     }
-    
+
+    // Snap the placer flush against the `dir` side of whatever the cursor is on, in world
+    // footprint space. We look up `mc` (the world coord under the cursor pixel) and find a
+    // terobj gob whose footprint AABB in world space contains `mc`. That gob wins. Otherwise
+    // fall back to aligning with the tile containing `mc`.
+    //
+    // Footprint-based picking (rather than reading the click pickbuffer) keeps the target
+    // selector and the snap math in the same coordinate space. The pickbuffer reports the
+    // gob whose visual mesh covers the cursor pixel -- for a tall sprite like a cupboard,
+    // that mesh extends far above the gob's ground footprint, so a cursor on the cupboard's
+    // top would pick a gob whose footprint AABB is hundreds of pixels away from the cursor.
+    // Snapping against that distant footprint produces big teleports. Footprint-contains-mc
+    // makes "where the cursor is" mean "the ground patch at the cursor," which is what the
+    // server uses for placement validation anyway.
+    private void snapPlob(Plob placing, PlobSnap.Dir dir) {
+	placing.forceFine = true;
+	Coord sc = ui.mc.sub(rootpos());
+	new Maptest(sc) {
+		protected void hit(Coord pc, Coord2d mc) {
+		    applyPlobSnap(placing, dir, mc);
+		}
+		protected void nohit(Coord pc) {
+		    snapLog("abort: cursor not on map");
+		}
+	    }.run();
+    }
+
+    private static void snapLog(String fmt, Object... args) {
+	Debug.log.println("[plobsnap] " + String.format(fmt, args));
+    }
+
+    private static String fmtBox(double[] b) {
+	if(b == null) return "null";
+	return String.format("[%.2f,%.2f .. %.2f,%.2f w=%.2f h=%.2f]",
+			     b[0], b[1], b[2], b[3], b[2] - b[0], b[3] - b[1]);
+    }
+
+    // World-space separation between two AABBs as (dx, dy). Positive component = gap on that
+    // axis; negative = overlap depth. AABBs touch flush when one component is 0 and the other
+    // is non-negative. Marked OVERLAP only when both axes overlap (i.e. the boxes intersect).
+    private static String fmtWorldGap(double[] a, double[] b) {
+	if(a == null || b == null) return "n/a";
+	double dx = Math.max(b[0] - a[2], a[0] - b[2]);
+	double dy = Math.max(b[1] - a[3], a[1] - b[3]);
+	String tag = (dx < 0 && dy < 0) ? " OVERLAP" : "";
+	return String.format("(dx=%.3f, dy=%.3f)%s", dx, dy, tag);
+    }
+
+    private void applyPlobSnap(Plob placing, PlobSnap.Dir dir, Coord2d mc) {
+	Coord cursor = ui.mc.sub(rootpos());
+	Coord2d startRc = placing.rc;
+	double[] placerBox = screenAabbForGob(placing);
+	double[] placerWorld = worldFootprintAabb(placing);
+	snapLog("placer res: orig=%s mesh=%s pts=%d", resName(placing), resName(snapMeshRes(placing)), polyPointCount(snapMeshRes(placing)));
+	if(placerBox == null) { snapLog("abort: placer screen AABB null (no obst?)"); return; }
+
+	int[] axis = screenDirToWorldAxis(placing.rc, dir);
+	if(axis == null) { snapLog("abort: Jacobian singular near %s", placing.rc); return; }
+
+	Gob target = findGobByFootprint(placing, mc);
+	String pickedBy = "footprint";
+	if(target == null) {
+	    target = findGobInDirection(placing, mc, axis);
+	    if(target != null) pickedBy = "directional";
+	}
+	if(target != null)
+	    snapLog("target res: orig=%s mesh=%s pts=%d picker=%s", resName(target), resName(snapMeshRes(target)), polyPointCount(snapMeshRes(target)), pickedBy);
+
+	double[] targetBox;
+	double[] targetWorld;
+	String source;
+	boolean tileMode;
+	if(target != null) {
+	    targetBox = screenAabbForGob(target);
+	    targetWorld = worldFootprintAabb(target);
+	    source = "gob " + gobDesc(target) + " rc=" + target.rc;
+	    tileMode = false;
+	} else {
+	    Coord2d tileOrigin = mc.floor(tilesz).mul(tilesz);
+	    targetBox = screenAabbFromWorldPoly(new Coord2d[] {
+		    tileOrigin,
+		    tileOrigin.add(tilesz.x, 0),
+		    tileOrigin.add(tilesz.x, tilesz.y),
+		    tileOrigin.add(0, tilesz.y),
+		});
+	    targetWorld = new double[] {
+		tileOrigin.x, tileOrigin.y,
+		tileOrigin.x + tilesz.x, tileOrigin.y + tilesz.y };
+	    source = "tile origin=" + tileOrigin
+		+ " (no terobj footprint contains mc; nearest: " + describeNearbyTerobjs(placing, mc, 3) + ")";
+	    tileMode = true;
+	}
+	snapLog("%s cursor=%s mc=%s target=%s targetWorld=%s",
+		dir, cursor, mc, source, fmtBox(targetWorld));
+
+	if(placerWorld == null || targetWorld == null) { snapLog("abort: world AABB null"); return; }
+
+	// World-axis snap. The screen direction maps to a world cardinal axis at the current
+	// camera yaw (computed above as `axis`). We compute the abut directly in world coords
+	// so the placer's world footprint actually meets the target's flush, instead of being
+	// screen-flush at some arbitrary world offset.
+	String axisDesc = (axis[0] != 0 ? (axis[0] < 0 ? "-X" : "+X") : (axis[1] < 0 ? "-Y" : "+Y"));
+
+	// Tiny gap on every gob abut so the server's placement tolerance accepts the snap.
+	// Tile-align mode uses 0 since it deliberately puts the placer inside the tile.
+	// Walls/arches get a larger gap because they carry implicit placement clearance.
+	double extraGap = ABUT_GAP;
+	if(tileMode) {
+	    extraGap = 0;
+	} else if(target != null) {
+	    Resource tres = null;
+	    try { tres = target.getres(); } catch(Loading ignored) {}
+	    if(tres != null && tres.name.startsWith(WALL_GAP_PREFIX))
+		extraGap = WALL_GAP;
+	}
+
+	// Directional-scan picker means the user gestured toward an off-cursor gob; the natural
+	// intent is "slide me toward that thing and stop when I hit it" -- i.e. abut on the
+	// target's near side (the one facing the placer), not the +/-axis side. Footprint-
+	// contains picker keeps the original semantic ("place me on the <axis> side of this
+	// thing I'm hovering"). Tile-align is unaffected.
+	boolean abutNearSide = "directional".equals(pickedBy);
+
+	double dxWorld = 0, dyWorld = 0;
+	if(tileMode) {
+	    // Align: placer's edge on `axis` side meets the tile's same-side edge (placer stays inside the tile).
+	    if(axis[0] == -1)      dxWorld = targetWorld[0] - placerWorld[0];
+	    else if(axis[0] ==  1) dxWorld = targetWorld[2] - placerWorld[2];
+	    else if(axis[1] == -1) dyWorld = targetWorld[1] - placerWorld[1];
+	    else                   dyWorld = targetWorld[3] - placerWorld[3];
+	} else if(abutNearSide) {
+	    // Slide-and-stop: placer's leading edge (in axis direction) meets target's facing edge.
+	    if(axis[0] == -1)      dxWorld = (targetWorld[2] + extraGap) - placerWorld[0];
+	    else if(axis[0] ==  1) dxWorld = (targetWorld[0] - extraGap) - placerWorld[2];
+	    else if(axis[1] == -1) dyWorld = (targetWorld[3] + extraGap) - placerWorld[1];
+	    else                   dyWorld = (targetWorld[1] - extraGap) - placerWorld[3];
+	} else {
+	    // Footprint mode: placer ends up on the `axis` side of the target, flush.
+	    if(axis[0] == -1)      dxWorld = (targetWorld[0] - extraGap) - placerWorld[2];
+	    else if(axis[0] ==  1) dxWorld = (targetWorld[2] + extraGap) - placerWorld[0];
+	    else if(axis[1] == -1) dyWorld = (targetWorld[1] - extraGap) - placerWorld[3];
+	    else                   dyWorld = (targetWorld[3] + extraGap) - placerWorld[1];
+	}
+	Coord2d newRc = placing.rc.add(dxWorld, dyWorld);
+	double[] newPlacerWorld = {
+	    placerWorld[0] + dxWorld, placerWorld[1] + dyWorld,
+	    placerWorld[2] + dxWorld, placerWorld[3] + dyWorld };
+	String violation = (extraGap > 0) ? null : checkWorldSnapInvariant(axis, newPlacerWorld, targetWorld, tileMode);
+	snapLog("  rc %s->%s world %s->%s screen %s axis=%s d=(%.4f,%.4f) gap=%.3f worldGap=%s%s",
+		startRc, newRc,
+		fmtBox(placerWorld), fmtBox(newPlacerWorld),
+		fmtBox(placerBox),
+		axisDesc, dxWorld, dyWorld, extraGap,
+		fmtWorldGap(newPlacerWorld, targetWorld),
+		(violation != null ? " WORLD_INVARIANT_BROKEN=" + violation : ""));
+	if(violation != null) {
+	    snapLog("refusing to move: invariant check failed");
+	    return;
+	}
+	placing.move(newRc, placing.a);
+	warpCursorToPlacer(placing);
+    }
+
+    // Map a screen direction to the world cardinal axis it best corresponds to at the current
+    // camera yaw. Returns {dxSign, dySign} where exactly one is +/-1 and the other is 0.
+    private int[] screenDirToWorldAxis(Coord2d w, PlobSnap.Dir dir) {
+	double sx = 0, sy = 0;
+	switch(dir) {
+	case LEFT:  sx = -1; break;
+	case RIGHT: sx =  1; break;
+	case UP:    sy = -1; break;
+	case DOWN:  sy =  1; break;
+	}
+	Coord2d worldDir = screenDeltaToWorld(w, sx, sy);
+	if(worldDir == null) return null;
+	if(Math.abs(worldDir.x) > Math.abs(worldDir.y))
+	    return new int[] { worldDir.x > 0 ? 1 : -1, 0 };
+	return new int[] { 0, worldDir.y > 0 ? 1 : -1 };
+    }
+
+    // World-space post-condition check. Verifies the placer's footprint actually meets the
+    // target's footprint flush in world coords on the chosen world axis. Catches arithmetic
+    // sign flips in the abut math.
+    private static String checkWorldSnapInvariant(int[] axis, double[] newPlacer, double[] target, boolean tileMode) {
+	double eps = 0.05;
+	if(tileMode) {
+	    if(axis[0] == -1)      { if(Math.abs(newPlacer[0] - target[0]) > eps) return String.format("-X tile: placer.left %.3f != tile.left %.3f", newPlacer[0], target[0]); }
+	    else if(axis[0] ==  1) { if(Math.abs(newPlacer[2] - target[2]) > eps) return String.format("+X tile: placer.right %.3f != tile.right %.3f", newPlacer[2], target[2]); }
+	    else if(axis[1] == -1) { if(Math.abs(newPlacer[1] - target[1]) > eps) return String.format("-Y tile: placer.front %.3f != tile.front %.3f", newPlacer[1], target[1]); }
+	    else                   { if(Math.abs(newPlacer[3] - target[3]) > eps) return String.format("+Y tile: placer.back %.3f != tile.back %.3f", newPlacer[3], target[3]); }
+	} else {
+	    if(axis[0] == -1)      { if(Math.abs(newPlacer[2] - target[0]) > eps) return String.format("-X: placer.right %.3f != target.left %.3f", newPlacer[2], target[0]); }
+	    else if(axis[0] ==  1) { if(Math.abs(newPlacer[0] - target[2]) > eps) return String.format("+X: placer.left %.3f != target.right %.3f", newPlacer[0], target[2]); }
+	    else if(axis[1] == -1) { if(Math.abs(newPlacer[3] - target[1]) > eps) return String.format("-Y: placer.back %.3f != target.front %.3f", newPlacer[3], target[1]); }
+	    else                   { if(Math.abs(newPlacer[1] - target[3]) > eps) return String.format("+Y: placer.front %.3f != target.back %.3f", newPlacer[1], target[3]); }
+	}
+	return null;
+    }
+
+    // Old screen-space invariant; unused by the new world-axis snap. Kept as a reference
+    // for what the screen-space contract was when the snap was screen-axis.
+    @SuppressWarnings("unused")
+    private static String checkSnapInvariant(PlobSnap.Dir dir, double[] newPlacer, double[] target, boolean tileMode) {
+	double eps = 0.5; // subpixel slack; finite differences + integer rounding in warp
+	if(tileMode) {
+	    // Tile mode: placer's `dir`-side edge aligns with the tile's same-side edge.
+	    switch(dir) {
+	    case LEFT:  if(Math.abs(newPlacer[0] - target[0]) > eps) return String.format("LEFT tile: placer.left %.2f != tile.left %.2f", newPlacer[0], target[0]); break;
+	    case RIGHT: if(Math.abs(newPlacer[2] - target[2]) > eps) return String.format("RIGHT tile: placer.right %.2f != tile.right %.2f", newPlacer[2], target[2]); break;
+	    case UP:    if(Math.abs(newPlacer[1] - target[1]) > eps) return String.format("UP tile: placer.top %.2f != tile.top %.2f", newPlacer[1], target[1]); break;
+	    case DOWN:  if(Math.abs(newPlacer[3] - target[3]) > eps) return String.format("DOWN tile: placer.bottom %.2f != tile.bottom %.2f", newPlacer[3], target[3]); break;
+	    }
+	} else {
+	    // Gob mode: placer ends up on the `dir` side of the target, flush.
+	    switch(dir) {
+	    case LEFT:
+		if(Math.abs(newPlacer[2] - target[0]) > eps) return String.format("LEFT: placer.right %.2f != target.left %.2f", newPlacer[2], target[0]);
+		if(newPlacer[2] > target[0] + eps) return "LEFT: placer still right of target.left";
+		break;
+	    case RIGHT:
+		if(Math.abs(newPlacer[0] - target[2]) > eps) return String.format("RIGHT: placer.left %.2f != target.right %.2f", newPlacer[0], target[2]);
+		if(newPlacer[0] < target[2] - eps) return "RIGHT: placer still left of target.right";
+		break;
+	    case UP:
+		if(Math.abs(newPlacer[3] - target[1]) > eps) return String.format("UP: placer.bottom %.2f != target.top %.2f", newPlacer[3], target[1]);
+		if(newPlacer[3] > target[1] + eps) return "UP: placer still below target.top";
+		break;
+	    case DOWN:
+		if(Math.abs(newPlacer[1] - target[3]) > eps) return String.format("DOWN: placer.top %.2f != target.bottom %.2f", newPlacer[1], target[3]);
+		if(newPlacer[1] < target[3] - eps) return "DOWN: placer still above target.bottom";
+		break;
+	    }
+	}
+	return null;
+    }
+
+    // Resource prefix allowed as a snap target. Terrain objects (walls, barrels, furniture)
+    // only -- skips characters (gfx/borka/body), animals (gfx/kritter/*), effects, icons, etc.
+    // A non-terobj under the cursor falls through to the tile path.
+    private static final String PLOB_SNAP_PREFIX = "gfx/terobjs/";
+
+    // Tiny extra gap added to gob abuts so the server's placement tolerance accepts the snap.
+    // The server appears to treat zero-gap (touching build obstacles) as overlap and rejects.
+    // 0.1 world units is below 1 screen pixel at typical zoom -- invisible but enough to clear
+    // the check. Tile-align mode doesn't use this (it deliberately puts the placer inside the
+    // tile, no abut involved).
+    private static final double ABUT_GAP = 0.1;
+
+    // Walls/arches need a larger gap. Empirically the server rejects cupboard-against-wall
+    // at 0.1 even though the visible/declared obstacle boundaries don't overlap; the wall
+    // appears to carry implicit placement clearance beyond what its obstacle layers declare.
+    private static final String WALL_GAP_PREFIX = "gfx/terobjs/arch/";
+    private static final double WALL_GAP = 0.2;
+
+    // Resolve a gob to the resource whose obst+neg layers Hitbox actually renders. Mirrors
+    // Hitbox.getResource: applies Hitbox.fix (substitutions for horses/producesack/etc.) then
+    // follows a RenderLink.MeshMat to the linked mesh resource if one exists. Without this,
+    // composite terobjs (cupboards, walls, etc. that point at a separate mesh resource) get
+    // their snap geometry computed from the wrong polygon set, and the rendered hitbox
+    // outlines don't match what the snap math thinks it aligned.
+    //
+    // Plob fallback: a Plob's main drawable is a generic placement marker (`ui/gobcp`) with
+    // no footprint. The real geometry comes from one of its overlays (the actual placement
+    // sprite the server attached). When the main res resolves to zero polypoints, walk
+    // overlays and use the first whose resource has a footprint.
+    private static Resource snapMeshRes(Gob g) {
+	Resource res;
+	try { res = g.getres(); } catch(Loading ignored) { return null; }
+	if(res == null) return null;
+	Resource resolved = snapMeshRes(g, res);
+	if(polyPointCount(resolved) > 0) return resolved;
+	// Plob path 1: ui/gobcp's Sprite (Gobcopy class) holds a reference to the source Gob
+	// being mirrored. Found via reflection because Gobcopy is loaded from server-sent
+	// resource bytecode -- we can't import the class. Use the source gob's resource.
+	if(g instanceof Plob && ((Plob) g).drawable instanceof ResDrawable) {
+	    Sprite spr = ((ResDrawable) ((Plob) g).drawable).spr;
+	    Gob source = findEmbeddedGob(spr);
+	    if(source != null && source != g) {
+		Resource sourceRes = snapMeshRes(source);
+		if(polyPointCount(sourceRes) > 0) return sourceRes;
+	    }
+	}
+	// Plob path 2: walk overlays for one with a footprint. Catches placers whose
+	// placement message attaches the actual mesh as an overlay.
+	List<Gob.Overlay> snapshot;
+	synchronized(g.ols) { snapshot = new ArrayList<>(g.ols); }
+	for(Gob.Overlay ol : snapshot) {
+	    Resource olRes = overlayRes(ol);
+	    if(olRes == null) continue;
+	    Resource olResolved = snapMeshRes(g, olRes);
+	    if(polyPointCount(olResolved) > 0) return olResolved;
+	}
+	return resolved;
+    }
+
+    // Reflectively find the first non-null `Gob`-typed field on a Sprite (walking superclass
+    // chain). Used to extract the source gob from `Gobcopy` placement sprites.
+    private static Gob findEmbeddedGob(Sprite spr) {
+	if(spr == null) return null;
+	for(Class<?> c = spr.getClass(); c != null && c != Object.class; c = c.getSuperclass()) {
+	    java.lang.reflect.Field[] fields;
+	    try { fields = c.getDeclaredFields(); }
+	    catch(Throwable t) { continue; }
+	    for(java.lang.reflect.Field f : fields) {
+		if(java.lang.reflect.Modifier.isStatic(f.getModifiers())) continue;
+		if(!Gob.class.isAssignableFrom(f.getType())) continue;
+		try {
+		    f.setAccessible(true);
+		    Object v = f.get(spr);
+		    if(v instanceof Gob) return (Gob) v;
+		} catch(Throwable t) {}
+	    }
+	}
+	return null;
+    }
+
+    // Read an overlay's resource without forcing sprite instantiation. For overlays added via
+    // addol(Indir<Resource>, Message), the Mill is a Sprite.Mill.FromRes and exposes the Indir
+    // directly. After the deferred init() runs, ol.spr.res is also set; fall back to that for
+    // non-FromRes overlays.
+    private static Resource overlayRes(Gob.Overlay ol) {
+	if(ol.sm instanceof Sprite.Mill.FromRes) {
+	    try { return ((Sprite.Mill.FromRes) ol.sm).res.get(); }
+	    catch(Loading ignored) { return null; }
+	}
+	Sprite spr = ol.spr;
+	return (spr != null) ? spr.res : null;
+    }
+
+    private static Resource snapMeshRes(Gob g, Resource res) {
+	Resource fixed = Hitbox.fix(g, res);
+	if(fixed == null) return null;
+	Collection<RenderLink.Res> links = fixed.layers(RenderLink.Res.class);
+	if(links != null) {
+	    for(RenderLink.Res link : links) {
+		if(link.l instanceof RenderLink.MeshMat) {
+		    try { return ((RenderLink.MeshMat) link.l).mesh.get(); }
+		    catch(Loading ignored) { return null; }
+		}
+	    }
+	}
+	return fixed;
+    }
+
+    // Find the terobj gob whose footprint AABB (in world space) contains `mc`. Phantom
+    // placers (id < 0) and the placer itself are excluded. The prefix check uses the gob's
+    // own resource name (gob type identity), but the polygon math uses the Hitbox-resolved
+    // resource (potentially a render-linked mesh) so footprint geometry matches the rendered
+    // outline. AABB containment, not polygon containment: cheaper, and terobj footprints are
+    // almost always axis-aligned rectangles. First match wins; for valid scenes terobj
+    // footprints don't overlap.
+    private Gob findGobByFootprint(Plob placing, Coord2d mc) {
+	synchronized(glob.oc) {
+	    for(Gob g : glob.oc) {
+		if(g == placing || g.id < 0) continue;
+		Resource origRes;
+		try { origRes = g.getres(); } catch(Loading ignored) { continue; }
+		if(origRes == null || !origRes.name.startsWith(PLOB_SNAP_PREFIX)) continue;
+		Resource meshRes = snapMeshRes(g, origRes);
+		if(meshRes == null) continue;
+		double[] worldBox = worldFootprintAabb(g, meshRes);
+		if(worldBox == null) continue;
+		if(mc.x >= worldBox[0] && mc.x <= worldBox[2] &&
+		   mc.y >= worldBox[1] && mc.y <= worldBox[3])
+		    return g;
+	    }
+	}
+	return null;
+    }
+
+    // World-space AABB of the gob's footprint (obst+neg polygon), with rotation applied.
+    // Same source data as `screenAabbForGob` but kept in world coords so we can test
+    // mc-containment without a screen projection round-trip.
+    private static double[] worldFootprintAabb(Gob g, Resource res) {
+	Coord2d[] pts = polyPointsForRes(res);
+	if(pts == null || pts.length == 0) return null;
+	double cs = Math.cos(g.a), sn = Math.sin(g.a);
+	double minX = Double.POSITIVE_INFINITY, minY = Double.POSITIVE_INFINITY;
+	double maxX = Double.NEGATIVE_INFINITY, maxY = Double.NEGATIVE_INFINITY;
+	for(Coord2d p : pts) {
+	    double wx = g.rc.x + p.x * cs - p.y * sn;
+	    double wy = g.rc.y + p.x * sn + p.y * cs;
+	    if(wx < minX) minX = wx;
+	    if(wx > maxX) maxX = wx;
+	    if(wy < minY) minY = wy;
+	    if(wy > maxY) maxY = wy;
+	}
+	return new double[] { minX, minY, maxX, maxY };
+    }
+
+    private static double[] worldFootprintAabb(Gob g) {
+	Resource res = snapMeshRes(g);
+	if(res == null) return null;
+	return worldFootprintAabb(g, res);
+    }
+
+    // Maximum world distance from `mc` to a candidate's near edge for the directional-scan
+    // fallback. Two tiles is generous enough to catch a thin wall the user is gesturing
+    // toward, but tight enough to avoid snapping to something the user wasn't aiming at.
+    private static final double DIRECTIONAL_SCAN_DIST = 2.0 * MCache.tilesz.x;
+
+    // Fallback target picker: when no footprint contains `mc`, scan in the chosen world axis
+    // direction for the nearest terobj whose perpendicular extent overlaps `mc`'s row/column.
+    // This recovers the case where the user gestures toward a thin gob (e.g. a 0.78-unit-wide
+    // wall) that strict footprint-containment can't catch from sub-tile cursor precision.
+    private Gob findGobInDirection(Plob placing, Coord2d mc, int[] axis) {
+	Gob best = null;
+	double bestD = Double.POSITIVE_INFINITY;
+	synchronized(glob.oc) {
+	    for(Gob g : glob.oc) {
+		if(g == placing || g.id < 0) continue;
+		Resource origRes;
+		try { origRes = g.getres(); } catch(Loading ignored) { continue; }
+		if(origRes == null || !origRes.name.startsWith(PLOB_SNAP_PREFIX)) continue;
+		Resource meshRes = snapMeshRes(g, origRes);
+		if(meshRes == null) continue;
+		double[] worldBox = worldFootprintAabb(g, meshRes);
+		if(worldBox == null) continue;
+		double d;
+		boolean perpOk;
+		if(axis[0] == -1) {
+		    d = mc.x - worldBox[2];
+		    perpOk = !(worldBox[3] < mc.y || worldBox[1] > mc.y);
+		} else if(axis[0] == 1) {
+		    d = worldBox[0] - mc.x;
+		    perpOk = !(worldBox[3] < mc.y || worldBox[1] > mc.y);
+		} else if(axis[1] == -1) {
+		    d = mc.y - worldBox[3];
+		    perpOk = !(worldBox[2] < mc.x || worldBox[0] > mc.x);
+		} else {
+		    d = worldBox[1] - mc.y;
+		    perpOk = !(worldBox[2] < mc.x || worldBox[0] > mc.x);
+		}
+		if(!perpOk || d < 0 || d > DIRECTIONAL_SCAN_DIST) continue;
+		if(d < bestD) { bestD = d; best = g; }
+	    }
+	}
+	return best;
+    }
+
+    // Used only when findGobByFootprint returns null. Walks the same candidate set, ranks by
+    // straight-line world distance from `mc` to each footprint AABB center, returns the top
+    // `n` formatted compactly. Tells you immediately whether mc was just outside a footprint
+    // (small distance) vs nowhere near one (large distances or empty list).
+    private String describeNearbyTerobjs(Plob placing, Coord2d mc, int n) {
+	List<Object[]> entries = new ArrayList<>();
+	synchronized(glob.oc) {
+	    for(Gob g : glob.oc) {
+		if(g == placing || g.id < 0) continue;
+		Resource origRes;
+		try { origRes = g.getres(); } catch(Loading ignored) { continue; }
+		if(origRes == null || !origRes.name.startsWith(PLOB_SNAP_PREFIX)) continue;
+		Resource meshRes = snapMeshRes(g, origRes);
+		if(meshRes == null) continue;
+		double[] worldBox = worldFootprintAabb(g, meshRes);
+		if(worldBox == null) continue;
+		double cx = (worldBox[0] + worldBox[2]) * 0.5;
+		double cy = (worldBox[1] + worldBox[3]) * 0.5;
+		double d = Math.hypot(mc.x - cx, mc.y - cy);
+		entries.add(new Object[] { d, g });
+	    }
+	}
+	if(entries.isEmpty()) return "none";
+	entries.sort((a, b) -> Double.compare((Double) a[0], (Double) b[0]));
+	StringBuilder sb = new StringBuilder();
+	int count = Math.min(n, entries.size());
+	for(int i = 0; i < count; i++) {
+	    if(i > 0) sb.append(", ");
+	    sb.append(gobDesc((Gob) entries.get(i)[1]))
+	      .append(String.format(" d=%.1fw", (Double) entries.get(i)[0]));
+	}
+	return sb.toString();
+    }
+
+    private void warpCursorToPlacer(Plob placing) {
+	Coord3f sc = screenxf(placing.rc);
+	if(sc == null) return;
+	Coord local = new Coord((int) Math.round(sc.x), (int) Math.round(sc.y));
+	// Pre-load lastmc with the warped screen coord so the mousemove event triggered by
+	// the cursor warp hits the `lastmc.equals(ev.c)` short-circuit in MapView.mousemove,
+	// and StdPlace.adjust (which would requantize to plobpgran) never runs for the warp.
+	// A genuine user movement later will differ from lastmc and re-trigger Adjust normally.
+	placing.lastmc = local;
+	Coord target = local.add(rootpos());
+	ui.setmousepos(target);
+    }
+
+    private static String gobDesc(Gob g) {
+	if(g == null) return "null";
+	Resource r = null;
+	try { r = g.getres(); } catch(Loading ignored) {}
+	return "#" + g.id + (r != null ? "(" + r.name + ")" : "");
+    }
+
+    private static String resName(Gob g) {
+	if(g == null) return "null";
+	try { Resource r = g.getres(); return r == null ? "null" : r.name; }
+	catch(Loading ignored) { return "Loading"; }
+    }
+
+    private static String resName(Resource r) {
+	return r == null ? "null" : r.name;
+    }
+
+
+    // Reports the obst+neg polypoint count from polyPointsForRes BEFORE the fallback fills it
+    // in. A return of 0 means the fallback box (2.2x2.2 world) is being used for this gob's
+    // footprint -- the resolved resource has no usable collision geometry and we're snapping
+    // against an arbitrary placeholder.
+    private static int polyPointCount(Resource res) {
+	if(res == null) return -1;
+	int n = 0;
+	Collection<Resource.Obstacle> obsts = res.layers(Resource.Obstacle.class);
+	if(obsts != null) {
+	    for(Resource.Obstacle o : obsts) {
+		for(Coord2d[] poly : o.p) n += poly.length;
+	    }
+	}
+	Collection<Resource.Neg> negs = res.layers(Resource.Neg.class);
+	if(negs != null) n += negs.size() * 4;
+	return n;
+    }
+
+    // Screen AABB of a gob for snap purposes: projection of its obst+neg polygon, using the
+    // same Hitbox-resolved resource (render-link aware) so the AABB matches the rendered
+    // hitbox outline. NO tile expansion -- the tile version caused ~1-tile visual gaps
+    // between abutting items.
+    private double[] screenAabbForGob(Gob g) {
+	Resource res = snapMeshRes(g);
+	if(res == null) return null;
+	Coord2d[] pts = polyPointsForRes(res);
+	if(pts == null) return null;
+	double cs = Math.cos(g.a), sn = Math.sin(g.a);
+	Coord2d[] world = new Coord2d[pts.length];
+	for(int i = 0; i < pts.length; i++) {
+	    world[i] = Coord2d.of(g.rc.x + pts[i].x * cs - pts[i].y * sn,
+				  g.rc.y + pts[i].x * sn + pts[i].y * cs);
+	}
+	return screenAabbFromWorldPoly(world);
+    }
+
+    private double[] screenAabbFromWorldPoly(Coord2d[] world) {
+	double minX = Double.POSITIVE_INFINITY, minY = Double.POSITIVE_INFINITY;
+	double maxX = Double.NEGATIVE_INFINITY, maxY = Double.NEGATIVE_INFINITY;
+	boolean any = false;
+	for(Coord2d w : world) {
+	    Coord3f s = screenxf(w);
+	    if(s == null) continue;
+	    if(s.x < minX) minX = s.x;
+	    if(s.x > maxX) maxX = s.x;
+	    if(s.y < minY) minY = s.y;
+	    if(s.y > maxY) maxY = s.y;
+	    any = true;
+	}
+	if(!any) return null;
+	return new double[] { minX, minY, maxX, maxY };
+    }
+
+    // Local-space polygon vertices for the snap's bounding box. Includes ALL obstacle
+    // layers -- including "build" -- because the server uses the build obstacle to validate
+    // placement, and snapping to the visible-collision edge leaves the build obstacle
+    // overlapping (server rejects with "can't place"). Hitbox.getMesh skips "build" because
+    // it's rendering the visible hitbox; we have a different goal. Y is negated to match
+    // the gob render transform's local-y mirroring.
+    private static Coord2d[] polyPointsForRes(Resource res) {
+	List<Coord2d> pts = new ArrayList<>();
+	Collection<Resource.Obstacle> obsts = res.layers(Resource.Obstacle.class);
+	if(obsts != null) {
+	    for(Resource.Obstacle o : obsts) {
+		for(Coord2d[] poly : o.p)
+		    for(Coord2d c : poly)
+			pts.add(Coord2d.of(c.x, -c.y));
+	    }
+	}
+	Collection<Resource.Neg> negs = res.layers(Resource.Neg.class);
+	if(negs != null) {
+	    for(Resource.Neg n : negs) {
+		pts.add(Coord2d.of(n.ac.x, -n.ac.y));
+		pts.add(Coord2d.of(n.bc.x, -n.ac.y));
+		pts.add(Coord2d.of(n.bc.x, -n.bc.y));
+		pts.add(Coord2d.of(n.ac.x, -n.bc.y));
+	    }
+	}
+	if(pts.isEmpty()) {
+	    // Fallback: a 0.2-tile-square box around origin so the snap still functions.
+	    double r = tilesz.x * 0.1;
+	    pts.add(Coord2d.of(-r, -r));
+	    pts.add(Coord2d.of( r, -r));
+	    pts.add(Coord2d.of( r,  r));
+	    pts.add(Coord2d.of(-r,  r));
+	}
+	return pts.toArray(new Coord2d[0]);
+    }
+
+    // Convert a desired screen-space displacement (dSX, dSY) near world point w into a world delta.
+    // Builds a 2x2 Jacobian of screenxf via finite differences, then inverts it (PlobSnap).
+    private Coord2d screenDeltaToWorld(Coord2d w, double dSX, double dSY) {
+	double eps = 1.0;
+	Coord3f s0 = screenxf(w);
+	Coord3f sx = screenxf(Coord2d.of(w.x + eps, w.y));
+	Coord3f sy = screenxf(Coord2d.of(w.x, w.y + eps));
+	if(s0 == null || sx == null || sy == null) return null;
+	double jxx = (sx.x - s0.x) / eps, jyx = (sx.y - s0.y) / eps;
+	double jxy = (sy.x - s0.x) / eps, jyy = (sy.y - s0.y) / eps;
+	return PlobSnap.jacobianInvert(jxx, jxy, jyx, jyy, dSX, dSY);
+    }
+
     private class Click extends Hittest {
 	int clickb;
 	
@@ -2411,6 +3029,15 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 		return(true);
 	    if((ev.code == KeyEvent.VK_RIGHT) && placing.adjust.rotate(placing, 1, ui.modflags()))
 		return(true);
+	    PlobSnap.Dir snap = null;
+	    if(kb_plobSnapLeft.key().match(ev))       snap = PlobSnap.Dir.LEFT;
+	    else if(kb_plobSnapRight.key().match(ev)) snap = PlobSnap.Dir.RIGHT;
+	    else if(kb_plobSnapUp.key().match(ev))    snap = PlobSnap.Dir.UP;
+	    else if(kb_plobSnapDown.key().match(ev))  snap = PlobSnap.Dir.DOWN;
+	    if(snap != null) {
+		snapPlob(placing, snap);
+		return(true);
+	    }
 	}
 	if(camera.keydown(ev))
 	    return(true);
