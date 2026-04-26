@@ -428,12 +428,17 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
     }
 
     public void addentry(T entry) {
+	putEntry(entry);
+	RosterWindow w = getparent(RosterWindow.class);
+	if(w != null) w.memorize(entry.id);
+    }
+
+    /** Insert without touching memorize state. Use from the upd-replace path. */
+    private void putEntry(T entry) {
 	entries.put(entry.id, entry);
 	entrycont.add(entry, Coord.z);
 	dirty = true;
 	entryseq++;
-	RosterWindow w = getparent(RosterWindow.class);
-	if(w != null) w.memorize(entry.id);
     }
 
     public void delentry(UID id) {
@@ -460,8 +465,18 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 	    T entry = parse(args);
 	    T old = entries.get(entry.id);
 	    boolean wasMarked = (old != null) && old.mark.a;
-	    delentry(entry.id);
-	    addentry(entry);
+	    if(old != null) {
+		// Replace in place: don't touch memorize -- preserve any
+		// user-driven state (e.g. milking-assist's unmemorize after
+		// a milk completion). Skip clearGobHighlight too; the
+		// per-tick syncHighlights restores it on the new entry.
+		entries.remove(old.id);
+		old.destroy();
+		putEntry(entry);
+	    } else {
+		// upd on an unknown id -- treat as add.
+		addentry(entry);
+	    }
 	    if(wasMarked)
 		entry.mark.set(true);
 	} else if(msg == "rm") {
