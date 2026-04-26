@@ -85,6 +85,19 @@ public class GobIcon extends GAttrib {
 	public abstract BufferedImage image();
 	public abstract void draw(GOut g, Coord cc);
 	public abstract boolean checkhit(Coord c);
+
+	/**
+	 * Render the icon scaled by {@code mult} around its draw point.
+	 * Default implementation uses {@link MiniMap.Scale2D} to scale the
+	 * existing draw without each subclass having to know about sizing.
+	 * Skips the state churn for {@code mult == 1.0f}.
+	 */
+	public void draw(GOut g, Coord cc, float mult) {
+	    if(mult == 1.0f) { draw(g, cc); return; }
+	    g.usestate(new MiniMap.Scale2D(cc.add(g.tx), mult));
+	    try { draw(g, cc); }
+	    finally { g.defstate(); }
+	}
 	public Object[] info(ItemInfo.Owner owner) {return(new Object[] {new Object[] {new ItemInfo.Name.Default()}});}
 	public Object[] id() {return(nilid);}
 	public int z() {return(0);}
@@ -99,9 +112,18 @@ public class GobIcon extends GAttrib {
 
     public static class Image {
 	private static final Map<Resource, Image> cache = new WeakHashMap<>();
+	// Downscaled+outlined version (loftar's small-icon path). Used by
+	// checkhit, by the icon-settings UI, and by callers that explicitly
+	// want a uniform small icon (e.g. burrow markers).
 	public final BufferedImage img;
 	public final Tex tex;
 	public Coord cc;
+	// Native-size version (raw resource image, no downscale, no outline).
+	// This is what pre-factory minimap rendering used and what
+	// ImageIcon.draw(g, cc, mult) renders so map markers display at their
+	// authored size.
+	public final Tex nativeTex;
+	public final Coord nativeCC;
 	public boolean rot;
 	public double ao;
 	public int z;
@@ -110,6 +132,7 @@ public class GobIcon extends GAttrib {
 	    Resource.Image rimg = res.layer(Resource.imgc);
 	    BufferedImage img = rimg.scaled();
 	    Tex tex = rimg.tex();
+	    Tex nativeTex = tex;
 	    if(((tex.sz().x > size) || (tex.sz().y > size)) && !Utils.bv(rimg.info.getOrDefault("mm/noscale", 0))) {
 		BufferedImage buf = rimg.img;
 		buf = PUtils.rasterimg(PUtils.blurmask2(buf.getRaster(), 1, 1, Color.BLACK));
@@ -124,6 +147,8 @@ public class GobIcon extends GAttrib {
 	    this.img = img;
 	    this.tex = tex;
 	    this.cc = tex.sz().div(2);
+	    this.nativeTex = nativeTex;
+	    this.nativeCC = nativeTex.sz().div(2);
 	    Object data = rimg.info.get("mm/rot");
 	    if(data != null) {
 		this.rot = true;
@@ -167,6 +192,29 @@ public class GobIcon extends GAttrib {
 		g.image(img.tex, cc.sub(img.cc));
 	    else
 		g.rotimage(img.tex, cc, img.cc, ((gob == null) ? 0 : -gob.a) + img.ao);
+	}
+
+	// Native-size draw used by minimap rendering. Matches the pre-factory
+	// behavior of drawing the raw resource image (no 20px cap, no blur
+	// outline). The optional multiplier scales the result around cc.
+	@Override
+	public void draw(GOut g, Coord cc, float mult) {
+	    Tex t = img.nativeTex;
+	    Coord c = img.nativeCC;
+	    if(mult == 1.0f) {
+		if(!img.rot)
+		    g.image(t, cc.sub(c));
+		else
+		    g.rotimage(t, cc, c, ((gob == null) ? 0 : -gob.a) + img.ao);
+		return;
+	    }
+	    g.usestate(new MiniMap.Scale2D(cc.add(g.tx), mult));
+	    try {
+		if(!img.rot)
+		    g.image(t, cc.sub(c));
+		else
+		    g.rotimage(t, cc, c, ((gob == null) ? 0 : -gob.a) + img.ao);
+	    } finally { g.defstate(); }
 	}
 
 	public boolean checkhit(Coord c) {

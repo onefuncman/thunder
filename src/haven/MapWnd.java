@@ -376,6 +376,16 @@ public class MapWnd extends WindowX implements Console.Directory {
 	    return(markcfg.filter(mark.m));
 	}
 
+	@Override
+	protected boolean upscaleMarker(DisplayMarker mark) {
+	    if(super.upscaleMarker(mark)) return(true);
+	    // When the user has isolated a single marker type (hide-all then
+	    // shift/click to enable just one), make the few visible markers
+	    // render at native size with the zoom-aware multiplier so they
+	    // stand out against the otherwise empty map.
+	    return(markcfg.showsel && markcfg.sel.size() == 1);
+	}
+
 	public boolean clickmarker(DisplayMarker mark, Location loc, int button, boolean press) {
 	    if(button == 1) {
 		if(!compact() && !press && !domark) {

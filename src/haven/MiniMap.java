@@ -480,24 +480,34 @@ public class MiniMap extends Widget {
 	}
 
 	public void draw(GOut g, Coord c, final float scale, final UI ui, final MapFile file, final boolean canShowName) {
+	    draw(g, c, scale, 1.0f, ui, file, canShowName);
+	}
+
+	public void draw(GOut g, Coord c, final float scale, final float iconmult, final UI ui, final MapFile file, final boolean canShowName) {
 	    if (CFG.PVP_MAP.get()) {
 		if (m instanceof CustomMarker && Utils.PVP_MODE_MARKERS.contains(((CustomMarker) m).res.name))
 		    m.draw(g, c, canShowName ? tip : null, scale, file);
 		else if (m instanceof SMarker && Utils.PVP_MODE_MARKERS.contains(((SMarker) m).res.name))
-		    drawIcon(g, c, canShowName, scale, file);
+		    drawIcon(g, c, canShowName, scale, iconmult, file);
 		return;
 	    }
 	    if(!visible()) {return;}
 	    checkTip(m.tip(ui));
 	    drawQuestHighlight(g, c);
-	    drawIcon(g, c, canShowName, scale, file);
+	    drawIcon(g, c, canShowName, scale, iconmult, file);
 	}
 
-	private void drawIcon(GOut g, Coord c, boolean canShowName, float scale, MapFile file) {
+	private void drawIcon(GOut g, Coord c, boolean canShowName, float scale, float iconmult, MapFile file) {
 	    try {
 		GobIcon.Icon ic = icon();
 		if(ic != null) {
-		    ic.draw(g, c);
+		    // mult == 1.0f means "default": loftar's downscaled+outlined
+		    // cached icon. mult > 1.0f means "upscale this marker":
+		    // render the native-size resource image scaled by mult.
+		    if(iconmult == 1.0f)
+			ic.draw(g, c);
+		    else
+			ic.draw(g, c, iconmult);
 		    if(canShowName && tip != null && CFG.MMAP_SHOW_MARKER_NAMES.get()) {
 			g.aimage(tip.tex(), c.addy(UI.scale(3)), 0.5, 0);
 		    }
@@ -735,6 +745,36 @@ public class MiniMap extends Widget {
 	return(UI.unscale((float)(1 << dlvl)) / scale);
     }
 
+    /**
+     * Icon size multiplier driven by the current zoom level. Applied on top
+     * of the native resource size for markers that opt in via
+     * {@link #upscaleMarker(DisplayMarker)}. Grows as the player zooms out
+     * to keep the marker visible when each tile collapses to a sub-pixel.
+     * All other icons render at loftar's default downscaled+outlined size,
+     * unaffected by this multiplier.
+     */
+    protected float iconmult() {
+	return Math.min(2.0f, 1.0f + 0.25f * dlvl);
+    }
+
+    /**
+     * Whether {@code mark} should render at native size with the
+     * {@link #iconmult()} multiplier, vs. the default small downscaled
+     * cached icon. Default: true for thingwall markers only. Overridden in
+     * {@code MapWnd.View} to also include the case where the user has
+     * isolated a single marker type via the hide-markers + single-select
+     * flow.
+     */
+    protected boolean upscaleMarker(DisplayMarker mark) {
+	return isThingwall(mark);
+    }
+
+    protected static boolean isThingwall(DisplayMarker mark) {
+	if(!(mark.m instanceof SMarker)) return false;
+	String name = ((SMarker)mark.m).res.name;
+	return name != null && name.contains("thingwall");
+    }
+
     private Coord l2dscale(Coord c) {
 	return(UI.scale(c.div(1 << dlvl)).mul(scale));
     }
@@ -816,7 +856,8 @@ public class MiniMap extends Widget {
 	    for(DisplayMarker mark : dgrid.markers(true, ui)) {
 		if(filter(mark))
 		    continue;
-		mark.draw(g, mark.m.tc.sub(dloc.tc).div(scalef()).add(hsz), scale, ui, file, big);
+		float mmult = upscaleMarker(mark) ? iconmult() : 1.0f;
+		mark.draw(g, mark.m.tc.sub(dloc.tc).div(scalef()).add(hsz), scale, mmult, ui, file, big);
 	    }
 	}
     }
