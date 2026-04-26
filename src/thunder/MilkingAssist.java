@@ -89,4 +89,14 @@ public class MilkingAssist {
 	    return rw != null && rw.milkingAssist;
 	} catch(Exception e) { return false; }
     }
+
+    // -- Debug accessors (used by thunder.MilkingAssistDebug). Package-private
+    // so the public API stays a tight set of hooks.
+    static Pending debugPeekPending()    { return INSTANCE.observer.peekPending(); }
+    static int     debugRetryCount()     { return INSTANCE.observer.retryCount(); }
+    static void    debugSetPending(UID id) {
+	if(id == null) return;
+	INSTANCE.observer.setPending(new Pending(id));
+    }
+    static void    debugClearPending()   { INSTANCE.observer.clearPending(); }
 }

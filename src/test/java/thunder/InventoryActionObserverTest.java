@@ -86,6 +86,18 @@ public class InventoryActionObserverTest {
     }
 
     @Test
+    void retryCountReflectsOutstandingRetries() {
+	InventoryActionObserver<String> obs = new InventoryActionObserver<>();
+	assertEquals(0, obs.retryCount());
+	obs.setPending("a");
+	Object k1 = new Object(), k2 = new Object();
+	obs.retry(k1); obs.retry(k2);
+	assertEquals(2, obs.retryCount());
+	obs.dropRetry(k1);
+	assertEquals(1, obs.retryCount());
+    }
+
+    @Test
     void laterSetPendingDoesNotRewriteOlderRetryEntry() {
 	// The retry map stores the snapshot at the moment of retry(), not the
 	// latest pending. This is what lets two actions in quick succession

@@ -64,4 +64,9 @@ public class InventoryActionObserver<T> {
     public void dropRetry(Object key) {
 	synchronized(lock) { retries.remove(key); }
     }
+
+    /** Number of items currently waiting for a delayed resolve. */
+    public int retryCount() {
+	synchronized(lock) { return retries.size(); }
+    }
 }

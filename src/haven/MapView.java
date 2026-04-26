@@ -1867,6 +1867,7 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	    undelay(delayed2, g);
 	    poldraw(g);
 	    partydraw(g);
+	    haven.dev.DebugDraw.Registry.paintAll(g, this);
 	    glob.map.reqarea(cc.floor(tilesz).sub(MCache.cutsz.mul(view + 1)),
 		cc.floor(tilesz).add(MCache.cutsz.mul(view + 1)));
 	    
