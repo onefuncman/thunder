@@ -69,7 +69,6 @@ public class MiniMap extends Widget {
     private String biome;
     private Tex biometex;
     public boolean big = false;
-    public int scale = 1;
 
     public MiniMap(Coord sz, MapFile file) {
 	super(sz);
@@ -568,7 +567,6 @@ public class MiniMap extends Widget {
 	public final Area mapext;
 	public final Indir<? extends DataGrid> gref;
 	public Coord dc;
-	private DataGrid cgrid = null;
 	private Tex img = null;
 	private Defer.Future<Tex> nextimg = null;
 
@@ -742,19 +740,18 @@ public class MiniMap extends Widget {
     }
 
     private float scalef() {
-	return(UI.unscale((float)(1 << dlvl)) / scale);
+	return(UI.unscale((float)(1 << dlvl)) / dmag);
     }
 
     /**
-     * Icon size multiplier driven by the current zoom level. Applied on top
-     * of the native resource size for markers that opt in via
-     * {@link #upscaleMarker(DisplayMarker)}. Grows as the player zooms out
-     * to keep the marker visible when each tile collapses to a sub-pixel.
-     * All other icons render at loftar's default downscaled+outlined size,
-     * unaffected by this multiplier.
+     * Icon size multiplier driven by effective zoom-out (mipmap level minus
+     * magnification). Grows as tiles collapse toward sub-pixel; clamped to
+     * native size when zoomed in via {@code dmag}, since icons remain
+     * legible against the larger tile pixels.
      */
     protected float iconmult() {
-	return Math.min(2.0f, 1.0f + 0.25f * dlvl);
+	int magLog = 31 - Integer.numberOfLeadingZeros(Math.max(dmag, 1));
+	return Math.max(1.0f, Math.min(2.0f, 1.0f + 0.25f * (dlvl - magLog)));
     }
 
     /**
@@ -776,15 +773,15 @@ public class MiniMap extends Widget {
     }
 
     private Coord l2dscale(Coord c) {
-	return(UI.scale(c.div(1 << dlvl)).mul(scale));
+	return(UI.scale(c.div(1 << dlvl)).mul(dmag));
     }
 
     private Coord d2lscale(Coord c) {
-	return(UI.unscale(c).mul(1 << dlvl).div(scale));
+	return(UI.unscale(c).mul(1 << dlvl).div(dmag));
     }
 
     public Coord st2c(Coord tc) {
-	return(UI.scale(tc.add(sessloc.tc).sub(dloc.tc).div(1 << dlvl)).mul(scale).add(sz.div(2)));
+	return(UI.scale(tc.add(sessloc.tc).sub(dloc.tc).div(1 << dlvl)).mul(dmag).add(sz.div(2)));
     }
 
     public Coord p2c(Coord2d pc) {
@@ -831,7 +828,7 @@ public class MiniMap extends Widget {
 	    disp.dc = ul;
 	    Tex img = disp.img();
 	    if(img != null)
-		g.image(img, ul, UI.scale(img.sz()).mul(scale));
+		g.image(img, ul, UI.scale(img.sz()).mul(dmag));
 	} catch(Loading l) {
 	}
     }
@@ -839,7 +836,7 @@ public class MiniMap extends Widget {
     public void drawmap(GOut g) {
 	Coord hsz = sz.div(2);
 	for(Coord c : dgext) {
-	    Coord ul = UI.scale(c.mul(cmaps).mul(scale)).sub(dloc.tc.div(scalef())).add(hsz);
+	    Coord ul = UI.scale(c.mul(cmaps).mul(dmag)).sub(dloc.tc.div(scalef())).add(hsz);
 	    DisplayGrid disp = display[dgext.ri(c)];
 	    if(disp == null)
 		continue;
@@ -857,7 +854,7 @@ public class MiniMap extends Widget {
 		if(filter(mark))
 		    continue;
 		float mmult = upscaleMarker(mark) ? iconmult() : 1.0f;
-		mark.draw(g, mark.m.tc.sub(dloc.tc).div(scalef()).add(hsz), scale, mmult, ui, file, big);
+		mark.draw(g, mark.m.tc.sub(dloc.tc).div(scalef()).add(hsz), dmag, mmult, ui, file, big);
 	    }
 	}
     }
@@ -980,15 +977,15 @@ public class MiniMap extends Widget {
 
     private void logDebugAt(Coord sc) {
 	StringBuilder buf = new StringBuilder("[MiniMap debug]\n");
-	buf.append(String.format("  zoom=%d scale=%d dlvl=%d dmag=%d maglevel=%d uiScale=%.2f sz=%s\n",
-				 zoomlevel, scale, dlvl, dmag, maglevel, UI.scale(1.0), sz));
+	buf.append(String.format("  zoom=%d dlvl=%d dmag=%d maglevel=%d uiScale=%.2f sz=%s\n",
+				 zoomlevel, dlvl, dmag, maglevel, UI.scale(1.0), sz));
 	buf.append(String.format("  cursor(widget)=%s\n", sc));
 	Location mloc = xlate(sc);
 	if(mloc != null)
 	    buf.append(String.format("  worldTile=%s seg=%d\n", mloc.tc, mloc.seg.id));
 	DisplayGrid grid = gridat(sc);
 	if((grid != null) && (grid.dc != null)) {
-	    Coord gc = UI.unscale(sc.sub(grid.dc)).div(scale);
+	    Coord gc = UI.unscale(sc.sub(grid.dc)).div(dmag);
 	    Coord gcClamped = Area.sized(cmaps).closest(gc);
 	    buf.append(String.format("  grid.sc=%s grid.dc=%s localCell=%s clamped=%s\n",
 				     grid.sc, grid.dc, gc, gcClamped));
@@ -1246,16 +1243,17 @@ public class MiniMap extends Widget {
 
     public boolean mousewheel(MouseWheelEvent ev) {
 	if(ev.a > 0) {
-	    if(scale > 1) {
-		scale--;
-	    } else
-	    if(allowzoomout())
+	    if(maglevel > 1) {
+		maglevel >>= 1;
+	    } else if(allowzoomout()) {
 		zoomlevel = Math.min(zoomlevel + 1, dlvl + 1);
-	} else {
-	    if(zoomlevel == 0 && scale < 4) {
-		scale++;
 	    }
-	    zoomlevel = Math.max(zoomlevel - 1, 0);
+	} else if(ev.a < 0) {
+	    if(zoomlevel > 0) {
+		zoomlevel--;
+	    } else {
+		maglevel = Math.min(maglevel << 1, 8);
+	    }
 	}
 	return(true);
     }
@@ -1272,7 +1270,7 @@ public class MiniMap extends Widget {
 	    if((grid != null) && (grid.dc != null)) {
 		DataGrid dgrid = grid.gref.get();
 		if(dgrid != null) {
-		    Coord gc = UI.unscale(c.sub(grid.dc)).div(scale);
+		    Coord gc = UI.unscale(c.sub(grid.dc)).div(dmag);
 		    gc = Area.sized(cmaps).closest(gc); /* XXX: This should not be necessary. */
 		    TileInfo tile = dgrid.tilesets[dgrid.gettile(gc)];
 		    if(tile != null) {
@@ -1364,7 +1362,7 @@ public class MiniMap extends Widget {
     void drawgrid(GOut g) {
 	int zmult = 1 << zoomlevel;
 	Coord offset = sz.div(2).sub(dloc.tc.div(scalef()));
-	Coord zmaps = cmaps.div( (float)zmult).mul(scale);
+	Coord zmaps = cmaps.div( (float)zmult).mul(dmag);
     
 	double width = UI.scale(1f);
 	Color col = g.getcolor();
@@ -1400,7 +1398,7 @@ public class MiniMap extends Widget {
 	Gob player = player();
 	if(player != null) {
 	    Coord rc = p2c(player.rc.floor(sgridsz).sub(4, 4).mul(sgridsz));
-	    Coord viewsz = VIEW_SZ.div(zmult).mul(scale);
+	    Coord viewsz = VIEW_SZ.div(zmult).mul(dmag);
 	    g.chcolor(VIEW_BG_COLOR);
 	    g.frect(rc, viewsz);
 	    g.chcolor(VIEW_BORDER_COLOR);
@@ -1472,7 +1470,7 @@ public class MiniMap extends Widget {
 		if((grid != null) && (grid.dc != null)) {
 		    DataGrid dgrid = grid.gref.get();
 		    if(dgrid != null) {
-			Coord gc = UI.unscale(sc.sub(grid.dc)).div(scale);
+			Coord gc = UI.unscale(sc.sub(grid.dc)).div(dmag);
 			gc = Area.sized(cmaps).closest(gc);
 			TileInfo tile = dgrid.tilesets[dgrid.gettile(gc)];
 			if(tile != null) {
