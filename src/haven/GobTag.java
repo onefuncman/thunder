@@ -321,6 +321,8 @@ public enum GobTag {
                 tags.add(TROUGH);
             } else if (name.endsWith("/gardenpot")) {
                 tags.add(GARDENPOT);
+            } else if (name.startsWith("gfx/fx/smoke") || name.contains("irrlight")) {
+                tags.add(PICKUP);
             }
             if(ofType(name, VEHICLES)) {
                 tags.add(VEHICLE);
