@@ -215,6 +215,7 @@ public class CFG<T> {
     public static final CFG<Boolean> EXTENDED_ORTHO_VIEW = new CFG<>("cam.extended_ortho_view", false);
     public static final CFG<Boolean> CAMERA_SMOOTH_JITTER = new CFG<>("cam.smooth_jitter", true);
     public static final CFG<Integer> CAMERA_SMOOTH_STRENGTH = new CFG<>("cam.smooth_strength", 30);
+    public static final CFG<Integer> CAMERA_ROTATION_SMOOTHING_MS = new CFG<>("cam.rotation_smoothing_ms", 0);
 
     // Protocol Debug
     public static final CFG<Integer> PROTO_INSPECTOR_MAX_EVENTS = new CFG<>("debug.proto_inspector.max_events", 10000);
