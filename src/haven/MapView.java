@@ -2935,6 +2935,12 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 		args = Utils.extend(args, inf.clickargs());
 		Gob gob = Gob.from(inf.ci);
 		if(gob != null) {
+		    if(clickb == 1 && CFG.BLOCK_ATTACK_TAMED_HORSE.get()
+			&& ui.isCursor("gfx/hud/curs/atk")
+			&& gob.is(GobTag.HORSE) && gob.is(GobTag.DOMESTIC)) {
+			ui.message("Blocked attack on tamed horse.", GameUI.MsgType.BAD);
+			return;
+		    }
 		    if(thunder.macro.MacroPicker.active() && clickb == 3) {
 			if(thunder.macro.MacroPicker.consume(gob)) return;
 		    }
