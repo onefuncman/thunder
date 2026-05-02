@@ -591,23 +591,25 @@ public class ExtInventory extends Widget {
 	    if(!all) {
 		WItem item = items.get(0);
 		if(!item.disposed()) {
-		    dispatch(item, action, args);
+		    dispatch(item, action, args, false);
 		}
 	    } else {
 		for (WItem item : items) {
 		    if(!item.disposed()) {
-			dispatch(item, action, args);
+			dispatch(item, action, args, true);
 		    }
 		}
 	    }
 	}
 
-	// For invxf2, per-item count=1 against an ItemStack leaves the last item
-	// behind. Resolve the containing ItemStack (either the WItem's contents
-	// when stacks are packed, or the parent when UI_STACK_EXT_INV_UNPACK is on)
-	// and send one invxf2 per target with count = stack size.
-	private static void dispatch(WItem item, String action, Object[] args) {
-	    if("invxf2".equals(action) && args.length > 2) {
+	// For invxf2 with "all" semantics, per-item count=1 against an ItemStack
+	// leaves the last item behind. Resolve the containing ItemStack (either
+	// the WItem's contents when stacks are packed, or the parent when
+	// UI_STACK_EXT_INV_UNPACK is on) and send one invxf2 per target with
+	// count = stack size. For plain shift-click (all=false) we want the
+	// vanilla one-item-at-a-time behavior, so skip the promotion.
+	private static void dispatch(WItem item, String action, Object[] args, boolean all) {
+	    if(all && "invxf2".equals(action) && args.length > 2) {
 		Widget stack = null;
 		if(Reflect.is(item.item.contents, "haven.res.ui.stackinv.ItemStack")) {
 		    stack = item.item.contents;
