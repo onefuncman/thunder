@@ -450,6 +450,8 @@ public class WItem extends Widget implements DTarget {
     public void clearLongTip() {longtip = null;}
     
     public boolean mousedown(MouseDownEvent ev) {
+	thunder.macro.MacroRecorder rec = thunder.macro.MacroRecorder.current();
+	if(rec != null) rec.onItemClick(this, ev.b, ui.modflags());
 	if(checkXfer(ev.b)) {
 	    return true;
 	} else if(ev.b == 1) {

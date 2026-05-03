@@ -87,6 +87,7 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
     public TileQuality tileQuality;
     public TileHighlight.TileHighlightCFG tileHighlight;
     public thunder.TileQualityWnd tileQualityWnd;
+    public thunder.macro.MacroListWnd macroListWnd;
     private Widget qqview;
     public BuddyWnd buddies;
     public EquipProxy eqproxyHandBelt, eqproxyPouchBack;
@@ -2401,6 +2402,55 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 			stateInspector.inspectGob(id);
 		    } else {
 			throw new Exception("Usage: gob inspect <id>");
+		    }
+		}
+	    });
+	cmdmap.put("macro", new Console.Command() {
+		public void run(Console cons, String[] args) throws Exception {
+		    if(args.length < 2) throw new Exception("Usage: macro <show|list|run|cancel|record|stop|save|discard> [args]");
+		    switch(args[1]) {
+		    case "show": thunder.macro.MacroListWnd.toggle(ui); break;
+		    case "list": {
+			java.util.List<thunder.macro.Macro> all = thunder.macro.MacroStore.get().list();
+			if(all.isEmpty()) {msg("No macros saved.", MsgType.INFO); break;}
+			for(thunder.macro.Macro m : all) {
+			    msg(String.format("%s (%d steps, default x%d)", m.name, m.steps.size(), m.defaultRepeat), MsgType.INFO);
+			}
+			break;
+		    }
+		    case "run": {
+			if(args.length < 3) throw new Exception("Usage: macro run <name> [count]");
+			thunder.macro.Macro m = thunder.macro.MacroStore.get().byName(args[2]);
+			if(m == null) {msg("Macro not found: " + args[2], MsgType.ERROR); break;}
+			int count = (args.length >= 4) ? Integer.parseInt(args[3]) : m.defaultRepeat;
+			thunder.macro.MacroRunner.run(ui, m, count);
+			break;
+		    }
+		    case "cancel": auto.Bot.cancelCurrent("Cancelled by user"); break;
+		    case "record": {
+			thunder.macro.MacroRecorder.start(ui);
+			msg("Recording started. Use ':macro save <name>' to save, ':macro discard' to throw away.", MsgType.INFO);
+			break;
+		    }
+		    case "stop":
+		    case "discard": {
+			thunder.macro.MacroRecorder rec = thunder.macro.MacroRecorder.current();
+			if(rec == null) {msg("No recording in progress.", MsgType.INFO); break;}
+			rec.stop();
+			msg("Recording discarded.", MsgType.INFO);
+			break;
+		    }
+		    case "save": {
+			if(args.length < 3) throw new Exception("Usage: macro save <name>");
+			thunder.macro.MacroRecorder rec = thunder.macro.MacroRecorder.current();
+			if(rec == null) {msg("No recording in progress.", MsgType.ERROR); break;}
+			thunder.macro.Macro m = rec.build(args[2]);
+			rec.stop();
+			thunder.macro.MacroStore.get().put(m);
+			msg(String.format("Saved '%s' (%d steps).", m.name, m.steps.size()), MsgType.INFO);
+			break;
+		    }
+		    default: throw new Exception("Unknown macro command: " + args[1]);
 		    }
 		}
 	    });

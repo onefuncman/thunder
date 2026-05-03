@@ -2934,6 +2934,11 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 		args = Utils.extend(args, inf.clickargs());
 		Gob gob = Gob.from(inf.ci);
 		if(gob != null) {
+		    if(thunder.macro.MacroPicker.active() && clickb == 3) {
+			if(thunder.macro.MacroPicker.consume(gob)) return;
+		    }
+		    thunder.macro.MacroRecorder rec = thunder.macro.MacroRecorder.current();
+		    if(rec != null) rec.onGobClick(gob, clickb, ui.modflags());
 		    if(clickb == 3) {
 			Reactor.GOB_INTERACT.onNext(gob);
 			thunder.MilkingAssist.onGobRightClick(gob, clickb);
@@ -3095,6 +3100,11 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 		if(inf != null)
 		    args = Utils.extend(args, inf.clickargs());
 		Gob clicked = (inf != null) ? Gob.from(inf.ci) : null;
+		if(clicked != null) {
+		    if(thunder.macro.MacroPicker.active() && thunder.macro.MacroPicker.consume(clicked)) return;
+		    thunder.macro.MacroRecorder rec = thunder.macro.MacroRecorder.current();
+		    if(rec != null) rec.onGobItemAct(clicked, ui.modflags());
+		}
 		thunder.TileQuality.markPendingFillFromMap(ui.gui, mc, clicked);
 		thunder.MilkingAssist.onItemInteract(clicked);
 		wdgmsg("itemact", args);

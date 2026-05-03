@@ -170,6 +170,8 @@ public class Inventory extends Widget implements DTarget {
 		dc = ul.add(sqsz.div(2)).div(sqsz);
 	    else
 		dc = cc.div(sqsz);
+	    thunder.macro.MacroRecorder rec = thunder.macro.MacroRecorder.current();
+	    if(rec != null) rec.onInvDrop(this, dc);
 	    wdgmsg("drop", dc);
 	}
 	return(true);
