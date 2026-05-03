@@ -1,6 +1,7 @@
 package me.ender.minimap;
 
 import haven.*;
+import haven.MapFile.Marker;
 
 import java.awt.*;
 import java.awt.image.WritableRaster;
@@ -13,13 +14,13 @@ import static haven.MapWnd.MarkerType.*;
 // Simple custom icons that are a combo of PMarker (color) and SMarker (Custom res)
 public class CustomMarker extends Marker {
     private static final Map<String, Image> cache = new WeakHashMap<>();
-    
+
     public Color color;
     public final Resource.Spec res;
-    
-    public CustomMarker(final long seq, final Coord tc, final String nm,
+
+    public CustomMarker(final MapFile file, final long seg, final Coord tc, final String nm,
 			final Color color, final Resource.Spec res) {
-	super(seq, tc, nm);
+	super(file, seg, tc, nm);
 	this.color = color;
 	this.res = res;
     }

@@ -1,6 +1,8 @@
 package haven;
 
 
+import haven.MapFile.Marker;
+import haven.MapFile.PMarker;
 import me.ender.minimap.*;
 
 import java.awt.*;
@@ -71,13 +73,12 @@ public class MapWnd2 extends MapWnd {
 
     public void addMarker(Coord at, String name) {
 	at = at.add(view.sessloc.tc);
-	Marker nm = new PMarker(view.sessloc.seg.id, at, name, BuddyWnd.gc[new Random().nextInt(BuddyWnd.gc.length)], false);
+	Marker nm = new PMarker(file, view.sessloc.seg.id, at, name, BuddyWnd.gc[new Random().nextInt(BuddyWnd.gc.length)], false);
 	file.add(nm);
 	focus(nm);
 	if(ui.modctrl) {
 	    ui.gui.track(nm);
 	}
-	domark = false;
     }
 
     public void removeMarker(Marker marker) {
@@ -110,7 +111,6 @@ public class MapWnd2 extends MapWnd {
 	    }
 	}
 	ui.gui.track(marker);
-	domark = false;
     }
 
     public void untrack(long gobid) {
@@ -140,7 +140,7 @@ public class MapWnd2 extends MapWnd {
 			}
 		    }
 
-		    final Marker mark = new CustomMarker(info.seg, sc, name, Color.WHITE, new Resource.Spec(Resource.remote(), icon));
+		    final Marker mark = new CustomMarker(view.file, info.seg, sc, name, Color.WHITE, new Resource.Spec(Resource.remote(), icon));
 		    view.file.add(mark);
 		} finally {
 		    view.file.lock.writeLock().unlock();
@@ -160,7 +160,7 @@ public class MapWnd2 extends MapWnd {
 	public final Color col;
 
 	public GobMarker(Gob gob) {
-	    super(0, gob.rc.floor(tilesz), gob.tooltip());
+	    super(MapWnd2.this.file, 0, gob.rc.floor(tilesz), gob.tooltip());
 	    this.gobid = gob.id;
 	    GobIcon icon = gob.getattr(GobIcon.class);
 	    res = (icon == null) ? null : icon.res;

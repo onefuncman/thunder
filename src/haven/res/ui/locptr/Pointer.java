@@ -3,10 +3,10 @@ package haven.res.ui.locptr;
 
 import haven.*;
 import haven.render.*;
+import haven.MapFile.Marker;
+import haven.MapFile.PMarker;
+import haven.MapFile.SMarker;
 import me.ender.ClientUtils;
-import me.ender.minimap.Marker;
-import me.ender.minimap.PMarker;
-import me.ender.minimap.SMarker;
 
 import java.awt.Color;
 import java.util.Objects;

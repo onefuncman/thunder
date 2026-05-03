@@ -38,6 +38,9 @@ import java.util.stream.Collectors;
 import haven.MapFile.Segment;
 import haven.MapFile.DataGrid;
 import haven.MapFile.GridInfo;
+import haven.MapFile.Marker;
+import haven.MapFile.PMarker;
+import haven.MapFile.SMarker;
 import me.ender.ClientUtils;
 import me.ender.QuestCondition;
 import me.ender.gob.KinInfo;
@@ -181,9 +184,10 @@ public class MiniMap extends Widget {
 	}
     }
 
-    // TODO(loftar-merge): see TODO.md "MiniMap Markers/MarkerIcon cache".
-    // Loftar added per-MiniMap MarkerIcon cache populated from Marker.seq;
-    // dropped here because Thunder's marker hierarchy has no seq field.
+    // TODO(loftar-merge): see TODO.md item 3 "MiniMap.DisplayMarker rewrite".
+    // Loftar added a per-MiniMap MarkerIcon cache (shared across DisplayGrids,
+    // async-loading icons keyed on Marker.seq). Thunder's DisplayMarker owns
+    // its own icon caching; the loftar cache is intentionally not adopted.
 
     public void center(Location loc) {
 	curloc = loc;
@@ -1122,7 +1126,7 @@ public class MiniMap extends Widget {
 		    SMarker prev = file.smarker(res.name, info.seg, sc);
 		    if(prev == null) {
 			if(icon.conf.getmarkp()) {
-			    mid = new SMarker(info.seg, sc, micon.name(), UID.nil, new Resource.Saved(Resource.remote(), res.name, res.ver), aicon.sdt);
+			    mid = new SMarker(file, info.seg, sc, micon.name(), UID.nil, new Resource.Saved(Resource.remote(), res.name, res.ver), aicon.sdt);
 			    file.add(mid);
 			} else {
 			    mid = null;

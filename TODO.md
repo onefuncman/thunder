@@ -1,95 +1,35 @@
 # Loftar merge follow-up (2026-05-02)
 
 The 2026-05-02 merge of `loftar/master` brought in a new marker class
-hierarchy and supporting refactors that collide with Thunder's own marker
+hierarchy and supporting refactors that collided with Thunder's own marker
 infrastructure (`me.ender.minimap.{Marker,PMarker,SMarker,CustomMarker}`).
-The merge resolution kept Thunder's hierarchy and parked loftar's incoming
-classes / wiring as `*Old` dead code or removed them with TODO markers.
-Each item below is one chunk of the consolidation that still needs doing.
+Items 1 and 2 below have been resolved; item 3 is intentionally left open
+because Thunder's existing rendering path is feature-complete and adopting
+loftar's cache would require a significant rewrite for marginal benefit.
 
-When you adopt one, search for the matching `TODO(loftar-merge)` comment
-in the source — that's the parking spot for the corresponding loftar code.
+## 1. Marker class consolidation [DONE]
 
-## 1. Marker class consolidation
+`MapFile.{Marker,PMarker,SMarker}` are now the canonical hierarchy. They
+absorb Thunder's `draw`/`area`/`questConditions`/`equals` features on top
+of loftar's `file`/`seq`/`update()` design. The `me.ender.minimap.Marker`,
+`PMarker`, and `SMarker` files were deleted; `CustomMarker` extends the
+new `MapFile.Marker`. All construction sites pass `file` as the first arg,
+and `mark.seq++` is bumped from `MapFile.add/remove/update` and the
+segment-merge loop. Nested-class imports (`import haven.MapFile.Marker;`
+etc.) added to every consumer that lost the `me.ender.minimap.*` wildcard
+shadow.
 
-**Where:** `src/haven/MapFile.java` (look for `MarkerOld` / `PMarkerOld` /
-`SMarkerOld`); `src/me/ender/minimap/{Marker,PMarker,SMarker,CustomMarker}.java`.
+## 2. MapWnd marker placement (`MarkButton`) [DONE]
 
-**What loftar wants:** `MapFile.{Marker,PMarker,SMarker}` are the canonical
-marker classes, with new fields:
-- `final MapFile file` — back-pointer for `update(boolean save)`
-- `volatile int seq` — change counter, bumped by `MapFile.add/remove/update`
-- `MapFile.markerseq` is `volatile`
-- `loadmarker` is an instance method (not static) so it can pass `this` to ctors
-- `SMarker.oid` is `UID` (was `long`), and `SMarker` carries `byte[] data`
-- `Marker.toString()` defined for both subclasses
-
-**What Thunder has instead:** Top-level `me.ender.minimap.Marker` with
-abstract `draw(GOut, Coord, Text, float, MapFile)` and `area()`, plus
-`PMarker`/`SMarker`/`CustomMarker` subclasses. `me.ender.minimap.SMarker`
-also carries `questConditions`, `questIterator`, custom `equals/hashCode`,
-and `data`. `MapFile.markers` is `Collection<me.ender.minimap.Marker>`.
-
-**Adoption path:**
-1. Move `draw()` and `area()` abstract methods onto `MapFile.Marker`.
-2. Port `me.ender.minimap.PMarker`'s flag rendering (`flagbg/flagfg/flagcc`,
-   `draw`, `area`, `equals`) into `MapFile.PMarker`.
-3. Port `me.ender.minimap.SMarker`'s `questConditions`/`questIterator`/
-   `draw`/`area`/`equals/hashCode` into `MapFile.SMarker` (already has
-   `data` field from this merge).
-4. Update `me.ender.minimap.CustomMarker` to extend `MapFile.PMarker` (or
-   `MapFile.SMarker` — pick whichever the class actually behaves like).
-5. Delete `src/me/ender/minimap/{Marker,PMarker,SMarker}.java`.
-6. Re-rename `MarkerOld` / `PMarkerOld` / `SMarkerOld` away — they were
-   only kept as dead code to avoid the import collision. Remove them.
-7. Add `import haven.MapFile.{Marker,PMarker,SMarker};` to all consumers
-   that previously got these via `import me.ender.minimap.*;`. Wildcard
-   imports do not pull in nested classes.
-8. Update construction sites to pass the `file` arg:
-   - `MapWnd.java:436` `new PMarker(loc.seg.id, ...)` → `new PMarker(file, loc.seg.id, ...)`
-   - `MapWnd.java:1096` `new SMarker(info.seg, ...)` → restore loftar's `new SMarker(file, info.seg, ...)`
-   - `MapWnd2.java:74` and `MapWnd2.java:143` likewise
-   - `MiniMap.java:1322` likewise
-   - `MapFile.loadmarker` switches back to instance method calling `new PMarker(this, ...)` etc.
-9. Restore `mark.seq++` calls in `MapFile.add/remove/update` (and the
-   segment-merge loop near `MapFile.java:~1648`) once `Marker.seq` exists.
-10. Switch `MapFile.savemarker` back to instance method if needed (loftar's
-    version was the same shape as Thunder's static one — no action likely).
-11. Re-fetch loftar's full `MapFile` diff to verify nothing else snuck past
-    the parked changes.
-
-**Acceptance:** `ant bin` clean; `ant test` clean; markers placed via
-in-game UI persist across restart and reload correctly; quest-helper
-highlights still render.
-
-## 2. MapWnd marker placement (`MarkButton`)
-
-**Where:** `src/haven/MapWnd.java` — look for the `TODO(loftar-merge)`
-in the marker-button class around `MarkButton`.
-
-**What loftar wants:** Marker placement uses `ui.grabmouse(this)` plus a
-`PlaceMarker` `Widget.PointerEvent`. Right-click ungrabs; left-click on
-the minimap calls `MiniMap.xlate(c)`; left-click on the MapView raycasts
-via `FindMark` (extends `MapView.Maptest`). Cleaner than a flag.
-
-**What Thunder has instead:** `domark` boolean flag. The button toggles it,
-`MiniMap.clickloc` checks it before creating a `PMarker`. Right-click
-clears `domark`. The cursor swaps to `markcurs` while `domark` is on.
-
-**Adoption path:**
-1. Bring back loftar's added methods on `MarkButton`: `state()`, `click()`,
-   `mark(Location, boolean)`, `ungrab()`, inner `FindMark` (extends
-   `MapView.Maptest`), inner `PlaceMarker` (extends `Widget.PointerEvent`),
-   and `mousedown(MouseDownEvent)`.
-2. Drop the `domark` flag and the `clickloc` branch that uses it.
-3. Update `getcurs` to return the mark cursor while a grab is active rather
-   than while `domark` is true.
-4. Make sure `mark()` uses the consolidated marker classes from item 1
-   (passes `file` to the `PMarker` ctor).
-
-**Acceptance:** Click the mark button on the map window, then click on
-either the minimap or the world view — a new `PMarker` lands at the
-clicked location. Right-click cancels.
+`MapWnd.MarkButton` replaces the old `domark` flag. Click the button to
+grab; clicking the minimap places a `PMarker` at the clicked tile, and
+clicking the MapView runs `MapView.Hittest` to place at terrain or, if
+the click landed on a Gob, place a marker at the Gob's location with the
+Gob's tooltip as the marker name (preserves Thunder's gob-mark feature on
+top of loftar's grab pattern). Right-click ungrabs. The mark cursor is
+served from `MarkButton.getcurs(ev.grabbed)` rather than a global flag,
+and the obsolete `domark` checks in `MapView.mousedown1`, `MapView.getcurs`,
+and `MapWnd2.addMarker`/`MapWnd2.track` are gone.
 
 ## 3. `MiniMap.DisplayMarker` rewrite (`Markers` / `MarkerIcon` cache)
 
@@ -135,13 +75,12 @@ the cursor isn't over a `DisplayIcon`.
 
 ## 4. Notes on what was integrated cleanly (no follow-up)
 
-These loftar changes landed in this same merge with no parking:
 - `BinHeap.java` (new), `Coord.isect`, `Coord2d` corner-based isect helpers, `Line2d` extensions
 - `GOut.line(Coord, Coord, double)` now clips natively against `ul/br`
   using `Line2d.twixt(...).clip(...)`. Thunder's `clippedLine` was kept
   as a deprecated thin wrapper that delegates to `line` (`GOut.java:279`).
 - `GobIcon.java` cached-icon resource error handling (more robust load failures)
-- `MapFile.markerseq` is now `volatile` (kept Thunder's `markerids` field alongside)
+- `MapFile.markerseq` is `volatile`; `MapFile.markerids` (Thunder) lives alongside
 
 ---
 

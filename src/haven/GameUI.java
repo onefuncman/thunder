@@ -27,6 +27,9 @@
 package haven;
 
 import haven.Equipory.SLOTS;
+import haven.MapFile.Marker;
+import haven.MapFile.PMarker;
+import haven.MapFile.SMarker;
 import haven.bot.AutoDrink;
 import haven.res.ui.locptr.Pointer;
 import haven.rx.BuffToggles;

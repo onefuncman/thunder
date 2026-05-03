@@ -38,6 +38,7 @@ import haven.Defer.Future;
 import haven.resutil.Ridges;
 import integrations.mapv4.MappingClient;
 import me.ender.IDPool;
+import me.ender.QuestCondition;
 import me.ender.minimap.*;
 
 import javax.imageio.ImageIO;
@@ -286,46 +287,179 @@ public class MapFile {
 	}
     }
 
-    // TODO(loftar-merge): see TODO.md "Marker class consolidation". Loftar
-    // moved Marker/PMarker/SMarker into MapFile (with file/seq/update()).
-    // Thunder already has me.ender.minimap.{Marker,PMarker,SMarker} as the
-    // active hierarchy, so loftar's classes are kept here under *Old names
-    // as dead code until the consolidation lands.
-    public abstract static class MarkerOld {
+    public abstract static class Marker {
+	public final MapFile file;
 	public long seg;
 	public Coord tc;
 	public String nm;
+	public volatile int seq = 0;
 
-	public MarkerOld(long seg, Coord tc, String nm) {
+	public Marker(MapFile file, long seg, Coord tc, String nm) {
+	    this.file = file;
 	    this.seg = seg;
 	    this.tc = tc;
 	    this.nm = nm;
 	}
+
+	public void update(boolean save) {
+	    if(save) {
+		file.update(this);
+	    } else {
+		seq++;
+		file.markerseq++;
+	    }
+	}
+
+	public String name() {
+	    return nm;
+	}
+
+	public String tip(final UI ui) {
+	    return nm;
+	}
+
+	public abstract void draw(final GOut g, final Coord c, final Text tip, final float scale, final MapFile file);
+
+	public abstract Area area();
+
+	@Override
+	public boolean equals(Object o) {
+	    if(this == o) return true;
+	    if(o == null || getClass() != o.getClass()) return false;
+	    Marker marker = (Marker) o;
+	    return seg == marker.seg && tc.equals(marker.tc) && nm.equals(marker.nm);
+	}
+
+	@Override
+	public int hashCode() {
+	    return Objects.hash(seg, tc, nm);
+	}
     }
 
-    public static class PMarkerOld extends MarkerOld {
+    public static class PMarker extends Marker {
+	public static final Resource.Image flagbg, flagfg;
+	public static final Coord flagcc;
+
+	static {
+	    Resource flag = Resource.local().loadwait("gfx/hud/mmap/flag");
+	    flagbg = flag.layer(Resource.imgc, 1);
+	    flagfg = flag.layer(Resource.imgc, 0);
+	    flagcc = UI.scale(flag.layer(Resource.negc).cc);
+	}
+
 	public Color color;
 	public boolean onmap;
 
-	public PMarkerOld(long seg, Coord tc, String nm, Color color, boolean onmap) {
-	    super(seg, tc, nm);
+	public PMarker(MapFile file, long seg, Coord tc, String nm, Color color, boolean onmap) {
+	    super(file, seg, tc, nm);
 	    this.color = color;
 	    this.onmap = onmap;
 	}
-    }
 
-    public static class SMarkerOld extends MarkerOld {
-	public long oid;
-	public Resource.Saved res;
+	@Override
+	public boolean equals(Object o) {
+	    if(this == o) return true;
+	    if(o == null || getClass() != o.getClass()) return false;
+	    if(!super.equals(o)) return false;
+	    PMarker pMarker = (PMarker) o;
+	    return color.equals(pMarker.color);
+	}
 
-	public SMarkerOld(long seg, Coord tc, String nm, long oid, Resource.Saved res) {
-	    super(seg, tc, nm);
-	    this.oid = oid;
-	    this.res = res;
+	@Override
+	public void draw(final GOut g, final Coord c, final Text tip, final float scale, final MapFile file) {
+	    final Coord ul = c.sub(flagcc);
+	    g.chcolor(color);
+	    g.image(flagfg, ul);
+	    g.chcolor();
+	    g.image(flagbg, ul);
+	    if(tip != null && CFG.MMAP_SHOW_MARKER_NAMES.get()) {
+		g.aimage(tip.tex(), c, 0.5, 0.75);
+	    }
+	}
+
+	@Override
+	public Area area() {
+	    return Area.sized(flagcc.inv(), UI.scale(flagbg.sz));
+	}
+
+	public String toString() {
+	    return(String.format("#<pmarker \"%s\" %s %d>", nm, color, seq));
 	}
     }
 
-    private static Marker loadmarker(Message fp) {
+    public static class SMarker extends Marker {
+	public final UID oid;
+	public final Resource.Saved res;
+	public byte[] data;
+
+	public List<QuestCondition> questConditions = new ArrayList<>();
+	public Iterator<QuestCondition> questIterator;
+
+	public SMarker(MapFile file, long seg, Coord tc, String nm, UID oid, Resource.Saved res, byte[] data) {
+	    super(file, seg, tc, nm);
+	    this.oid = oid;
+	    this.res = res;
+	    this.data = data;
+	    questIterator = Utils.circularIterator(questConditions);
+	}
+
+	@Override
+	public boolean equals(Object o) {
+	    if(this == o) return true;
+	    if(o == null || getClass() != o.getClass()) return false;
+	    if(!super.equals(o)) return false;
+	    SMarker sMarker = (SMarker) o;
+	    return Objects.equals(oid, sMarker.oid) && res.equals(sMarker.res);
+	}
+
+	@Override
+	public void draw(GOut g, Coord c, Text tip, final float scale, final MapFile file) {
+	    try {
+		final Resource res = this.res.loadsaved();
+		final Resource.Image img = res.layer(Resource.imgc);
+		if(img == null) {return;}
+		final Resource.Neg neg = res.layer(Resource.negc);
+		final Coord cc = neg != null ? neg.cc : img.ssz.div(2);
+		final Coord ul = c.sub(cc);
+		if(CFG.QUESTHELPER_HIGHLIGHT_QUESTGIVERS.get() && !questConditions.isEmpty()) {
+		    for(QuestCondition item : new ArrayList<>(questConditions)) {
+			g.chcolor(item.questGiverMarkerColor());
+			g.fellipse(c, img.ssz.div(2).sub(1, 1));
+		    }
+		    g.chcolor();
+		}
+		g.image(img, ul);
+		if(tip != null && CFG.MMAP_SHOW_MARKER_NAMES.get()) {
+		    g.aimage(tip.tex(), c.addy(UI.scale(3)), 0.5, 0);
+		}
+	    } catch (Loading ignored) {}
+	}
+
+	@Override
+	public Area area() {
+	    try {
+		final Resource res = this.res.loadsaved();
+		final Resource.Image img = res.layer(Resource.imgc);
+		if(img == null) {return null;}
+		final Resource.Neg neg = res.layer(Resource.negc);
+		final Coord cc = neg != null ? neg.cc : img.ssz.div(2);
+		return Area.sized(cc.inv(), img.ssz);
+	    } catch (Loading ignored) {
+		return null;
+	    }
+	}
+
+	@Override
+	public int hashCode() {
+	    return Objects.hash(super.hashCode(), oid, res);
+	}
+
+	public String toString() {
+	    return(String.format("#<smarker \"%s\" %s %s %s>", nm, oid, res.name, seq));
+	}
+    }
+
+    private Marker loadmarker(Message fp) {
 	int ver = fp.uint8();
 	if((ver >= 1) && (ver <= 3)) {
 	    long seg = fp.int64();
@@ -336,14 +470,14 @@ public class MapFile {
 	    case 'p':
 		Color color = fp.color();
 		boolean onmap = (ver >= 2) ? fp.uint8() != 0 : false;
-		return(new PMarker(seg, tc, nm, color, onmap));
+		return(new PMarker(this, seg, tc, nm, color, onmap));
 	    case 's':
 		UID oid = UID.of(fp.int64());
 		Resource.Saved res = new Resource.Saved(Resource.remote(), fp.string(), fp.uint16());
 		byte[] data = new byte[0];
 		if(ver >= 3)
 		    data = fp.bytes(fp.uint8());
-		return(new SMarker(seg, tc, nm, oid, res, data));
+		return(new SMarker(this, seg, tc, nm, oid, res, data));
 	    default:
 		throw(new Message.FormatError("Unknown marker type: " + (int)type));
 	    }
@@ -355,12 +489,12 @@ public class MapFile {
 	    if(enc.containsKey("col")) {
 		Color color = COLOR.of(enc.get("col"));
 		boolean onmap = BOOL.of(enc.getOrDefault("md", 0));
-		return(new PMarker(seg, tc, nm, color, onmap));
+		return(new PMarker(this, seg, tc, nm, color, onmap));
 	    } else if(enc.containsKey("res")) {
 		UID oid = UNIQID.of(enc.get("oid"));
 		Resource.Named res = (Resource.Named)enc.get("res");
 		byte[] data = BYTES.of(enc.getOrDefault("dat", new byte[0]));
-		return(new SMarker(seg, tc, nm, oid, new Resource.Saved(Resource.remote(), res.name, res.ver), data));
+		return(new SMarker(this, seg, tc, nm, oid, new Resource.Saved(Resource.remote(), res.name, res.ver), data));
 	    } else {
 		throw(new Message.FormatError("Unknown marker type: " + enc));
 	    }
@@ -398,6 +532,7 @@ public class MapFile {
 	    if(markers.add(mark)) {
 		defersave();
 		markerseq++;
+		mark.seq++;
 	    }
 	} finally {
 	    lock.writeLock().unlock();
@@ -410,6 +545,7 @@ public class MapFile {
 	    if(markers.remove(mark)) {
 		defersave();
 		markerseq++;
+		mark.seq++;
 	    }
 	} finally {
 	    lock.writeLock().unlock();
@@ -422,6 +558,7 @@ public class MapFile {
 	    if(markers.contains(mark)) {
 		defersave();
 		markerseq++;
+		mark.seq++;
 	    }
 	} finally {
 	    lock.readLock().unlock();
@@ -1646,6 +1783,7 @@ public class MapFile {
 	    if(mark.seg == src.id) {
 		mark.seg = dst.id;
 		mark.tc = mark.tc.sub(soff.mul(cmaps));
+		mark.seq++;
 		mf = true;
 	    }
 	}
@@ -2179,7 +2317,7 @@ public class MapFile {
 	}
 
 	void importcmark(Message data) {
-	    Marker mark = loadcmarker(data);
+	    Marker mark = loadcmarker(MapFile.this, data);
 	    ImportedSegment seg = segs.get(mark.seg);
 	    if((seg == null) || (seg.noff == null))
 		return;
