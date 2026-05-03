@@ -61,7 +61,7 @@ public class MiniMap extends Widget {
     protected Locator setloc;
     protected boolean follow;
     protected int zoomlevel = 0, maglevel = 1 << Utils.clip((int)Math.round(Math.log(UI.scale(1.0)) / Math.log(2)), 0, 3);
-    protected DisplayGrid[] display;
+    protected DisplayGrid[] display = {};
     protected Area dgext, dtext;
     protected Segment dseg;
     protected int dlvl, dmag;
@@ -180,6 +180,10 @@ public class MiniMap extends Widget {
 	    return(new Location(seg, tc));
 	}
     }
+
+    // TODO(loftar-merge): see TODO.md "MiniMap Markers/MarkerIcon cache".
+    // Loftar added per-MiniMap MarkerIcon cache populated from Marker.seq;
+    // dropped here because Thunder's marker hierarchy has no seq field.
 
     public void center(Location loc) {
 	curloc = loc;
@@ -413,6 +417,9 @@ public class MiniMap extends Widget {
 	}
     }
 
+    // TODO(loftar-merge): see TODO.md "MiniMap.DisplayMarker rewrite". Loftar
+    // moved icon/info caching into a per-MiniMap Markers map; Thunder keeps
+    // it on DisplayMarker. Leaving Thunder's design until consolidation.
     public static class DisplayMarker implements ItemInfo.Owner, ItemInfo.Name.Dynamic {
 	public final Marker m;
 	public final Widget wdg;
@@ -560,7 +567,7 @@ public class MiniMap extends Widget {
     }
 
     public static class DisplayGrid {
-	public final Widget wdg;
+	public final MiniMap mm;
 	public final MapFile file;
 	public final Segment seg;
 	public final Coord sc;
@@ -570,8 +577,8 @@ public class MiniMap extends Widget {
 	private Tex img = null;
 	private Defer.Future<Tex> nextimg = null;
 
-	public DisplayGrid(Widget wdg, Segment seg, Coord sc, int lvl, Indir<? extends DataGrid> gref) {
-	    this.wdg = wdg;
+	public DisplayGrid(MiniMap mm, Segment seg, Coord sc, int lvl, Indir<? extends DataGrid> gref) {
+	    this.mm = mm;
 	    this.file = seg.file();
 	    this.seg = seg;
 	    this.sc = sc;
@@ -725,7 +732,7 @@ public class MiniMap extends Widget {
 			ArrayList<DisplayMarker> marks = new ArrayList<>();
 			for(Marker mark : file.markers) {
 			    if((mark.seg == this.seg.id) && mapext.contains(mark.tc))
-				marks.add(new DisplayMarker(wdg, mark, ui));
+				marks.add(new DisplayMarker(mm, mark, ui));
 			}
 			marks.trimToSize();
 			markers = (marks.size() == 0) ? Collections.emptyList() : marks;
@@ -1256,6 +1263,27 @@ public class MiniMap extends Widget {
 	    }
 	}
 	return(true);
+    }
+
+    public boolean mousehover(MouseHoverEvent ev, boolean hovering) {
+	boolean ret = false;
+	if(hovering) {
+	    for(ListIterator<DisplayIcon> it = icons.listIterator(icons.size()); it.hasPrevious();) {
+		DisplayIcon disp = it.previous();
+		if(disp.sc == null)
+		    continue;
+		Coord ic = ev.c.sub(disp.sc);
+		if(disp.icon.hover(ic, hovering && disp.icon.checkhit(ic) && !filter(disp))) {
+		    hovering = false;
+		    ret = true;
+		}
+	    }
+	    // TODO(loftar-merge): see TODO.md "Marker hover handling". Loftar
+	    // added a per-marker hover loop here that depends on DisplayMarker.sc
+	    // and the single-arg DisplayGrid.markers(boolean). Both are part of
+	    // loftar's DisplayMarker rewrite and are skipped for now.
+	}
+	return(ret);
     }
 
     private String lasttname = null;

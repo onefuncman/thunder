@@ -462,6 +462,10 @@ public class MapWnd extends WindowX implements Console.Directory {
 	    super.draw(g);
 	}
 
+	// TODO(loftar-merge): see TODO.md "MapWnd marker placement". Loftar
+	// refactored marker placement into a MarkButton with mouse grab and
+	// PlaceMarker pointer events; Thunder uses the older domark flag set
+	// from a button. Keeping Thunder's mechanism for now.
 	public boolean getcurs(CursorQuery ev) {
 	    if(domark)
 		return(ev.set(markcurs));

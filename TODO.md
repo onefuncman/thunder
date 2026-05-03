@@ -1,3 +1,150 @@
+# Loftar merge follow-up (2026-05-02)
+
+The 2026-05-02 merge of `loftar/master` brought in a new marker class
+hierarchy and supporting refactors that collide with Thunder's own marker
+infrastructure (`me.ender.minimap.{Marker,PMarker,SMarker,CustomMarker}`).
+The merge resolution kept Thunder's hierarchy and parked loftar's incoming
+classes / wiring as `*Old` dead code or removed them with TODO markers.
+Each item below is one chunk of the consolidation that still needs doing.
+
+When you adopt one, search for the matching `TODO(loftar-merge)` comment
+in the source — that's the parking spot for the corresponding loftar code.
+
+## 1. Marker class consolidation
+
+**Where:** `src/haven/MapFile.java` (look for `MarkerOld` / `PMarkerOld` /
+`SMarkerOld`); `src/me/ender/minimap/{Marker,PMarker,SMarker,CustomMarker}.java`.
+
+**What loftar wants:** `MapFile.{Marker,PMarker,SMarker}` are the canonical
+marker classes, with new fields:
+- `final MapFile file` — back-pointer for `update(boolean save)`
+- `volatile int seq` — change counter, bumped by `MapFile.add/remove/update`
+- `MapFile.markerseq` is `volatile`
+- `loadmarker` is an instance method (not static) so it can pass `this` to ctors
+- `SMarker.oid` is `UID` (was `long`), and `SMarker` carries `byte[] data`
+- `Marker.toString()` defined for both subclasses
+
+**What Thunder has instead:** Top-level `me.ender.minimap.Marker` with
+abstract `draw(GOut, Coord, Text, float, MapFile)` and `area()`, plus
+`PMarker`/`SMarker`/`CustomMarker` subclasses. `me.ender.minimap.SMarker`
+also carries `questConditions`, `questIterator`, custom `equals/hashCode`,
+and `data`. `MapFile.markers` is `Collection<me.ender.minimap.Marker>`.
+
+**Adoption path:**
+1. Move `draw()` and `area()` abstract methods onto `MapFile.Marker`.
+2. Port `me.ender.minimap.PMarker`'s flag rendering (`flagbg/flagfg/flagcc`,
+   `draw`, `area`, `equals`) into `MapFile.PMarker`.
+3. Port `me.ender.minimap.SMarker`'s `questConditions`/`questIterator`/
+   `draw`/`area`/`equals/hashCode` into `MapFile.SMarker` (already has
+   `data` field from this merge).
+4. Update `me.ender.minimap.CustomMarker` to extend `MapFile.PMarker` (or
+   `MapFile.SMarker` — pick whichever the class actually behaves like).
+5. Delete `src/me/ender/minimap/{Marker,PMarker,SMarker}.java`.
+6. Re-rename `MarkerOld` / `PMarkerOld` / `SMarkerOld` away — they were
+   only kept as dead code to avoid the import collision. Remove them.
+7. Add `import haven.MapFile.{Marker,PMarker,SMarker};` to all consumers
+   that previously got these via `import me.ender.minimap.*;`. Wildcard
+   imports do not pull in nested classes.
+8. Update construction sites to pass the `file` arg:
+   - `MapWnd.java:436` `new PMarker(loc.seg.id, ...)` → `new PMarker(file, loc.seg.id, ...)`
+   - `MapWnd.java:1096` `new SMarker(info.seg, ...)` → restore loftar's `new SMarker(file, info.seg, ...)`
+   - `MapWnd2.java:74` and `MapWnd2.java:143` likewise
+   - `MiniMap.java:1322` likewise
+   - `MapFile.loadmarker` switches back to instance method calling `new PMarker(this, ...)` etc.
+9. Restore `mark.seq++` calls in `MapFile.add/remove/update` (and the
+   segment-merge loop near `MapFile.java:~1648`) once `Marker.seq` exists.
+10. Switch `MapFile.savemarker` back to instance method if needed (loftar's
+    version was the same shape as Thunder's static one — no action likely).
+11. Re-fetch loftar's full `MapFile` diff to verify nothing else snuck past
+    the parked changes.
+
+**Acceptance:** `ant bin` clean; `ant test` clean; markers placed via
+in-game UI persist across restart and reload correctly; quest-helper
+highlights still render.
+
+## 2. MapWnd marker placement (`MarkButton`)
+
+**Where:** `src/haven/MapWnd.java` — look for the `TODO(loftar-merge)`
+in the marker-button class around `MarkButton`.
+
+**What loftar wants:** Marker placement uses `ui.grabmouse(this)` plus a
+`PlaceMarker` `Widget.PointerEvent`. Right-click ungrabs; left-click on
+the minimap calls `MiniMap.xlate(c)`; left-click on the MapView raycasts
+via `FindMark` (extends `MapView.Maptest`). Cleaner than a flag.
+
+**What Thunder has instead:** `domark` boolean flag. The button toggles it,
+`MiniMap.clickloc` checks it before creating a `PMarker`. Right-click
+clears `domark`. The cursor swaps to `markcurs` while `domark` is on.
+
+**Adoption path:**
+1. Bring back loftar's added methods on `MarkButton`: `state()`, `click()`,
+   `mark(Location, boolean)`, `ungrab()`, inner `FindMark` (extends
+   `MapView.Maptest`), inner `PlaceMarker` (extends `Widget.PointerEvent`),
+   and `mousedown(MouseDownEvent)`.
+2. Drop the `domark` flag and the `clickloc` branch that uses it.
+3. Update `getcurs` to return the mark cursor while a grab is active rather
+   than while `domark` is true.
+4. Make sure `mark()` uses the consolidated marker classes from item 1
+   (passes `file` to the `PMarker` ctor).
+
+**Acceptance:** Click the mark button on the map window, then click on
+either the minimap or the world view — a new `PMarker` lands at the
+clicked location. Right-click cancels.
+
+## 3. `MiniMap.DisplayMarker` rewrite (`Markers` / `MarkerIcon` cache)
+
+**Where:** `src/haven/MiniMap.java` — look for the `TODO(loftar-merge)`
+on the `DisplayMarker` class declaration.
+
+**What loftar wants:** `DisplayMarker` becomes a thin `(MiniMap mm, Marker
+m)` wrapper that delegates `icon()` and `tooltip()` to a per-MiniMap
+`Markers` cache (shared across all `DisplayGrid`s). The cache keys icon
+state by `Marker` and tracks `Marker.seq` to invalidate when the marker
+mutates. `MarkerIcon` is the per-marker cache cell, holding a deferred
+`Loader.Future<GobIcon.Icon>` so icon resolution can be async without
+blocking draw. `DisplayMarker.sc` (screen coord, set during draw) feeds
+into `MiniMap.mousehover` for marker hover handling.
+
+**What Thunder has instead:** `DisplayMarker` is full-featured — it owns
+its own icon resolution, info caching, tooltip rendering, quest-highlight
+drawing, scaling (`iconmult`), PVP-mode filtering, dynamic tip text via
+`checkTip`, and a richer `OwnerContext.ClassResolver`. There is no
+shared `Markers` cache; each `DisplayGrid.markers(boolean, UI)` returns
+fresh `DisplayMarker` instances per remark.
+
+**Adoption path (only if you want loftar's caching benefits):**
+1. Re-add the `Markers` and `MarkerIcon` classes (parked under
+   `TODO(loftar-merge)` — currently deleted but recoverable from
+   `git show <merge-commit>^2:src/haven/MiniMap.java`).
+2. Re-add the `Markers markers = new Markers(this);` field on `MiniMap`.
+3. Re-introduce `DisplayMarker.sc` field and the loftar `mousehover` loop
+   (parked under `TODO(loftar-merge)` near the Thunder hover handler).
+4. Decide whether icon/info caching moves entirely into `MarkerIcon` or
+   remains on `DisplayMarker`. If moving, keep Thunder's quest highlight,
+   PVP filter, dynamic tip, and scaling in `DisplayMarker`'s `draw()`
+   while delegating icon resolution to `mm.markers.get(m)`.
+5. Restore `DisplayGrid.markers(boolean)` single-arg overload (the loftar
+   call site at the parked hover loop uses it) — Thunder's existing
+   two-arg variant takes a `UI`, the no-UI form would need to read `ui`
+   off `mm`.
+6. Depends on consolidation item 1 (needs `Marker.seq`).
+
+**Acceptance:** Markers still render with quest highlights, custom icons,
+and scaling; hovering a marker on the minimap surfaces tooltips even when
+the cursor isn't over a `DisplayIcon`.
+
+## 4. Notes on what was integrated cleanly (no follow-up)
+
+These loftar changes landed in this same merge with no parking:
+- `BinHeap.java` (new), `Coord.isect`, `Coord2d` corner-based isect helpers, `Line2d` extensions
+- `GOut.line(Coord, Coord, double)` now clips natively against `ul/br`
+  using `Line2d.twixt(...).clip(...)`. Thunder's `clippedLine` was kept
+  as a deprecated thin wrapper that delegates to `line` (`GOut.java:279`).
+- `GobIcon.java` cached-icon resource error handling (more robust load failures)
+- `MapFile.markerseq` is now `volatile` (kept Thunder's `markerids` field alongside)
+
+---
+
 # Ender Cherry-picks
 
 Cherry-picking from `ender/master` (since Jan 2026).

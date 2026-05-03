@@ -53,7 +53,7 @@ public class MapFile {
     public final String filename;
     public final Collection<Long> knownsegs = new HashSet<>();
     public final Collection<Marker> markers = new ArrayList<>();
-    public int markerseq = 0;
+    public volatile int markerseq = 0;
     public IDPool markerids = new IDPool(0, Long.MAX_VALUE);
     public final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
     private final Random rnd = new Random();
@@ -110,7 +110,7 @@ public class MapFile {
 		for(int i = 0, no = data.int32(); i < no; i++)
 		    file.knownsegs.add(data.int64());
 		for(int i = 0, no = data.int32(); i < no; i++) {
-		    Marker mark = loadmarker(data);
+		    Marker mark = file.loadmarker(data);
 		    file.markers.add(mark);
 		}
 	    } else {
@@ -286,6 +286,11 @@ public class MapFile {
 	}
     }
 
+    // TODO(loftar-merge): see TODO.md "Marker class consolidation". Loftar
+    // moved Marker/PMarker/SMarker into MapFile (with file/seq/update()).
+    // Thunder already has me.ender.minimap.{Marker,PMarker,SMarker} as the
+    // active hierarchy, so loftar's classes are kept here under *Old names
+    // as dead code until the consolidation lands.
     public abstract static class MarkerOld {
 	public long seg;
 	public Coord tc;
