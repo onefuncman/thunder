@@ -344,6 +344,12 @@ public class MiniMap extends Widget {
 		return(icons.computeIfAbsent(m, k -> new MarkerIcon(this, k)));
 	    }
 	}
+
+	public Collection<? extends MarkerIcon> known() {
+	    synchronized(this) {
+		return(new ArrayList<>(icons.values()));
+	    }
+	}
     }
 
     public void center(Location loc) {
