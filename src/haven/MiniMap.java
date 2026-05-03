@@ -57,6 +57,7 @@ public class MiniMap extends Widget {
     public static final Tex plp = ((TexI)Resource.loadtex("gfx/hud/mmap/plp")).filter(Texture.Filter.LINEAR);
     private static final Color BIOME_BG = new Color(0, 0, 0, 80);
     public final MapFile file;
+    public final Markers markers = new Markers(this);
     public Location curloc;
     public Location sessloc;
     public GobIcon.Settings iconconf;
@@ -184,10 +185,166 @@ public class MiniMap extends Widget {
 	}
     }
 
-    // TODO(loftar-merge): see TODO.md item 3 "MiniMap.DisplayMarker rewrite".
-    // Loftar added a per-MiniMap MarkerIcon cache (shared across DisplayGrids,
-    // async-loading icons keyed on Marker.seq). Thunder's DisplayMarker owns
-    // its own icon caching; the loftar cache is intentionally not adopted.
+    public static class MarkerIcon implements ItemInfo.Owner, ItemInfo.Name.Dynamic {
+	public final Markers o;
+	public final Marker m;
+	private final Loader loader;
+	private Loader.Future<GobIcon.Icon> load;
+	private GobIcon.Icon icon;
+	private int lseq, iseq;
+
+	public MarkerIcon(Markers o, Marker m) {
+	    this.o = o;
+	    this.m = m;
+	    this.loader = o.mm.ui.loader;
+	}
+
+	private static final OwnerContext.ClassResolver<MarkerIcon> ctxr = new OwnerContext.ClassResolver<MarkerIcon>()
+	    .add(Marker.class, i -> i.m)
+	    .add(MiniMap.class, i -> i.o.mm)
+	    .add(UI.class, i -> i.o.mm.ui)
+	    .add(Glob.class, i -> i.o.mm.ui.sess.glob)
+	    .add(Session.class, i -> i.o.mm.ui.sess);
+	public <T> T context(Class<T> cl) {
+	    return(ctxr.context(cl, this));
+	}
+
+	public String name() {
+	    return(m.nm);
+	}
+
+	private GobIcon.Icon create() {
+	    if(m instanceof PMarker) {
+		return(new Flag(this, ((PMarker)m).color, m.nm));
+	    } else if(m instanceof SMarker) {
+		SMarker sm = (SMarker)m;
+		Resource res = sm.res.get();
+		byte[] sdt = sm.data == null ? new byte[0] : sm.data;
+		return(GobIcon.getfac(res).create(this, res, new MessageBuf(sdt)));
+	    }
+	    return(null);
+	}
+
+	private void ckload() {
+	    if(load.done()) {
+		icon = load.get();
+		iseq = lseq;
+		load = null;
+		info = null;
+		o.seq++;
+	    }
+	}
+
+	void update() {
+	    int nseq = m.seq;
+	    boolean reload;
+	    if(load == null) {
+		reload = (nseq != this.iseq);
+	    } else if(nseq != this.lseq) {
+		reload = true;
+	    } else {
+		ckload();
+		reload = false;
+	    }
+	    if(reload) {
+		if(load != null)
+		    load.cancel();
+		load = loader.defer(this::create);
+		lseq = nseq;
+	    }
+	}
+
+	public GobIcon.Icon icon() {
+	    synchronized(o) {
+		if((load == null) && (icon == null)) {
+		    load = loader.defer(this::create);
+		    lseq = o.mseq;
+		    o.loading = true;
+		}
+		if(load != null)
+		    ckload();
+		if(icon == null)
+		    throw(new Loading());
+		return(icon);
+	    }
+	}
+
+	private List<ItemInfo> info = null;
+	public List<ItemInfo> info() {
+	    if(info == null) {
+		Object[] raw = icon().info(this);
+		info = ItemInfo.buildinfo(this, raw);
+	    }
+	    return(info);
+	}
+    }
+
+    public static class Markers {
+	public final MiniMap mm;
+	public int seq;
+	private final Map<Marker, MarkerIcon> icons = new HashMap<>();
+	private volatile int mseq = -1;
+	private volatile Defer.Future<?> updater = null;
+	private boolean loading;
+
+	private Markers(MiniMap mm) {
+	    this.mm = mm;
+	}
+
+	private void update0() {
+	    boolean loading = false;
+	    mm.file.lock.readLock().lock();
+	    try {
+		int nseq = mm.file.markerseq;
+		Set<Marker> current = new HashSet<>(mm.file.markers);
+		synchronized(this) {
+		    for(Iterator<Map.Entry<Marker, MarkerIcon>> i = icons.entrySet().iterator(); i.hasNext();) {
+			Map.Entry<Marker, MarkerIcon> ent = i.next();
+			Marker m = ent.getKey();
+			MarkerIcon st = ent.getValue();
+			if(current.contains(m)) {
+			    current.remove(m);
+			    st.update();
+			    if(st.load != null)
+				loading = true;
+			} else {
+			    i.remove();
+			}
+		    }
+		    boolean ch = false;
+		    for(Marker m : current) {
+			MarkerIcon st = new MarkerIcon(this, m);
+			icons.put(m, st);
+			st.update();
+			if(st.load != null)
+			    loading = true;
+			ch = true;
+		    }
+		    mseq = nseq;
+		    if(ch)
+			seq++;
+		}
+	    } finally {
+		mm.file.lock.readLock().unlock();
+		this.loading = loading;
+		updater = null;
+	    }
+	}
+
+	private void update() {
+	    if((mseq != mm.file.markerseq) || loading) {
+		if(updater == null)
+		    updater = Defer.later(this::update0, null);
+	    }
+	}
+
+	public MarkerIcon get(Marker m) {
+	    synchronized(this) {
+		update();
+		return(icons.computeIfAbsent(m, k -> new MarkerIcon(this, k)));
+	    }
+	}
+    }
 
     public void center(Location loc) {
 	curloc = loc;
@@ -421,70 +578,39 @@ public class MiniMap extends Widget {
 	}
     }
 
-    // TODO(loftar-merge): see TODO.md "MiniMap.DisplayMarker rewrite". Loftar
-    // moved icon/info caching into a per-MiniMap Markers map; Thunder keeps
-    // it on DisplayMarker. Leaving Thunder's design until consolidation.
-    public static class DisplayMarker implements ItemInfo.Owner, ItemInfo.Name.Dynamic {
+    public static class DisplayMarker {
+	public final MiniMap mm;
 	public final Marker m;
-	public final Widget wdg;
 	public Text tip;
 	public Area hit;
+	public Coord sc = null;
 
-	public DisplayMarker(Widget wdg, Marker marker, final UI ui) {
-	    this.wdg = wdg;
+	public DisplayMarker(MiniMap mm, Marker marker, final UI ui) {
+	    this.mm = mm;
 	    this.m = marker;
 	    checkTip(marker.tip(ui));
 	}
 
-	private static final OwnerContext.ClassResolver<DisplayMarker> ctxr = new OwnerContext.ClassResolver<DisplayMarker>()
-	    .add(Marker.class, m -> m.m)
-	    .add(Widget.class, m -> m.wdg)
-	    .add(UI.class, m -> m.wdg.ui)
-	    .add(Glob.class, m -> m.wdg.ui.sess.glob)
-	    .add(Session.class, m -> m.wdg.ui.sess);
-	public <T> T context(Class<T> cl) {
-	    return(ctxr.context(cl, this));
-	}
-
-	public String name() {
-	    return(m.nm);
-	}
-
-	private GobIcon.Icon icon = null;
 	public GobIcon.Icon icon() {
-	    if(icon == null) {
-		if(m instanceof PMarker) {
-		    icon = new Flag(this, ((PMarker)m).color, m.nm);
-		} else if(m instanceof SMarker) {
-		    SMarker sm = (SMarker)m;
-		    Resource res = sm.res.get();
-		    byte[] sdt = sm.data == null ? new byte[0] : sm.data;
-		    icon = GobIcon.getfac(res).create(this, res, new MessageBuf(sdt));
-		}
+	    try {
+		return(mm.markers.get(m).icon());
+	    } catch(Loading l) {
+		return(null);
 	    }
-	    return(icon);
 	}
 
-	private List<ItemInfo> info = null;
-	public List<ItemInfo> info() {
-	    if(info == null) {
-		GobIcon.Icon ic = icon();
-		if(ic == null) {return Collections.emptyList();}
-		Object[] raw = ic.info(this);
-		info = ItemInfo.buildinfo(this, raw);
-	    }
-	    return(info);
-	}
-
+	private int tseq = -1;
 	private BufferedImage tooltipImg = null;
 	public BufferedImage tooltip() {
-	    if(tooltipImg == null) {
-		try {
-		    List<ItemInfo> in = info();
+	    try {
+		MarkerIcon minf = mm.markers.get(m);
+		if((tooltipImg == null) || (minf.iseq != tseq)) {
+		    List<ItemInfo> in = minf.info();
 		    if(in != null && !in.isEmpty())
 			tooltipImg = ItemInfo.longtip(in);
-		} catch(Loading l) {}
-	    }
+		    tseq = minf.iseq;
+		}
+	    } catch(Loading l) {}
 	    if(tooltipImg != null) {return tooltipImg;}
 	    return(tip != null ? tip.img : null);
 	}
@@ -748,6 +874,10 @@ public class MiniMap extends Widget {
 	    }
 	    return(markers);
 	}
+
+	public Collection<DisplayMarker> markers(boolean remark) {
+	    return markers(remark, mm.ui);
+	}
     }
 
     private float scalef() {
@@ -865,7 +995,8 @@ public class MiniMap extends Widget {
 		if(filter(mark))
 		    continue;
 		float mmult = upscaleMarker(mark) ? iconmult() : 1.0f;
-		mark.draw(g, mark.m.tc.sub(dloc.tc).div(scalef()).add(hsz), dmag, mmult, ui, file, big);
+		mark.sc = mark.m.tc.sub(dloc.tc).div(scalef()).add(hsz);
+		mark.draw(g, mark.sc, dmag, mmult, ui, file, big);
 	    }
 	}
     }
@@ -1282,10 +1413,22 @@ public class MiniMap extends Widget {
 		    ret = true;
 		}
 	    }
-	    // TODO(loftar-merge): see TODO.md "Marker hover handling". Loftar
-	    // added a per-marker hover loop here that depends on DisplayMarker.sc
-	    // and the single-arg DisplayGrid.markers(boolean). Both are part of
-	    // loftar's DisplayMarker rewrite and are skipped for now.
+	    for(DisplayGrid dgrid : display) {
+		if(dgrid == null)
+		    continue;
+		for(DisplayMarker mark : dgrid.markers(false)) {
+		    if(mark.sc == null)
+			continue;
+		    GobIcon.Icon icon = mark.icon();
+		    if(icon == null)
+			continue;
+		    Coord ic = ev.c.sub(mark.sc);
+		    if(icon.hover(ic, hovering && icon.checkhit(ic) && !filter(mark))) {
+			hovering = false;
+			ret = true;
+		    }
+		}
+	    }
 	}
 	return(ret);
     }

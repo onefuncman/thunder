@@ -3,9 +3,7 @@
 The 2026-05-02 merge of `loftar/master` brought in a new marker class
 hierarchy and supporting refactors that collided with Thunder's own marker
 infrastructure (`me.ender.minimap.{Marker,PMarker,SMarker,CustomMarker}`).
-Items 1 and 2 below have been resolved; item 3 is intentionally left open
-because Thunder's existing rendering path is feature-complete and adopting
-loftar's cache would require a significant rewrite for marginal benefit.
+All three items below are resolved.
 
 ## 1. Marker class consolidation [DONE]
 
@@ -31,47 +29,23 @@ served from `MarkButton.getcurs(ev.grabbed)` rather than a global flag,
 and the obsolete `domark` checks in `MapView.mousedown1`, `MapView.getcurs`,
 and `MapWnd2.addMarker`/`MapWnd2.track` are gone.
 
-## 3. `MiniMap.DisplayMarker` rewrite (`Markers` / `MarkerIcon` cache)
+## 3. `MiniMap.DisplayMarker` rewrite (`Markers` / `MarkerIcon` cache) [DONE]
 
-**Where:** `src/haven/MiniMap.java` — look for the `TODO(loftar-merge)`
-on the `DisplayMarker` class declaration.
+`MiniMap` now owns a `Markers` cache (per-MiniMap `Map<Marker, MarkerIcon>`)
+populated lazily and invalidated via `Marker.seq` (from item 1). `MarkerIcon`
+holds a `Loader.Future<GobIcon.Icon>` so icon resolution is async — draws
+that race ahead of resolution `throw Loading` and silently skip rendering
+that frame instead of blocking.
 
-**What loftar wants:** `DisplayMarker` becomes a thin `(MiniMap mm, Marker
-m)` wrapper that delegates `icon()` and `tooltip()` to a per-MiniMap
-`Markers` cache (shared across all `DisplayGrid`s). The cache keys icon
-state by `Marker` and tracks `Marker.seq` to invalidate when the marker
-mutates. `MarkerIcon` is the per-marker cache cell, holding a deferred
-`Loader.Future<GobIcon.Icon>` so icon resolution can be async without
-blocking draw. `DisplayMarker.sc` (screen coord, set during draw) feeds
-into `MiniMap.mousehover` for marker hover handling.
-
-**What Thunder has instead:** `DisplayMarker` is full-featured — it owns
-its own icon resolution, info caching, tooltip rendering, quest-highlight
-drawing, scaling (`iconmult`), PVP-mode filtering, dynamic tip text via
-`checkTip`, and a richer `OwnerContext.ClassResolver`. There is no
-shared `Markers` cache; each `DisplayGrid.markers(boolean, UI)` returns
-fresh `DisplayMarker` instances per remark.
-
-**Adoption path (only if you want loftar's caching benefits):**
-1. Re-add the `Markers` and `MarkerIcon` classes (parked under
-   `TODO(loftar-merge)` — currently deleted but recoverable from
-   `git show <merge-commit>^2:src/haven/MiniMap.java`).
-2. Re-add the `Markers markers = new Markers(this);` field on `MiniMap`.
-3. Re-introduce `DisplayMarker.sc` field and the loftar `mousehover` loop
-   (parked under `TODO(loftar-merge)` near the Thunder hover handler).
-4. Decide whether icon/info caching moves entirely into `MarkerIcon` or
-   remains on `DisplayMarker`. If moving, keep Thunder's quest highlight,
-   PVP filter, dynamic tip, and scaling in `DisplayMarker`'s `draw()`
-   while delegating icon resolution to `mm.markers.get(m)`.
-5. Restore `DisplayGrid.markers(boolean)` single-arg overload (the loftar
-   call site at the parked hover loop uses it) — Thunder's existing
-   two-arg variant takes a `UI`, the no-UI form would need to read `ui`
-   off `mm`.
-6. Depends on consolidation item 1 (needs `Marker.seq`).
-
-**Acceptance:** Markers still render with quest highlights, custom icons,
-and scaling; hovering a marker on the minimap surfaces tooltips even when
-the cursor isn't over a `DisplayIcon`.
+`DisplayMarker` keeps its draw flow (quest highlights, PVP filter,
+`iconmult` scaling, dynamic `checkTip` tip text) but delegates `icon()` to
+`mm.markers.get(m).icon()` and `tooltip()` to `MarkerIcon.info()` (with
+`MarkerIcon.iseq` driving cache invalidation). The `OwnerContext` resolver
+moved off `DisplayMarker` onto `MarkerIcon`; `DisplayMarker.wdg` was
+retyped to `MiniMap mm`. `DisplayMarker.sc` is captured during
+`drawmarkers` and consumed by the new per-marker hover loop in
+`mousehover`. `DisplayGrid.markers(boolean)` overload added for hover-loop
+callers that don't have a `UI`.
 
 ## 4. Notes on what was integrated cleanly (no follow-up)
 
