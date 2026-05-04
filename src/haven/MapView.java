@@ -2341,6 +2341,7 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
     }
 
     private static void snapLog(String fmt, Object... args) {
+	if(!CFG.DEBUG_PLOB_SNAP.get()) return;
 	Debug.log.println("[plobsnap] " + String.format(fmt, args));
     }
 
@@ -2401,8 +2402,9 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	    targetWorld = new double[] {
 		tileOrigin.x, tileOrigin.y,
 		tileOrigin.x + tilesz.x, tileOrigin.y + tilesz.y };
-	    source = "tile origin=" + tileOrigin
-		+ " (no terobj footprint contains mc; nearest: " + describeNearbyTerobjs(placing, mc, 3) + ")";
+	    source = CFG.DEBUG_PLOB_SNAP.get()
+		? "tile origin=" + tileOrigin + " (no terobj footprint contains mc; nearest: " + describeNearbyTerobjs(placing, mc, 3) + ")"
+		: "tile origin=" + tileOrigin;
 	    tileMode = true;
 	}
 	snapLog("%s cursor=%s mc=%s target=%s targetWorld=%s",
