@@ -15,9 +15,11 @@ duplicate-vs-novel question every sync.
 
 ## kami sync 2026-05-03 (merge commit efafb5f29)
 
-12 commits on `upstream/master` since the previous sync. Six commits were
+12 commits on `upstream/master` since the previous sync. Seven commits were
 cherry-picked first to bring in real new content; the `-s ours` merge then
-marks the rest as synced.
+marks the rest as synced. (b9a025e78 was cherry-picked after the `-s ours`
+merge once we re-evaluated it as live `@FromResource` override code, not a
+mirror-only doc bump.)
 
 ### Cherry-picked (new content brought into thunder)
 
@@ -30,6 +32,7 @@ marks the rest as synced.
 | 5ebcbd455 | 436bda816 | render numbers over the default player bars. | Self-contained IMeter change. |
 | 9630f1f88 | f244bf4b4 | legacy bgm with different client based hooks. | New LegacyBGM/LegacyAudioPlayer + 8 ogg files in `resources/sfx/legacy/`. |
 | d1b82ff43 | 04dfe3351 | Stripped logging. | Companion to 9630f1f88 -- removes debug prints from LegacyBGM/LegacyAudioPlayer. |
+| b9a025e78 | d5e9e4978 | resources. | `@FromResource` override for `ui/realm` is live game code, not a mirror-only file. Pulls in `Utils.iv(args[1])` (replaces a `(Integer)args[1]` hard cast that crashes when the server sends the count as Long/Byte) and bumps the version pin from 31 to 34 (kami's pin) plus the `thingwall` subresource pin v1->v4. Conflict on the version line resolved by taking kami's v34. |
 
 Per-cherry-pick `changelog.txt` conflicts were resolved by `checkout --ours`
 (thunder's `changelog.txt` is a stale kami-inherited file we don't actively
@@ -45,12 +48,11 @@ maintain).
 
 ### Skipped (kami-only; not adopted into thunder)
 
-5 of 12.
+4 of 12.
 
 | kami SHA | subject | reason skipped |
 |---|---|---|
 | 5f06c9d22 | Merged loftar's changes as good as possibru. | kami's loftar merge; we merge loftar directly via our `loftar` remote |
-| b9a025e78 | resources. | bumps `loftar-res-sources/.../{Hidewnd,Realm}.java` to v34 after kami's loftar merge. Thunder is at v31 from its own loftar sync; if we want v34 (which carries `Utils.iv` arg coercion + thingwall v1->v4 bump) we update from loftar ourselves. |
 | 2eef6e1c3 | Changelog. CFG default Changes. | kami changelog. The CFG default flip (smooth_strength 30->0, rotation_smoothing_ms 250->0) was applied to the cherry-picked rotation_smoothing line directly per user request; smooth_strength default stays at 30. |
 | b6240b071 | cHaNgElOg... | kami changelog only |
 
