@@ -13,6 +13,53 @@ duplicate-vs-novel question every sync.
 
 ---
 
+## kami sync 2026-05-03 (merge commit efafb5f29)
+
+12 commits on `upstream/master` since the previous sync. Six commits were
+cherry-picked first to bring in real new content; the `-s ours` merge then
+marks the rest as synced.
+
+### Cherry-picked (new content brought into thunder)
+
+| kami SHA | thunder SHA | subject | notes |
+|---|---|---|---|
+| a32b2258b | 83c751a11 | Added rotation smoothing. Prevent NPE on left clicking cave icons. | Added `cam.rotation_smoothing_ms` (default 0 -- opt-in). MapWnd NPE guard already present from loftar follow-up; that hunk merged as no-op. |
+| 4b44fbcf8 | 910426458 | Fixed Ortho cams | Companion to a32b2258b -- partially reverts the smoothing in `tick2()` because it broke ortho. Adopt these two together. |
+| b83a97847 | 957903f98 | Added a way to disable warning rings while in combat with the animal. | New `ui.combat.hide_animal_warning_in_combat` CFG + `Gob.lastInCombat` timestamp. GobWarning conflict resolved by combining thunder's `!isSkull(gob)` guard with kami's combat-ring suppression. |
+| a6e21bde9 | 64b1b824c | Don't attack tamed horses switch + stack/equipory bottom-left positioning. | MapView Click conflict resolved by keeping both thunder's MacroPicker/MacroRecorder hooks and kami's tamed-horse block (block runs first, then macro hooks). |
+| 5ebcbd455 | 436bda816 | render numbers over the default player bars. | Self-contained IMeter change. |
+| 9630f1f88 | f244bf4b4 | legacy bgm with different client based hooks. | New LegacyBGM/LegacyAudioPlayer + 8 ogg files in `resources/sfx/legacy/`. |
+| d1b82ff43 | 04dfe3351 | Stripped logging. | Companion to 9630f1f88 -- removes debug prints from LegacyBGM/LegacyAudioPlayer. |
+
+Per-cherry-pick `changelog.txt` conflicts were resolved by `checkout --ours`
+(thunder's `changelog.txt` is a stale kami-inherited file we don't actively
+maintain).
+
+### Adopted as no-op (subject-equivalent to existing thunder commit)
+
+1 of 12.
+
+| kami SHA | thunder SHA | subject |
+|---|---|---|
+| 538eeca86 | aa62d8976 (+82e94004d, 18def7176) | "ender markers as extensions" rework | Thunder did the same Marker/PMarker/SMarker consolidation independently in the loftar-merge follow-up sequence. |
+
+### Skipped (kami-only; not adopted into thunder)
+
+5 of 12.
+
+| kami SHA | subject | reason skipped |
+|---|---|---|
+| 5f06c9d22 | Merged loftar's changes as good as possibru. | kami's loftar merge; we merge loftar directly via our `loftar` remote |
+| b9a025e78 | resources. | bumps `loftar-res-sources/.../{Hidewnd,Realm}.java` to v34 after kami's loftar merge. Thunder is at v31 from its own loftar sync; if we want v34 (which carries `Utils.iv` arg coercion + thingwall v1->v4 bump) we update from loftar ourselves. |
+| 2eef6e1c3 | Changelog. CFG default Changes. | kami changelog. The CFG default flip (smooth_strength 30->0, rotation_smoothing_ms 250->0) was applied to the cherry-picked rotation_smoothing line directly per user request; smooth_strength default stays at 30. |
+| b6240b071 | cHaNgElOg... | kami changelog only |
+
+### Not reviewed individually
+
+None. All 12 inspected via diff/code review.
+
+---
+
 ## kami sync 2026-04-26 (merge commit 2bc812e24)
 
 Merged 37 commits from `upstream/master` (DerKamii/KamiClient) into thunder
