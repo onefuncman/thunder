@@ -51,11 +51,10 @@ public class ItemHelpers {
 
 	if(!eatCursorActive(ui)) {return null;}
 
-	Window wnd = item.getparent(Window.class);
-	if(wnd == null) {return null;}
-
 	try {
-	    Optional<WItem> atRisk = wnd.children(Inventory.class).stream()
+	    Optional<WItem> atRisk = ui.root.children(Window.class).stream()
+		.filter(w -> WindowDetector.WND_TABLE.equals(w.caption()))
+		.flatMap(w -> w.children(Inventory.class).stream())
 		.filter(i -> i.isz.equals(DISHES_SZ) || i.isz.equals(TABLECLOTH_SZ))
 		.flatMap(i -> i.children(WItem.class).stream())
 		.filter(w -> {
@@ -67,13 +66,13 @@ public class ItemHelpers {
 
 	    return atRisk.map(wItem -> {
 		try {
-		    return String.format("Cannot eat from this table: %s is almost broken!", wItem.name.get());
+		    return String.format("Cannot eat: %s is almost broken!", wItem.name.get());
 		} catch (Loading l) {
-		    return "Cannot eat from this table: some cutlery is almost broken!";
+		    return "Cannot eat: some cutlery is almost broken!";
 		}
 	    }).orElse(null);
 	} catch (Loading l) {
-	    return "Cannot eat from this table: cutlery info still loading.";
+	    return "Cannot eat: cutlery info still loading.";
 	}
     }
 

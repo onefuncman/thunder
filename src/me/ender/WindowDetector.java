@@ -158,8 +158,8 @@ public class WindowDetector {
 	Button btn = wnd.getchild(Button.class);
 	if(btn == null) {return;}
 	
-	btn.c = wnd.add(new CFGBox("Preserve cutlery", CFG.PRESERVE_SYMBEL), btn.pos("ul"))
-	    .settip("Prevent eating from this table if some of the cutlery is almost broken").pos("bl");
+	btn.c = wnd.add(new CFGBox("Preserve cutlery", CFG.PRESERVE_SYMBEL, null, true), btn.pos("ul"))
+	    .settip("Prevent eating while any open table has cutlery that is almost broken (global setting)").pos("bl");
 	
 	wnd.add(new Button(55, "Salt All", false, () -> Actions.saltFood(wnd.ui.gui)), btn.pos("ur").adds(-55, -20))
 	    .settip("Salt all food");
