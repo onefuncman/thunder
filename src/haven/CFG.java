@@ -232,6 +232,20 @@ public class CFG<T> {
     public static final CFG<Boolean> PARALLEL_TICK = new CFG<>("perf.parallel_tick", true);
     public static final CFG<Boolean> HIDE_GAMEUI_PORTRAIT = new CFG<>("display.hide_gameui_portrait", false);
     public static final CFG<Boolean> DISABLE_YULELIGHTS_FX = new CFG<>("display.disable_yulelights_fx", true);
+
+    // Filterable weather/screen-effect resources. Each toggle drops the matching resource
+    // from Glob.weather() before its Weather factory runs, so the effect never spawns.
+    public static final CFG<Boolean> FX_DISABLE_SEASONS  = new CFG<>("display.fx.disable_seasons",  false);
+    public static final CFG<Boolean> FX_DISABLE_CLOUDS   = new CFG<>("display.fx.disable_clouds",   false);
+    public static final CFG<Boolean> FX_DISABLE_RAIN     = new CFG<>("display.fx.disable_rain",     false);
+    public static final CFG<Boolean> FX_DISABLE_WET      = new CFG<>("display.fx.disable_wet",      false);
+    public static final CFG<Boolean> FX_DISABLE_SNOW     = new CFG<>("display.fx.disable_snow",     false);
+    public static final CFG<Boolean> FX_DISABLE_DESAT    = new CFG<>("display.fx.disable_desat",    true);
+    public static final CFG<Boolean> FX_DISABLE_QUAKE    = new CFG<>("display.fx.disable_quake",    true);
+    public static final CFG<Boolean> FX_DISABLE_HEMP     = new CFG<>("display.fx.disable_hemp",     true);
+    public static final CFG<Boolean> FX_DISABLE_OPIUM    = new CFG<>("display.fx.disable_opium",    true);
+    public static final CFG<Boolean> FX_DISABLE_SHROOMED = new CFG<>("display.fx.disable_shroomed", true);
+    public static final CFG<Boolean> FX_DISABLE_DRUNK    = new CFG<>("display.fx.disable_drunk",    true);
     public static final CFG<Boolean> MAP_COMPACT_LOCKED = new CFG<>("map.compact_locked", false);
     public static final CFG<Boolean> HIDE_ANIMAL_WARNING_IN_COMBAT = new CFG<>("ui.combat.hide_animal_warning_in_combat", false);
     public static final CFG<Boolean> BLOCK_ATTACK_TAMED_HORSE = new CFG<>("ui.combat.block_attack_tamed_horse", true);

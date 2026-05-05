@@ -359,6 +359,7 @@ public class Glob {
 	synchronized(this) {
 	    ArrayList<Weather> ret = new ArrayList<>(wmap.size());
 	    for(Map.Entry<Indir<Resource>, Object> cur : wmap.entrySet()) {
+		if(fxDisabled(cur.getKey())) continue;
 		Object val = cur.getValue();
 		if(val instanceof Weather) {
 		    ret.add((Weather)val);
@@ -375,7 +376,26 @@ public class Glob {
 	    return(ret);
 	}
     }
-    
+
+    private static boolean fxDisabled(Indir<Resource> ind) {
+	String name;
+	try { name = ind.get().name; } catch(Loading l) { return false; }
+	switch(name) {
+	    case "gfx/fx/seasonmap": return CFG.FX_DISABLE_SEASONS.get();
+	    case "gfx/fx/clouds":    return CFG.FX_DISABLE_CLOUDS.get();
+	    case "gfx/fx/rain":      return CFG.FX_DISABLE_RAIN.get();
+	    case "gfx/fx/wet":       return CFG.FX_DISABLE_WET.get();
+	    case "gfx/fx/snow":      return CFG.FX_DISABLE_SNOW.get();
+	    case "gfx/fx/desat":     return CFG.FX_DISABLE_DESAT.get();
+	    case "gfx/fx/quake":     return CFG.FX_DISABLE_QUAKE.get();
+	    case "gfx/fx/lucy":      return CFG.FX_DISABLE_HEMP.get();
+	    case "gfx/fx/dragon":    return CFG.FX_DISABLE_OPIUM.get();
+	    case "gfx/fx/shroomed":  return CFG.FX_DISABLE_SHROOMED.get();
+	    case "gfx/fx/bottle":    return CFG.FX_DISABLE_DRUNK.get();
+	    default: return false;
+	}
+    }
+
     /* XXX: This is actually quite ugly and there should be a better
      * way, but until I can think of such a way, have this as a known
      * entry-point to be forwards-compatible with compiled

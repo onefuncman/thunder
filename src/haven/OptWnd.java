@@ -51,7 +51,7 @@ import static haven.Text.*;
 
 public class OptWnd extends WindowX {
     public static final Coord PANEL_POS = new Coord(220, 30);
-    private final Panel display, general, camera, shortcuts, mapping, uipanel, combat, minimap, experimental;
+    private final Panel display, general, camera, shortcuts, mapping, uipanel, combat, minimap, experimental, screenfx;
 	private final Panel color;
 	private final Panel automation;
 	private final Panel debug;
@@ -822,6 +822,7 @@ public class OptWnd extends WindowX {
 	minimap = add(new Panel());
 	experimental = add(new Panel());
 	debug = add(new Panel());
+	screenfx = add(new Panel());
 
 	int row = 0, colum = 0, mrow = 1;
     
@@ -851,6 +852,7 @@ public class OptWnd extends WindowX {
 	addPanelButton("Map upload", 'm', mapping, colum, row++);
 	addPanelButton("Automation settings", 't', automation, colum, row++);
 	addPanelButton("Experimental", 'x', experimental, colum, row++);
+	addPanelButton("Screen effects", 'f', screenfx, colum, row++);
 	addPanelButton("Debug", 'z', debug, colum, row++);
 
 	int y = 0;
@@ -898,6 +900,7 @@ public class OptWnd extends WindowX {
 	KamiOptPanels.initMinimapPanel(this, minimap);
 	KamiOptPanels.initExperimentalPanel(this, experimental);
 	KamiOptPanels.initAutomationPanel(this, automation);
+	initScreenFxPanel(screenfx);
 	initDebugPanel(debug);
 	main.pack();
 	chpanel(main);
@@ -999,6 +1002,34 @@ public class OptWnd extends WindowX {
 
 	camera.add(new PButton(UI.scale(200), "Back", 27, main), 0, my);
 	camera.pack();
+    }
+
+
+    private void initScreenFxPanel(Panel panel) {
+	int STEP = UI.scale(25);
+	Widget title = panel.add(new Label("Screen effects", LBL_FNT), 0, 0);
+	int y = title.sz.y + UI.scale(10);
+	int x = 0;
+
+	panel.add(new Label("World effects:"), x, y); y += STEP;
+	panel.add(new CFGBox("Disable seasonal ground colors", CFG.FX_DISABLE_SEASONS, "Removes the per-season ground tint overlay (gfx/fx/seasonmap)."), x, y); y += STEP;
+	panel.add(new CFGBox("Disable ground cloud shadows", CFG.FX_DISABLE_CLOUDS, "Removes the moving cloud-shadow overlay on the ground (gfx/fx/clouds)."), x, y); y += STEP;
+	panel.add(new CFGBox("Disable rain particles", CFG.FX_DISABLE_RAIN, "Removes rain particles (gfx/fx/rain). Wet ground is a separate toggle."), x, y); y += STEP;
+	panel.add(new CFGBox("Disable wet ground overlay", CFG.FX_DISABLE_WET, "Removes the wet-ground sheen during rain (gfx/fx/wet)."), x, y); y += STEP;
+	panel.add(new CFGBox("Disable snowing particles", CFG.FX_DISABLE_SNOW, "Removes snow particles (gfx/fx/snow)."), x, y); y += STEP;
+
+	y += UI.scale(10);
+	panel.add(new Label("Screen effects:"), x, y); y += STEP;
+	panel.add(new CFGBox("Disable Valhalla desaturation filter", CFG.FX_DISABLE_DESAT, "Removes the desaturation filter applied while in the Valhalla / death realm (gfx/fx/desat)."), x, y); y += STEP;
+	panel.add(new CFGBox("Disable screen shaking", CFG.FX_DISABLE_QUAKE, "Removes the screen-shake effect from earthquakes (gfx/fx/quake)."), x, y); y += STEP;
+	panel.add(new CFGBox("Disable hemp high", CFG.FX_DISABLE_HEMP, "Removes the visual effect from being hemp-high (gfx/fx/lucy)."), x, y); y += STEP;
+	panel.add(new CFGBox("Disable opium high", CFG.FX_DISABLE_OPIUM, "Removes the visual effect from being opium-high (gfx/fx/dragon)."), x, y); y += STEP;
+	panel.add(new CFGBox("Disable liberty caps high", CFG.FX_DISABLE_SHROOMED, "Removes both the eating flash and the random ambient flashes from liberty caps (gfx/fx/shroomed and gfx/fx/shroomflash)."), x, y); y += STEP;
+	panel.add(new CFGBox("Disable drunkenness distortion", CFG.FX_DISABLE_DRUNK, "Removes the drunkenness distortion overlay (gfx/fx/bottle)."), x, y); y += STEP;
+
+	panel.add(new PButton(UI.scale(200), "Back", 27, main), 0, y + UI.scale(10));
+	panel.pack();
+	title.c.x = (panel.sz.x - title.sz.x) / 2;
     }
 
 
