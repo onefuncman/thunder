@@ -1,26 +1,25 @@
 # GL rendering — architecture and invariants
 
-This is a map of the GL rendering layer (`src/haven/render/gl/`) as of
-branch `eliminate-glenv-prep`. Focus: how commands get from game code
-onto the GPU, how GL resources are tracked and disposed, and where the
-subtle invariants live.
+A map of the GL rendering layer (`src/haven/render/gl/`) as it stands
+**after reverting the thunder GL refactor** in response to upstream
+feedback (loftar PR 22 — see "PR 22 history" at the bottom).
 
-File references are cited inline. Line numbers drift — treat them as
-anchors, not addresses.
+Thunder now sits on loftar's stock GL code plus a single one-line fix
+loftar landed in `2c183d2fd` (merged into thunder via `220949a48`).
+File references are inline; line numbers drift — treat them as anchors.
 
 ## Contents
 
 - [Top-level shape](#top-level-shape) — `GLEnvironment` / `GLRender` / `GLDrawList`, the `BGL` buffered-GL indirection
-- [Frame lifecycle](#frame-lifecycle) — prep → submitted → disposeall ordering in `process()`, plus the `RenderQueue.drain` invariant and why submit-from-any-thread is safe
+- [Frame lifecycle](#frame-lifecycle) — prep → submitted → disposeall ordering in `process()`
 - [Core primitives](#core-primitives) — `BGL`, `GLObject` (rc/disp/dispseq), `Sequence`
 - [Disposal and the seq ring](#disposal-and-the-seq-ring) — the seqhead/seqtail ring and why one stuck Sequence blocks all downstream tail advancement
-- [VAO / EBO binding](#vao--ebo-binding) — caching model, the historical crash bug, both layers of the fix
+- [VAO / EBO binding](#vao--ebo-binding) — caching model, the historical crash bug, loftar's tracker fix
 - [STREAM buffers](#stream-buffers) — `StreamBuffer`/`Pool`/`Fill`, publication order
 - [State application: Applier and GLState](#state-application-applier-and-glstate) — `Applier`, `curstate`, state diffing
 - [Thread model](#thread-model) — submit call-site table, shared-state protection
 - [Caches and their lifetime keys](#caches-and-their-lifetime-keys) — key types and ref-types
-- [Known bugs and fixes applied on `eliminate-glenv-prep`](#known-bugs-and-fixes-applied-on-eliminate-glenv-prep) — chronological commit list + current fixes
-- [Instrumentation points](#instrumentation-points) — seqstats, LEAK_CHECK, disptrace, debuglog
+- [PR 22 history](#pr-22-history) — what we tried, what loftar rejected, what stuck
 - [Pointers](#pointers)
 
 ## Top-level shape
@@ -28,9 +27,9 @@ anchors, not addresses.
 Three collaborator classes own almost everything:
 
 - **`GLEnvironment`** (`GLEnvironment.java`) — per-GL-context singleton.
-  Owns the render queue, the dispose ring, the STREAM-buffer pool, the
-  program/VAO caches, and the `process()` loop that drains queued work
-  onto the real GL.
+  Owns the prep render, the submitted queue, the dispose ring, the
+  STREAM-buffer pool, the program/VAO caches, and the `process()` loop
+  that drains queued work onto the real GL.
 - **`GLRender`** (`GLRender.java`) — a recorder for one batch of GL
   commands. Client code calls `env.render()` to get one, records draws
   into it, and calls `env.submit(r)` to hand it off. Each `GLRender`
@@ -57,14 +56,15 @@ thread (`JOGLPanel.java:174`, `GLPanel.java` similar).
 Client threads                    Renderer thread
 (game, AWT, workers)
 ---------------                    ---------------
-env.prepare(...)      ────→        RenderQueue
-env.submit(render)    ────→          (prep queue + submitted queue)
+env.prepare(...)      ────→        this.prep (single GLRender)
+env.submit(render)    ────→          submitted queue
                                            │
                                            ▼
                                    env.process(gl):
-                                     snap = queue.drain()
-                                     for p in snap.prep:    p.gl.run(gl); p.dispose()
-                                     for c in snap.submitted: c.gl.run(gl); c.dispose()
+                                     copy = drain(submitted)
+                                     prep = this.prep; this.prep = null
+                                     if prep: prep.gl.run(gl); prep.dispose()
+                                     for c in copy: c.gl.run(gl); c.dispose()
                                      checkqueries(gl)
                                      disposeall().run(gl)
                                      clean()
@@ -72,33 +72,33 @@ env.submit(render)    ────→          (prep queue + submitted queue)
 
 ### Prep vs submitted
 
-- **Prep** renders are synchronous setup work that must run *before*
-  any draw that depends on them — typically data-store uploads
-  (`glBufferData`, `glTexImage2D`, etc.) enqueued by `GLEnvironment`'s
-  three `prepare(...)` overloads (`GLEnvironment.java:466-497`). Prep
-  runs first in `process()` (`GLEnvironment.java:321-338`).
+- **Prep** is one shared `GLRender` held on `GLEnvironment.prep`. The
+  three `prepare(...)` overloads (`GLEnvironment.java:470-489`) lazily
+  create it under `synchronized(prepmon)` and record setup work into
+  it — typically data-store uploads (`glBufferData`, `glTexImage2D`,
+  etc.). `process()` claims the current prep render under `prepmon`,
+  resets `this.prep = null`, and runs it first inside `drawmon`
+  (`GLEnvironment.java:328-347`).
 - **Submitted** renders are the caller-visible draw batches handed in
-  via `env.submit(render)` (`GLEnvironment.java:377-394`). They run
-  after prep (`GLEnvironment.java:339-351`).
-- **`disposeall()`** runs last (`GLEnvironment.java:353`), actually
+  via `env.submit(render)` (`GLEnvironment.java:386-408`). They run
+  after prep inside the same `drawmon` block
+  (`GLEnvironment.java:348-360`).
+- **`disposeall()`** runs last (`GLEnvironment.java:362`), actually
   calling `glDelete*` on objects that hit `rc == 0` and whose
   `dispseq` is now older than `seqtail`.
 
-### RenderQueue ordering invariant
+### Drain ordering invariant
 
-`RenderQueue.drain()` (`RenderQueue.java:91-102`) snapshots the
-*submitted* queue first, *then* the prep queue. Two independent
-monitors (`submittedMon`, `prepMon`) guard each queue.
+`process()` snapshots **submitted first, then prep**
+(`GLEnvironment.java:321-331`). The comment in the code spells out
+why: it's important to drain submitted before prep so that additional
+renders submitted during processing aren't drained without their
+matching prep work.
 
-The invariant this protects: any `submit()` that raced in after the
-submitted snapshot is deferred to the next frame — and its
-corresponding prep work (always enqueued *before* the submit in the
-client code) is guaranteed to also be deferred, never ending up in the
-earlier prep snapshot without its matching submit. The stale prep
-will land in the *next* drain's prep list, still ahead of the draws
-that depend on it.
-
-This is why `submit()` is safe from multiple threads.
+The three `prepare(...)` overloads are all `synchronized(prepmon)`, so
+writes to `this.prep` are serialized — there's only ever one prep
+writer at a time. (This was a thunder confusion in PR 22; see
+[PR 22 history](#pr-22-history).)
 
 ## Core primitives
 
@@ -115,30 +115,26 @@ long-lived storage (used by `GLDrawList` settings).
 `GLTexture2D`, `GLVertexArray`, `GLProgram`, `GLShader`, `GLSampler`,
 `GLFrameBuffer`, `GLRenderBuffer`, `GLQuery`.
 
-- **`rc`** (`GLObject.java:38`) — reference count. `get()` increments,
-  `put()` decrements. When `rc == 0` and `dispose()` has been called,
-  `dispose0()` stages the actual delete.
+- **`rc`** — reference count. `get()` increments, `put()` decrements.
+  When `rc == 0` and `dispose()` has been called, `dispose0()` stages
+  the actual delete.
 - **`disp`** flag — latches when `dispose()` is called; prevents double
   dispose and cooperates with `rc` so a resource still being used
   (`rc > 0`) doesn't get deleted underneath a live render.
-- **`dispseq`** (`GLObject.java:39`) — the `seqhead` value at the time
-  of `dispose0()`. Determines when the object's `glDelete*` may run
-  (see next section).
+- **`dispseq`** — the `seqhead` value at the time of `dispose0()`.
+  Determines when the object's `glDelete*` may run (see next section).
 - **`glid()`** throws `UseAfterFreeException` if called post-delete —
   a Java-level use-after-free surfaces as an exception, not a
   driver-side NULL deref.
 
 ### `Sequence` — lifetime tracking
 
-`GLEnvironment.Sequence` (`GLEnvironment.java:1040+`) is a small
-`Disposable` that registers a monotonic sequence number in the
-`sequse[]` ring via `seqreg()` and unregisters via `sequnreg()`.
+`GLEnvironment.Sequence` is a small `Disposable` that registers a
+monotonic sequence number in the `sequse[]` ring via `seqreg()` and
+unregisters via `sequnreg()`.
 
-One `Sequence` per `GLRender` (`GLRender.java:48`) — there are no
-other owners in the codebase. Its `disposed()` path has a
-belt-and-braces `Finalizer.finalize(owner, ...)` wire so GC can claim
-it if explicit `dispose()` is missed (but that path also logs
-`"disposal sequence leaked"`).
+One `Sequence` per `GLRender` — there are no other owners in the
+codebase.
 
 ## Disposal and the seq ring
 
@@ -150,10 +146,10 @@ delete honest.
 When a `GLObject` is Java-level disposed (`rc == 0 && disp == true`),
 `dispose0()` does **not** call `glDelete*` — instead it stamps
 `dispseq = env.dispseq()` (the current `seqhead`) and pushes the
-object onto `env.disposed` (`GLObject.java:52-62`).
+object onto `env.disposed`.
 
-Each frame, `GLEnvironment.disposeall()` (`GLEnvironment.java:395-418`)
-walks `env.disposed` and deletes any object whose `dispseq < seqtail`.
+Each frame, `GLEnvironment.disposeall()` (`GLEnvironment.java:417-440`)
+walks `env.disposed` and deletes any object whose `dispseq - seqtail <= 0`.
 
 ### Why the deferral
 
@@ -174,37 +170,14 @@ processed and disposed.
 mod ring size. `seqreg()` advances `seqhead` and marks the slot true;
 `sequnreg()` marks false and, *if the freed slot is exactly at
 `seqtail`*, advances `seqtail` forward until it hits the next
-still-in-flight slot (`GLEnvironment.java:1018-1024`).
+still-in-flight slot.
 
 **Key consequence:** a single never-disposed Sequence at the tail
 blocks *all* subsequent tail advancement, even if thousands of
 younger Sequences have been properly freed. `seqhead - seqtail` grows
 without bound, and `disposeall()` backs up because no `GLObject`'s
-`dispseq` ever falls below the stuck tail.
-
-The ring size starts at `0x8000` (32k slots), sized to observed
-steady-state after the ring's churn-doubling logic resized it during
-warm-up (`ea26a4f8a`). A warning fires at `0x20000` (4× steady-state)
-as an early leak signal (`GLEnvironment.java:967-976`).
-
-`GLEnvironment.seqstats()` returns `{span, alive}` where `span =
-seqhead - seqtail` and `alive` is the true count of `sequse[] == true`
-slots. If `span >> alive`, the tail is stuck. Process logs this every
-30k frames (`GLEnvironment.java:355-367`).
-
-### Known Sequence-leak paths (patched on this branch)
-
-- **Empty-submit leak** (`GLEnvironment.submit`, fixed): if a caller
-  passes a `GLRender` whose `gl()` was never called, `submit()` used
-  to early-return without disposing. The caller had already handed
-  over ownership, so the `Sequence` leaked to finalization. Now
-  disposes (`GLEnvironment.java:383-393`).
-- **Exception-in-prepare leak** (three `prepare(...)` overloads,
-  fixed): `new GLRender(...)` happened before the user's consumer /
-  `bglCreate` / `bglSubmit` call; a throw there skipped `enqprep` and
-  leaked the `GLRender`. Each overload now uses try/finally with a
-  success flag so any throw (including `Error`) disposes the partial
-  render (`GLEnvironment.java:466-497`).
+`dispseq` ever falls below the stuck tail. Loftar's code grows the
+ring as needed.
 
 ## VAO / EBO binding
 
@@ -219,31 +192,31 @@ program.attribs[])`. The VAO is `init`'d once with whichever
 re-init'd. `GLDrawList` separately caches a `VaoSetting` per
 `(vao, ebo)` pair, so each `(vao, ebo)` combination gets a distinct
 `VaoSetting` instance — but a given `vao` reference only ever pairs
-with one `ebo` in practice (VAOs are immutable once built).
+with one `ebo` in practice (VAOs are immutable by convention, not
+by enforcement — `GLVertexArray` holds only the VAO name, not Java
+references to the EBO or attribute buffers).
 
 `VaoBindState` keeps `DO_GL_EBO_FIXUP` permanently true: on every
 `apply()`, the EBO is explicitly rebound after `glBindVertexArray`,
-because some drivers don't reliably track the EBO with the VAO.
+because some drivers don't reliably track the EBO with the VAO
+(contrary to the GL spec).
 
-### The historical bug
+### The historical bug and loftar's fix
 
-The crash everyone has been chasing is a state-tracker desync inside
+The crash was a state-tracker desync inside
 `GLDrawList.SlotRender.draw`. The compiled per-slot `bglCallList`s
 internally rebind VAOs to suit each slot's program/attribs, so when
-the loop ends the actual GL VAO is whichever the last slot bound -
-but the `GLRender`'s `g.state` tracker had only seen `assume(last.bk.state())`,
-which doesn't touch the VAO slot. Tracker says "VAO V0 is bound";
-real GL has V_last. The next draw's `Applier.apply` sees no VAO
-transition (V0 -> V0) and emits no rebind. `glDrawElements` runs
-against V_last, whose internal EBO slot is stale, the driver falls
-back to "indices is a client pointer", and `indices=0` becomes a
-NULL deref.
+the loop ends the actual GL VAO is whichever the last slot bound —
+but the `GLRender`'s `g.state` tracker had only seen
+`assume(last.bk.state())`, which doesn't touch the VAO slot. Tracker
+says "VAO V0 is bound"; real GL has V_last. The next draw's
+`Applier.apply` sees no VAO transition (V0 → V0) and emits no rebind.
+`glDrawElements` runs against V_last, whose internal EBO slot is
+stale, the driver falls back to "indices is a client pointer", and
+`indices=0` becomes a NULL deref.
 
-### The fix
-
-Loftar's commit `2c183d2fd` (merged into thunder via `220949a48`) -
-one line in `GLDrawList.SlotRender.draw`, after the existing
-`assume(...)`:
+Loftar's `2c183d2fd` (merged into thunder via `220949a48`) — one line
+in `GLDrawList.SlotRender.draw`, after the existing `assume(...)`:
 
 ```java
 g.state.apply(null, VaoState.slot, ((VaoSetting)last.settings[idx_vao]).st);
@@ -254,35 +227,39 @@ list ends the tracker matches reality, so the next draw's `applyto`
 correctly sees a VAO transition and rebinds.
 
 Thunder briefly carried a draw-site defense in `4140e547` (per-draw
-`glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo)` into the `SlotRender`
-`BufferBGL` plus a same-VAO/different-EBO branch in
-`VaoBindState.applyto`). The per-draw bind masked the symptom but
-left the wrong VAO bound, and the `applyto` branch only fired in
-already-broken states. Both were retired in `ab8253c47` once
-loftar's tracker fix landed.
+`glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo)` plus a
+same-VAO/different-EBO branch in `VaoBindState.applyto`). The per-draw
+bind masked the symptom but left the *wrong* VAO bound — vertex
+attribute bindings could still be off. The `applyto` branch was dead
+code (VAOs immutable by convention). Both were retired in `ab8253c47`
+once loftar's tracker fix landed.
 
 ## STREAM buffers
 
 STREAM-class data buffers (`DataBuffer.Usage.STREAM`) are uploaded to
 a recyclable `GLBuffer` owned by a `StreamBuffer`. The flow lives in
 `GLEnvironment.prepare(Model.Indices)` and the equivalent for vertex
-arrays (`GLEnvironment.java:494+`).
+arrays (`GLEnvironment.java:491-548`).
 
 - `StreamBuffer` wraps a `GLBuffer` (`rbuf`) plus a `Pool` of
   recyclable transfer `ByteBuffer`s.
 - On first prepare (or after `buf.ro` is invalidated), a new
-  `StreamBuffer` is created. `runStreamFill` (`StreamFiller.java:
-  runWithPreallocated`) pulls data from the Filler into a
-  pre-allocated `Fill` directly, avoiding an intermediate
-  `FillBuffers.Array` allocation. A prep render is enqueued that
-  runs `Vao0State.apply` + `glBufferData`.
-- `buf.ro` is assigned **after** the prep is enqueued
-  (`GLEnvironment.java:530-532`) — deliberately, so any concurrent
-  reader that observes the new `ro` sees the upload sitting ahead of
-  any draw they later submit (commit `33a4b26d6`).
-- `StreamBuffer.Pool` is synchronized; the data-store upload via
-  `runStreamFill` is synchronous on the submit thread, not deferred
-  (`StreamFiller.java:42-66`).
+  `StreamBuffer` is created. The Filler's `fill(buf, env)` runs
+  inline; if it returns a `StreamBuffer.Fill`, `Vao0State.apply` +
+  `glBufferData` is enqueued on the prep render.
+- `buf.ro` is assigned **before** the prep is enqueued — i.e. the
+  publication order is `ro` first, then prep. This is loftar's
+  ordering. Thunder briefly reversed it (commit `33a4b26d6` on the
+  reverted branch) in service of a separate refactor; that reversal
+  was rolled back along with the rest.
+- `StreamBuffer.Pool` is synchronized internally; the data-store
+  upload happens on the submit thread, not deferred to renderer.
+
+There is a known race here that loftar acknowledged but has not
+landed a fix for: if two threads concurrently initialize a STREAM
+`buf.ro` for the same `DataBuffer`, both may race to allocate a
+`StreamBuffer`. Loftar's preferred fix is `synchronized(buf)` around
+the init path. Thunder does not currently apply it.
 
 ## State application: Applier and GLState
 
@@ -294,12 +271,11 @@ walks slots and calls `this.states[i].applyto(gl, that.states[i])`,
 which emits only the GL calls needed to transition from current state
 to target state.
 
-`curstate` on `GLEnvironment` (`GLEnvironment.java:48`) persists the
-last applied state across renders *within a process() call* —
-recording and carrying state from one render into the next so
-`applyto` can minimize work. It's read and written only under
-`synchronized(drawmon)` inside `process()`, so it's
-renderer-thread-confined.
+`curstate` on `GLEnvironment` persists the last applied state across
+renders *within a process() call* — recording and carrying state from
+one render into the next so `applyto` can minimize work. It's read
+and written only under `synchronized(drawmon)` inside `process()`, so
+it's renderer-thread-confined.
 
 ## Thread model
 
@@ -307,24 +283,25 @@ renderer-thread-confined.
 | --- | --- |
 | Renderer / GL context thread | Runs `GLEnvironment.process()`, disposal, queries. The only thread that ever touches the real `GL` object. |
 | Game / AWT / worker threads | Call `env.render()`, record commands into the returned `GLRender`, call `env.submit(...)`. Also call `env.prepare(...)` (indirectly, via model/texture upload paths). |
-| Finalizer | Last-ditch Sequence unregistration for leaked `GLRender`s. Also `GLObject.LEAK_CHECK` leak tracer. |
+| Finalizer | `GLObject.LEAK_CHECK` leak tracer; finalizer-based safety net for leaked `Sequence`s. |
 
 Submit call sites:
 
 | Site | Thread | Shape |
 | --- | --- | --- |
-| `GLPanel.java:416` (`Loop.run`) | Renderer/GL | Fire-and-forget |
-| `MapView.java:2154, 2181` | Game/UI | Pre-built `GLRender` |
-| `Fightsess.java:476` | Game/UI | Pre-built, one-shot fence |
-| `rs/DrawBuffer.java:65, 93` | Game/UI | Pre-built |
-| `JOGLPanel.java:174` | GL context | Direct `process()` |
-| `Test.java` (two of them) | Test driver | Test-only |
+| `GLPanel.java` (`Loop.run`) | Renderer/GL | Fire-and-forget |
+| `MapView.java` | Game/UI | Pre-built `GLRender` |
+| `Fightsess.java` | Game/UI | Pre-built, one-shot fence |
+| `rs/DrawBuffer.java` | Game/UI | Pre-built |
+| `JOGLPanel.java` | GL context | Direct `process()` |
 
 Shared-state protection:
 
-- `RenderQueue` — two monitors, drain ordering described above.
+- `submitted` queue — `synchronized(submitted)`.
+- `this.prep` — `synchronized(prepmon)`. All three `prepare(...)`
+  overloads hold this around their writes.
 - `curstate` — `synchronized(drawmon)` inside `process()`.
-- `disposed` list (`GLEnvironment.java`) — `synchronized(disposed)`.
+- `disposed` list — `synchronized(disposed)`.
 - `sequse`, `seqhead`, `seqtail` — `synchronized(seqmon)`.
 - `StreamBuffer.Pool` — internally synchronized.
 - `buf.ro` on `Model.Indices` / vertex arrays — `synchronized(buf)`.
@@ -339,60 +316,56 @@ Shared-state protection:
 | `GLDrawList.settings` | `SettingKey` (program, vid, depid) | — | Setting refcounting |
 | `StreamBuffer.Pool` | — | strong | Transfer-buffer recycling |
 
-## Known bugs and fixes applied on `eliminate-glenv-prep`
+## PR 22 history
 
-Crash walkthrough: [`doc/gl-crash-analysis.md`](gl-crash-analysis.md).
-Most of the prep/STREAM commits below were downstream of an incorrect
-premise about a `prep` multi-writer race that doesn't actually exist
-(the three `prepare(GLObject|BGL.Request|Consumer)` overloads are all
-synchronized on `prepmon`, so writes to `this.prep` are serialized).
-PR feedback on https://github.com/dolda2000/hafen-client/pull/22
-sorted this out. Listed for history; revisit before relanding.
+[dolda2000/hafen-client PR 22](https://github.com/dolda2000/hafen-client/pull/22)
+was a thunder-side patch series proposing a substantial refactor of
+the GL renderer in service of fixing the crash and improving
+testability. **The PR was closed unmerged**; loftar wrote his own
+one-line fix (`2c183d2fd`) and declined the rest. Subsequently the
+entire refactor was reverted on thunder so we sit on stock loftar GL
+code plus the merged tracker fix.
 
-1. `beaff5f39` — Eliminated `this.prep` shared render; each prepare
-   now gets its own `GLRender`. *Premise wrong: the original `prep`
-   was already protected by `prepmon`.*
-2. `33a4b26d6` — Decouple STREAM prepare from `buf.ro` publication
-   order. *Only needed because (1) introduced a CCE; can be reverted
-   once (1) is.*
-3. `aec453e0e` — `StreamBuffer.Pool` concurrency tests.
-4. `5b35ca266` — Extracted `StreamFiller.runWithPreallocated`; CCE
-   regression pinned.
-5. `93c8e3e8b` — `StreamBuffer.Fill` lifecycle tests via test-only ctor.
-6. `50e1859b6` — Extracted `RenderQueue`.
-7. `3d37a8937` — `GLRender.update` routes STREAM uploads through
-   `runStreamFill`.
-8. `ea26a4f8a` — Sized dispose ring to observed steady-state (32k).
-   *Tunable, not a correctness claim; keep.*
-9. `4140e547` — VAO/EBO defensive draw-site rebind. *Superseded by
-   loftar's `2c183d2fd` (merged in `220949a48`) which fixes the
-   actual state-tracker desync. Both the per-draw `glBindBuffer(EBO)`
-   and the same-VAO/EBO-only branch in `VaoBindState.applyto` were
-   retired in `ab8253c47`.*
-10. **Sequence-leak fixes** — `env.submit` disposes empty renders;
-    three `prepare(...)` overloads dispose on any throw; `process()`
-    periodically logs `seq-ring: span=N alive=M` to detect stuck
-    tails. *These look real and independent of the prep-race
-    premise; worth keeping.*
+What was in PR 22:
 
-## Instrumentation points
+| Thunder commit | Description | Outcome |
+| --- | --- | --- |
+| `beaff5f39` | Eliminate shared `GLEnvironment.prep`; each prepare gets its own private `GLRender` enqueued via `prepq` | Reverted — premise wrong, `this.prep` writes are already serialized via `prepmon` |
+| `33a4b26d6` | Decouple STREAM prepare from `buf.ro` publication order | Reverted — only needed because the prep refactor introduced a CCE |
+| `5b35ca266` | Extract `StreamFiller.runWithPreallocated` to pin the CCE regression | Reverted with the rest |
+| `93c8e3e8b` | `StreamBuffer.Fill` lifecycle tests via test-only ctor | Reverted with the rest |
+| `50e1859b6` | Extract `RenderQueue` from `GLEnvironment` | Reverted with the rest |
+| `3d37a8937` | `GLRender.update` routes STREAM uploads through `runStreamFill` | Reverted with the rest |
+| `ea26a4f8a` | Size dispose ring to observed steady-state (32k) | Reverted — loftar's grow-as-needed is fine |
+| `4140e547` | VAO/EBO defensive draw-site rebind | Already retired in `ab8253c47` once loftar's tracker fix landed |
+| Sequence-leak fixes + ring instrumentation | `env.submit` disposes empty renders, three `prepare(...)` overloads dispose on any throw, `process()` periodically logs `seq-ring: span=N alive=M` | Reverted — the underlying paths exist but no observed leak in production |
 
-- **Seq ring stats** — `GLEnvironment.seqstats()`; auto-logged from
-  `process()` every 30k frames if span > 1000.
-- **Leak check** — `GLObject.LEAK_CHECK` (on by default) wires a
-  `Finalizer.leakcheck` per object; finalization of an undisposed
-  object logs the creation-site stack trace.
-- **Sequence finalization** — `Sequence.disposed()` logs
-  `"disposal sequence leaked"` if finalization fires before
-  explicit `dispose()`.
-- **`disptrace`** (`GLObject.java:64`) — captures the throwable at
-  first `dispose()` call so a later use-after-free can be blamed.
-- **`debuglog`** in `process()` — optional `glDebugMessageCallback`
-  routing (`GLEnvironment.java`).
+What stuck:
+
+- Loftar's `2c183d2fd` tracker fix is merged via `220949a48`.
+- The `gl-crash-analysis.md` walkthrough — loftar acknowledged the
+  RDX=0 / EBO-unbound diagnosis as correct, even though arrived at
+  independently of his AMD-driver reproduction.
+- The known STREAM-init race on `buf.ro` — loftar agrees it's real,
+  prefers `synchronized(buf)`. Not currently applied on either tree.
+
+Lessons:
+
+- The prep-race hazard the refactor was built on **did not exist** —
+  `prepare(...)` overloads are all `synchronized(prepmon)`. Always
+  re-verify the threading premise before building on it.
+- Thunder's `4140e547` "prevented the crash" by per-draw EBO rebind
+  but left the wrong VAO bound — masked the symptom while leaving
+  vertex attribute bindings potentially off. The same-VAO/different-EBO
+  `applyto` branch was provably dead (VAOs immutable by convention).
+- The crash analysis methodology in `gl-crash-analysis.md` —
+  "RDX=0 has only one mechanism in the `glDrawElements` path" — is
+  worth keeping as a model for future crash hunts even when the
+  surrounding refactor is gone.
 
 ## Pointers
 
 - Crash analysis: [`doc/gl-crash-analysis.md`](gl-crash-analysis.md).
-- Test coverage roadmap: [`doc/gl-test-coverage.md`](gl-test-coverage.md).
 - GPU profiling notes: `doc/gpu-profiling/`.
-- PR thread: https://github.com/dolda2000/hafen-client/pull/22.
+- PR 22 thread: https://github.com/dolda2000/hafen-client/pull/22.
+- Loftar's tracker fix: https://github.com/dolda2000/hafen-client/commit/2c183d2fd.

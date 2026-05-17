@@ -1,78 +1,56 @@
-# GLEnvironment test coverage — gaps and plan
+# GLEnvironment test coverage
 
-Status of unit-test coverage for `haven.render.gl.GLEnvironment` and the
-collaborators it owns. Ranked by cost-to-cover so the next round of
-investment can pick from the top.
+There is no unit-test coverage for `haven.render.gl.GLEnvironment` and
+its collaborators today. The previously checked-in suite
+(`StreamBufferPoolTest`, `StreamBufferFillTest`, `StreamFillerTest`,
+`RenderQueueTest`) was removed when the thunder GL refactor it
+exercised was reverted — see [`gl-rendering.md` § PR 22 history](gl-rendering.md#pr-22-history)
+for context.
 
-The `StreamBuffer.Pool` extraction (see `StreamBufferPoolTest`) is the
-template: small refactors that isolate state behind an injectable
-boundary make the GL layer testable without standing up a real GL
-context.
+## Why the tests are gone
 
-## Cheap — no further refactor needed
+The tests covered extractions (`StreamBuffer.Pool`,
+`StreamBuffer.Fill` via test-only ctor, `StreamFiller`, `RenderQueue`)
+that were a means to test the prep refactor's CCE-fix path. Loftar
+declined the refactor in PR 22 on the grounds that the multi-writer
+race it was guarding against didn't exist — the three `prepare(...)`
+overloads are all `synchronized(prepmon)`. The extractions were
+reverted along with the refactor; keeping the tests pointing at
+deleted code is worse than no tests.
 
-These run today against the already-extracted `StreamBuffer.Pool` and
-`StreamBuffer.Fill`.
+## What remains testable cheaply
 
-- **Pool concurrency stress.** 8 threads × 1000 get/put cycles. Assert:
-  - no two concurrent `get()` calls return the same `ByteBuffer`
-    identity,
-  - total allocations stay ≤ peak concurrent gets,
-  - after all threads finish and `put` everything, `allocated()` equals
-    peak concurrency (no leaked extra allocations).
-- **Pool reuse ordering.** Current behaviour: lowest-index free slot
-  reused first. Pin it with a test so a future LIFO/cache-locality
-  rewrite is a deliberate decision, not an accident.
+Without the extractions, the GL layer is essentially impossible to
+unit-test without standing up a real GL context or building a
+byte-capturing fake `GL`. The few things that *would* still be cheap
+to cover:
 
-## Medium — small refactor unlocks
+- **`StreamBuffer.Pool` concurrency** — the Pool is a self-contained
+  inner class in loftar's `StreamBuffer`. A targeted test (8 threads
+  × 1000 get/put, no two `get()`s return the same `ByteBuffer`
+  identity, allocations ≤ peak concurrency) is doable without
+  extraction; you'd just need to construct a `StreamBuffer` against
+  a fake `GLEnvironment`/`GLBuffer`, which is the awkward bit.
+- **`sequse[]` ring invariants** — `seqreg`/`sequnreg` and
+  `seqtail` advancement are pure data-structure logic. A test would
+  need the same `GLEnvironment` construction workaround.
 
-Each one needs a focused extraction (a couple of methods become a
-package-private helper class) so a fake `Environment`/queue can be
-injected.
+If the construction-cost workaround for those two ever becomes worth
+paying, do it as an in-place test, not behind a refactor that loftar
+will revert.
 
-- ~~**`StreamBuffer.Fill` lifecycle.**~~ Done — added a test-only
-  `StreamBuffer(int, Pool, Environment)` ctor and covered by
-  `StreamBufferFillTest` (compatible/dispose-idempotent/get-handoff
-  semantics).
+## What's not cheap
 
-- ~~**`runStreamFill` proxy semantics.**~~ Done — extracted into
-  `StreamFiller.runWithPreallocated` and covered by `StreamFillerTest`.
-  Case 1 (whole-range `fillbuf(target)` returns the pre-allocated
-  `Fill`) is the direct regression guard for the original
-  `ClassCastException` we fixed.
+- End-to-end STREAM prepare → process → `glBufferData` byte
+  verification.
+- `dispose()` interleaved with in-flight prep across threads.
+- Texture path caching by env identity.
 
-- ~~**prepq/submitted draining order.**~~ Done — queues + invalid flag
-  extracted into `RenderQueue<R>` and covered by `RenderQueueTest`,
-  including a stressed invariant test that no render can land in a
-  drain's submitted snapshot without its prep also being in the same
-  drain (or a prior drain).
+These need a real GL or step-pause harness — worth attempting only
+if a regression in this area actually bites.
 
-- ~~**`enqprep` rejection when invalid.**~~ Done — covered by
-  `RenderQueueTest.enqueueRejectedAfterInvalidate`. The
-  `GLEnvironment.enqprep` wrapper around it is a 3-line glue
-  (abort + dispose on rejection) that doesn't merit its own test.
+## Pointers
 
-## Hard — needs a real GL or heavyweight harness
-
-Worth attempting only if a regression in this area actually bites.
-
-- **End-to-end STREAM prepare → process → `glBufferData` byte
-  verification.** Requires either a headless GL context or a
-  byte-capturing fake `GL` interface implementation (the GL interface
-  is ~350 lines).
-- **`dispose()` interleaved with in-flight prep across threads** —
-  hazard 3 from `f8ef8d6d4`. Needs the queue manager extraction *plus*
-  a way to step-pause the prep thread.
-- **Texture path caching by env identity.** `prepare(Texture2D)`
-  switching envs must dispose the old `GLTexture.Tex2D` and create a
-  new one. Same constraints as the STREAM prepare end-to-end test.
-
-## Where to invest next
-
-The medium tier is fully burned down. Everything that remains is in
-the hard tier and needs a real GL context or step-pause harness.
-
-Historic note: the proxy-semantics test in particular turned the fix
-in `runStreamFill` from "documented invariant" into
-"regression-locked invariant" — at the cost of one small extraction.
-The cheap tier is mechanical and worth burning down opportunistically.
+- Architecture: [`gl-rendering.md`](gl-rendering.md).
+- PR 22 history (what was tried, what was rejected): same doc,
+  [PR 22 history section](gl-rendering.md#pr-22-history).

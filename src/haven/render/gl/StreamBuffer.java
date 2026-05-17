@@ -27,7 +27,6 @@
 package haven.render.gl;
 
 import java.util.*;
-import java.util.function.*;
 import java.nio.*;
 import haven.render.*;
 import haven.Finalizer;
@@ -46,28 +45,51 @@ import haven.Finalizer;
 public class StreamBuffer implements haven.Disposable {
     public final GLBuffer rbuf;
     public final int size;
-    private final Pool pool;
-    private final Environment compatEnv;
+    private SysBuffer[] xfbufs = {};
+    private boolean[] used = {};
 
     public StreamBuffer(GLEnvironment env, int size) {
 	this.rbuf = new GLBuffer(env);
 	this.size = size;
-	this.pool = new Pool(size, sz -> env.malloc(sz));
-	this.compatEnv = env;
     }
 
-    /* Test-only: skip the real GLBuffer/env wiring. Fill.compatible(env)
-     * is true only for `compatEnv`. dispose() leaves rbuf alone (it is
-     * null) and forwards to the supplied pool. */
-    StreamBuffer(int size, Pool pool, Environment compatEnv) {
-	this.rbuf = null;
-	this.size = size;
-	this.pool = pool;
-	this.compatEnv = compatEnv;
+    private SysBuffer mkbuf() {
+	return(rbuf.env.malloc(size));
     }
 
-    public ByteBuffer get() {return(pool.get());}
-    public void put(ByteBuffer buf) {pool.put(buf);}
+    public ByteBuffer get() {
+	synchronized(this) {
+	    for(int i = 0; i < xfbufs.length; i++) {
+		if(!used[i]) {
+		    if(xfbufs[i] == null)
+			xfbufs[i] = mkbuf();
+		    ByteBuffer ret = xfbufs[i].data();
+		    ret.rewind();
+		    used[i] = true;
+		    return(ret);
+		}
+	    }
+	    int n = xfbufs.length;
+	    xfbufs = Arrays.copyOf(xfbufs, Math.max(1, n * 2));
+	    used = Arrays.copyOf(used, Math.max(1, n * 2));
+	    xfbufs[n] = mkbuf();
+	    used[n] = true;
+	    return(xfbufs[n].data());
+	}
+    }
+
+    public void put(ByteBuffer buf) {
+	if(buf == null) throw(new NullPointerException());
+	synchronized(this) {
+	    for(int i = 0; i < xfbufs.length; i++) {
+		if((xfbufs[i] != null) && (xfbufs[i].data() == buf)) {
+		    if(!used[i])
+			throw(new RuntimeException());
+		    used[i] = false;
+		}
+	    }
+	}
+    }
 
     public void put(BGL gl, ByteBuffer buf) {
 	if(buf == null) throw(new NullPointerException());
@@ -97,7 +119,7 @@ public class StreamBuffer implements haven.Disposable {
 	}
 
 	public int size() {return(size);}
-	public boolean compatible(Environment env) {return(env == compatEnv);}
+	public boolean compatible(Environment env) {return(env == rbuf.env);}
 
 	public ByteBuffer push() {
 	    return(data);
@@ -111,7 +133,7 @@ public class StreamBuffer implements haven.Disposable {
 	    synchronized(clear) {
 		ByteBuffer ret = this.data;
 		clear[0] = true;
-		((Buffer)ret).rewind();
+		ret.rewind();
 		return(ret);
 	    }
 	}
@@ -122,70 +144,10 @@ public class StreamBuffer implements haven.Disposable {
     }
 
     public void dispose() {
-	if(rbuf != null)
-	    rbuf.dispose();
-	pool.dispose();
-    }
-
-    /* Pool of fixed-size SysBuffers, reused across get/put cycles to
-     * conserve allocation bandwidth. Extracted from StreamBuffer so the
-     * reuse semantics can be unit-tested without a live GL context. */
-    static final class Pool implements haven.Disposable {
-	private final int size;
-	private final IntFunction<SysBuffer> alloc;
-	private SysBuffer[] bufs = {};
-	private boolean[] used = {};
-
-	Pool(int size, IntFunction<SysBuffer> alloc) {
-	    this.size = size;
-	    this.alloc = alloc;
-	}
-
-	synchronized ByteBuffer get() {
-	    for(int i = 0; i < bufs.length; i++) {
-		if(!used[i]) {
-		    if(bufs[i] == null)
-			bufs[i] = alloc.apply(size);
-		    ByteBuffer ret = bufs[i].data();
-		    ((Buffer)ret).rewind();
-		    used[i] = true;
-		    return(ret);
-		}
-	    }
-	    int n = bufs.length;
-	    bufs = Arrays.copyOf(bufs, Math.max(1, n * 2));
-	    used = Arrays.copyOf(used, Math.max(1, n * 2));
-	    bufs[n] = alloc.apply(size);
-	    used[n] = true;
-	    return(bufs[n].data());
-	}
-
-	synchronized void put(ByteBuffer buf) {
-	    if(buf == null) throw(new NullPointerException());
-	    for(int i = 0; i < bufs.length; i++) {
-		if((bufs[i] != null) && (bufs[i].data() == buf)) {
-		    if(!used[i])
-			throw(new RuntimeException());
-		    used[i] = false;
-		}
-	    }
-	}
-
-	public synchronized void dispose() {
-	    for(int i = 0; i < bufs.length; i++) {
-		if(bufs[i] != null) {
-		    bufs[i].dispose();
-		    bufs[i] = null;
-		}
-	    }
-	}
-
-	/* Test-only accessors. */
-	synchronized int allocated() {
-	    int n = 0;
-	    for(int i = 0; i < bufs.length; i++)
-		if(bufs[i] != null) n++;
-	    return(n);
+	rbuf.dispose();
+	for(int i = 0; i < xfbufs.length; i++) {
+	    if(xfbufs[i] != null)
+		xfbufs[i].dispose();
 	}
     }
 }

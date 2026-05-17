@@ -144,8 +144,8 @@ VAO-init race.
 
 What it *does* establish:
 
-- The crash exists on a fork that has none of Thunder's prep/STREAM
-  refactor commits, so our refactor isn't the cause.
+- The crash exists on a fork that had none of Thunder's now-reverted
+  prep/STREAM refactor commits, so that refactor wasn't the cause.
 - It exists with stock loftar GL + Hurricane's application code, so the
   bug lives in the shared `haven.render.gl.*` layer, not in any one
   fork's customizations.
@@ -155,8 +155,18 @@ eliminates Thunder as a suspect. Thunder's earlier per-draw EBO bind
 masked the symptom while it was in tree, which is why our crashes
 stopped while Hurricane's didn't.
 
+## Outcome
+
+[PR 22](https://github.com/dolda2000/hafen-client/pull/22) (thunder's
+patch series) was closed unmerged. Loftar landed his own one-line
+tracker fix (`2c183d2fd`) which thunder merged in via `220949a48`.
+The thunder-side prep/STREAM/sequence-leak refactor was subsequently
+reverted in full — see [`gl-rendering.md` § PR 22 history](gl-rendering.md#pr-22-history)
+— so the crash is fixed by loftar's tracker fix alone, with no
+thunder-side carry on top.
+
 ## Pointers
 
 - Loftar's fix: https://github.com/dolda2000/hafen-client/commit/2c183d2fd
-- Thunder's defensive layer: commit `4140e547`
+- Thunder's defensive layer (retired in `ab8253c47`): commit `4140e547`
 - PR thread: https://github.com/dolda2000/hafen-client/pull/22

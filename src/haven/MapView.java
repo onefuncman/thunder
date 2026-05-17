@@ -107,7 +107,7 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	}
 	public void drag(Coord sc) {}
 	public void release() {}
-	public boolean wheel(Coord sc, int amount) {
+	public boolean wheel(MouseWheelEvent ev) {
 	    return(false);
 	}
 	
@@ -174,7 +174,7 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	public void rotate(Coord r) {
 	    tangl = tangl + (25 * r.x / 100.0f);
 	    tangl = tangl % ((float)Math.PI * 2.0f);
-	    wheel(Coord.z, 5 * r.y);
+	    wheel(new MouseWheelEvent(Coord.z, 5 * r.y, 5 * r.y));
 	}
 	
 	@Override
@@ -258,9 +258,9 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	
 	private static final float maxang = (float)(Math.PI / 2 - 0.1);
 	private static final float mindist = 50.0f;
-	public boolean wheel(Coord c, int amount) {
+	public boolean wheel(MouseWheelEvent ev) {
 	    float fe = telev;
-	    telev += amount * telev * 0.02f;
+	    telev += ev.s * telev * 0.02f;
 	    if(telev > maxang)
 		telev = maxang;
 	    if(dist(telev) < mindist)
@@ -305,9 +305,9 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	    angl = anglorig + ((float)(c.x - dragorig.x) / 100.0f);
 	    angl = angl % ((float)Math.PI * 2.0f);
 	}
-	
-	public boolean wheel(Coord c, int amount) {
-	    float d = dist + (amount * 25);
+
+	public boolean wheel(MouseWheelEvent ev) {
+	    float d = dist + (float)(ev.s * 25);
 	    if(d < 5)
 		d = 5;
 	    dist = d;
@@ -435,9 +435,9 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	    if(telev > (Math.PI / 2.0)) telev = (float)Math.PI / 2.0f;
 	    tangl = anglorig + ((float)(c.x - dragorig.x) / 100.0f);
 	}
-	
-	public boolean wheel(Coord c, int amount) {
-	    float d = tdist + (amount * 25);
+
+	public boolean wheel(MouseWheelEvent ev) {
+	    float d = tdist + (float)(ev.s * 25);
 	    if(d < 5)
 		d = 5;
 	    tdist = d;
@@ -593,9 +593,9 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	    if(tfield > 100)
 		release();
 	}
-	
-	public boolean wheel(Coord c, int amount) {
-	    chfield(tfield + amount * 10);
+
+	public boolean wheel(MouseWheelEvent ev) {
+	    chfield(tfield + (float)ev.s * 10);
 	    return(true);
 	}
 	
@@ -2040,7 +2040,8 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
     
     public static interface PlobAdjust {
 	public void adjust(Plob plob, Coord pc, Coord2d mc, int modflags);
-	public boolean rotate(Plob plob, int amount, int modflags);
+	public default boolean rotate(Plob plob, MouseWheelEvent data, int modflags) {return(rotate(plob, data.a, modflags));}
+	@Deprecated public default boolean rotate(Plob plob, int amount, int modflags) {return(false);}
     }
     
     public static class StdPlace implements PlobAdjust {
@@ -2063,16 +2064,16 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	    else
 		plob.move(nc);
 	}
-	
-	public boolean rotate(Plob plob, int amount, int modflags) {
+
+	public boolean rotate(Plob plob, MouseWheelEvent data, int modflags) {
 	    if((modflags & (UI.MOD_CTRL | UI.MOD_SHIFT)) == 0)
 		return(false);
 	    freerot = true;
 	    double na;
 	    if((modflags & UI.MOD_SHIFT) == 0)
-		na = (Math.PI / 4) * Math.round((plob.a + (amount * Math.PI / 4)) / (Math.PI / 4));
+		na = (Math.PI / 4) * (Math.round(plob.a / (Math.PI / 4)) + data.a);
 	    else
-		na = plob.a + amount * Math.PI / plobagran;
+		na = plob.a + data.s * Math.PI / plobagran;
 	    na = Utils.cangle(na);
 	    plob.move(na);
 	    return(true);
@@ -3080,10 +3081,10 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	    return(true);
 	if((placing_l != null) && placing_l.done()) {
 	    Plob placing = placing_l.get();
-	    if(placing.adjust.rotate(placing, ev.a, ui.modflags()))
+	    if(placing.adjust.rotate(placing, ev, ui.modflags()))
 		return(true);
 	}
-	return(camera.wheel(ev.c, ev.a));
+	return(camera.wheel(ev));
     }
     
     public boolean drop(final Coord cc, Coord ul) {
@@ -3127,9 +3128,9 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	Loader.Future<Plob> placing_l = this.placing;
 	if((placing_l != null) && placing_l.done()) {
 	    Plob placing = placing_l.get();
-	    if((ev.code == KeyEvent.VK_LEFT) && placing.adjust.rotate(placing, -1, ui.modflags()))
+	    if((ev.code == KeyEvent.VK_LEFT) && placing.adjust.rotate(placing, new MouseWheelEvent(Coord.z, -1, -1), ui.modflags()))
 		return(true);
-	    if((ev.code == KeyEvent.VK_RIGHT) && placing.adjust.rotate(placing, 1, ui.modflags()))
+	    if((ev.code == KeyEvent.VK_RIGHT) && placing.adjust.rotate(placing, new MouseWheelEvent(Coord.z, 1, 1), ui.modflags()))
 		return(true);
 	    PlobSnap.Dir snap = null;
 	    if(kb_plobSnapLeft.key().match(ev))       snap = PlobSnap.Dir.LEFT;
@@ -3436,7 +3437,7 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	});
     }
     
-    public void zoomCamera(int amount) { camera.wheel(Coord.z, amount); }
+    public void zoomCamera(int amount) { camera.wheel(new MouseWheelEvent(Coord.z, amount, amount)); }
     
     public void rotateCamera(Coord r) {
 	camera.rotate(r.mul(

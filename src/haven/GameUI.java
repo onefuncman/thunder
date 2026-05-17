@@ -888,7 +888,7 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	public Hidewnd(Coord sz, String cap, boolean lg) {
 	    super(sz, cap, lg);
 	}
- 
+
 	public Hidewnd(Coord sz, String cap) {
 	    super(sz, cap);
 	}

@@ -333,7 +333,7 @@ public class GLRender implements Render, Disposable {
 	    }
 	    case STREAM: {
 		StreamBuffer ro = (StreamBuffer)env.prepare(ibuf);
-		StreamBuffer.Fill data = env.runStreamFill(ro, buf, fill);
+		StreamBuffer.Fill data = (StreamBuffer.Fill)fill.fill(buf, env);
 		Vao0State.apply(this.env, this.gl, state, ro.rbuf);
 		BGL gl = gl();
 		ByteBuffer xfbuf = data.get();
@@ -357,7 +357,7 @@ public class GLRender implements Render, Disposable {
 	    }
 	    case STREAM: {
 		StreamBuffer ro = (StreamBuffer)env.prepare(vbuf);
-		StreamBuffer.Fill data = env.runStreamFill(ro, buf, fill);
+		StreamBuffer.Fill data = (StreamBuffer.Fill)fill.fill(buf, env);
 		VboState.apply(this.gl, state, ro.rbuf);
 		BGL gl = gl();
 		ByteBuffer xfbuf = data.get();
