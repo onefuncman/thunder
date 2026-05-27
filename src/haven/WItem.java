@@ -140,25 +140,8 @@ public class WItem extends Widget implements DTarget {
     }
     
     private List<ItemInfo> info() {return(item.info());}
-    public final AttrCache<Pipe.Op> rstate = new AttrCache<>(this::info, info -> {
-	ArrayList<GItem.RStateInfo> ols = new ArrayList<>();
-	for(ItemInfo inf : info) {
-	    if(inf instanceof GItem.RStateInfo)
-		ols.add((GItem.RStateInfo)inf);
-	}
-	if(ols.size() == 0)
-	    return(() -> null);
-	if(ols.size() == 1) {
-	    Pipe.Op op = ols.get(0).rstate();
-	    return(() -> op);
-	}
-	Pipe.Op[] ops = new Pipe.Op[ols.size()];
-	for(int i = 0; i < ops.length; i++)
-	    ops[i] = ols.get(0).rstate();
-	Pipe.Op cmp = Pipe.Op.compose(ops);
-	return(() -> cmp);
-    });
-    
+    public final AttrCache<Pipe.Op> rstate = new AttrCache<>(this::info, GItem.RStateInfo.combine);
+
     public final AttrCache<Color> olcol = new AttrCache<>(this::info, info -> {
 	Color c = null;
 	for (ItemInfo inf : info) {
@@ -170,7 +153,7 @@ public class WItem extends Widget implements DTarget {
 	final Color color = c;
 	return (() -> color);
     });
-    
+
     public final AttrCache<Tex> fepnum = new AttrCache<>(this::info, AttrCache.cache(info -> {
 	try {
 	    for (haven.resutil.FoodInfo food : ItemInfo.findall(haven.resutil.FoodInfo.class, info)) {
@@ -183,7 +166,7 @@ public class WItem extends Widget implements DTarget {
 	}
 	return null;
     }));
-    
+
     public final AttrCache<GItem.InfoOverlay<?>[]> itemols = new AttrCache<>(this::info, info -> {
 	ArrayList<GItem.InfoOverlay<?>> buf = new ArrayList<>();
 	for(ItemInfo inf : info) {
