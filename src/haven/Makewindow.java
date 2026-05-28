@@ -171,26 +171,24 @@ public class Makewindow extends Widget {
 		    info = (Object[])args[i++];
 		inputs.add(new Spec(res, sdt, num, info));
 	    }
-	    ui.sess.glob.loader.defer(() -> {
-		List<Input> wdgs = new ArrayList<>();
-		int idx = 0;
-		for(Spec spec : inputs)
-		    wdgs.add(new Input(spec, idx++));
-		synchronized(ui) {
-		    for(Widget w : this.inputs)
-			w.destroy();
-		    Position pos = new Position(xoff, 0);
-		    SpecWidget prev = null;
-		    for(Input wdg : wdgs) {
-			if((prev != null) && (wdg.opt != false))
-			    pos = pos.adds(10, 0);
-			add(wdg, pos);
-			pos = pos.add(Inventory.sqsz.x, 0);
-			prev = wdg;
-		    }
-		    this.inputs = wdgs;
+	    List<Input> wdgs = new ArrayList<>();
+	    int idx = 0;
+	    for(Spec spec : inputs)
+		wdgs.add(new Input(spec, idx++));
+	    synchronized(ui) {
+		for(Widget w : this.inputs)
+		    w.destroy();
+		Position pos = new Position(xoff, 0);
+		SpecWidget prev = null;
+		for(Input wdg : wdgs) {
+		    if((prev != null) && (wdg.opt != false))
+			pos = pos.adds(10, 0);
+		    add(wdg, pos);
+		    pos = pos.add(Inventory.sqsz.x, 0);
+		    prev = wdg;
 		}
-	    }, null);
+		this.inputs = wdgs;
+	    }
 	} else if(msg == "opop") {
 	    List<Spec> outputs = new ArrayList<Spec>();
 	    for(int i = 0; i < args.length;) {
@@ -202,25 +200,23 @@ public class Makewindow extends Widget {
 		    info = (Object[])args[i++];
 		outputs.add(new Spec(res, sdt, num, info));
 	    }
-	    ui.sess.glob.loader.defer(() -> {
-		List<SpecWidget> wdgs = new ArrayList<>();
-		for(Spec spec : outputs)
-		    wdgs.add(new SpecWidget(spec));
-		synchronized(ui) {
-		    for(Widget w : this.outputs)
-			w.destroy();
-		    Position pos = new Position(xoff, outy);
-		    SpecWidget prev = null;
-		    for(SpecWidget wdg : wdgs) {
-			if((prev != null) && (wdg.opt != prev.opt))
-			    pos = pos.adds(10, 0);
-			add(wdg, pos);
-			pos = pos.add(Inventory.sqsz.x, 0);
-			prev = wdg;
-		    }
-		    this.outputs = wdgs;
+	    List<SpecWidget> wdgs = new ArrayList<>();
+	    for(Spec spec : outputs)
+		wdgs.add(new SpecWidget(spec));
+	    synchronized(ui) {
+		for(Widget w : this.outputs)
+		    w.destroy();
+		Position pos = new Position(xoff, outy);
+		SpecWidget prev = null;
+		for(SpecWidget wdg : wdgs) {
+		    if((prev != null) && (wdg.opt != prev.opt))
+			pos = pos.adds(10, 0);
+		    add(wdg, pos);
+		    pos = pos.add(Inventory.sqsz.x, 0);
+		    prev = wdg;
 		}
-	    }, null);
+		this.outputs = wdgs;
+	    }
 	} else if(msg == "qmod") {
 	    List<Indir<Resource>> qmod = new ArrayList<Indir<Resource>>();
 	    for(Object arg : args)
