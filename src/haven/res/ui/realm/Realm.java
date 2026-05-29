@@ -9,11 +9,10 @@ import haven.res.ui.polity.*;
 import static haven.BuddyWnd.width;
 
 /* >wdg: Realm */
-@FromResource(name = "ui/realm", version = 31)
+@haven.FromResource(name = "ui/realm", version = 34)
 public class Realm extends Polity {
     public static final Map<String, Resource.Image> authimg = Utils.<String, Resource.Image>map().
-	//use Resource.remote() instead of Resource.classres().pool because this class is loaded locally, but thingwall icon is not local
-	put("t", Loading.waitfor(Resource.remote().load("gfx/terobjs/mm/thingwall")).layer(Resource.imgc)).
+	put("t", Loading.waitfor(Resource.classres(Realm.class).pool.load("gfx/terobjs/mm/thingwall", 4)).layer(Resource.imgc)).
 	map();
     final BuddyWnd.GroupSelector gsel;
     public final Map<String, Integer> authn = new HashMap<>();
@@ -22,8 +21,8 @@ public class Realm extends Polity {
 
     public Realm(String name) {
 	super("Realm", name);
-	Widget prev = add(new Img(CharWnd.catf.i10n_label("Realm").tex()), 0, 0);
-	prev = add(new Label.Untranslated(name, nmf), prev.pos("bl").adds(0, 5));
+	Widget prev = add(new Img(CharWnd.catf.render("Realm").tex()), 0, 0);
+	prev = add(new Label(name, nmf), prev.pos("bl").adds(0, 5));
 	prev = add(new AuthMeter(new Coord(width, UI.scale(20))), prev.pos("bl").adds(0, 2));
 	prev = add(new Authobj("t"), prev.pos("bl").adds(0, 5));
 	prev = add(new Button(width - UI.scale(20), "Realm Blessings") {
