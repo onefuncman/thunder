@@ -28,14 +28,14 @@ public class HealWound extends Effect implements EffectInfo {
     }
 
     public BufferedImage alchtip() {
-	BufferedImage t1 = Text.render("Heal ").img;
+	BufferedImage t1 = Text.render(L10N.tooltip("Heal ")).img;
 	BufferedImage t2 = Text.render(res.flayer(Resource.tooltip).t).img;
 	int h = t1.getHeight();
 	BufferedImage icon = PUtils.convolvedown(res.flayer(Resource.imgc).img, new Coord(h, h), CharWnd.iconfilter);
 	BufferedImage ret = catimgsh(0, t1, icon, t2);
 	if(repl != null) {
 	    ret = catimgsh(0, ret,
-			   Text.render(" into ").img,
+			   Text.render(L10N.tooltip(" into ")).img,
 			   PUtils.convolvedown(repl.flayer(Resource.imgc).img, new Coord(h, h), CharWnd.iconfilter),
 			   Text.render(repl.flayer(Resource.tooltip).t).img);
 	}
@@ -47,6 +47,6 @@ public class HealWound extends Effect implements EffectInfo {
     }
 
     public String desc() {
-	return("Heal " + res.flayer(Resource.tooltip).t);
+	return(L10N.tooltip("Heal ") + res.flayer(Resource.tooltip).t);
     }
 }

@@ -24,7 +24,7 @@ public class BuffAttr extends Effect implements EffectInfo {
     }
 
     public BufferedImage alchtip() {
-	BufferedImage t1 = Text.render("Increase ").img;
+	BufferedImage t1 = Text.render(L10N.tooltip("Increase ")).img;
 	BufferedImage t2 = Text.render(res.flayer(Resource.tooltip).t).img;
 	int h = t1.getHeight();
 	BufferedImage icon = PUtils.convolvedown(res.flayer(Resource.imgc).img, new Coord(h, h), CharWnd.iconfilter);
@@ -36,6 +36,6 @@ public class BuffAttr extends Effect implements EffectInfo {
     }
 
     public String desc() {
-	return("Increase " + res.flayer(Resource.tooltip).t);
+	return(L10N.tooltip("Increase ") + res.flayer(Resource.tooltip).t);
     }
 }

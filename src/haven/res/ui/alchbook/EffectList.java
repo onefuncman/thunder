@@ -13,9 +13,9 @@ import static haven.PType.*;
 public class EffectList extends TableBox<KnownEffects> implements FilterDisplay.Filtered<KnownEffects> {
     public static final int HEIGHT = Book.HEIGHT;
     public static final List<ColSpec<? super KnownEffects>> cols =
-	Arrays.asList(ColSpec.of(UI.scale(50), 0.00, 0.5, 0.5, sorthead(HeadFactory.of(CharWnd.attrf.render("Type").tex()),    KnownEffects.ikinputorder),
+	Arrays.asList(ColSpec.of(UI.scale(50), 0.00, 0.5, 0.5, sorthead(HeadFactory.of(CharWnd.attrf.i10n_label("Type").tex()),    KnownEffects.ikinputorder),
 				 (ik, idx, sz) -> new Icon(HEIGHT, ik.input.type)),
-		      ColSpec.of(0,            1.00, 0.0, 0.5, sorthead(HeadFactory.of(CharWnd.attrf.render("Effects").tex()), KnownEffects.kieffectorder),
+		      ColSpec.of(0,            1.00, 0.0, 0.5, sorthead(HeadFactory.of(CharWnd.attrf.i10n_label("Effects").tex()), KnownEffects.kieffectorder),
 				 (ik, idx, sz) -> new Effects(ik.effs, eff -> ik.book.el.filter(new KnownEffects.EffectFilter(eff)))));
     public final Map<Input, KnownEffects> knowledge = new HashMap<>();
     public final Collection<KnownEffects> loading = new LinkedList<>();

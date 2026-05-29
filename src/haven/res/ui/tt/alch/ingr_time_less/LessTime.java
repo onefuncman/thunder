@@ -18,7 +18,7 @@ public class LessTime extends Effect implements EffectInfo {
     }
 
     public String alchtips() {
-	return("Decrease elixir duration");
+	return(L10N.tooltip("Decrease elixir duration"));
     }
 
     public BufferedImage image() {
@@ -26,6 +26,6 @@ public class LessTime extends Effect implements EffectInfo {
     }
 
     public String desc() {
-	return("Decrease elixir duration");
+	return(L10N.tooltip("Decrease elixir duration"));
     }
 }

@@ -13,13 +13,13 @@ import static haven.PType.*;
 public class RecipeList extends TableBox<Recipe> implements FilterDisplay.Filtered<Recipe> {
     public static final int HEIGHT = Book.HEIGHT;
     public static final List<ColSpec<? super Recipe>> cols =
-	Arrays.asList(ColSpec.of(UI.scale(50), 0.00, 0.5, 0.5, sorthead(HeadFactory.of(CharWnd.attrf.render("Type").tex()),      Recipe.rcpcraftorder),
+	Arrays.asList(ColSpec.of(UI.scale(50), 0.00, 0.5, 0.5, sorthead(HeadFactory.of(CharWnd.attrf.i10n_label("Type").tex()),      Recipe.rcpcraftorder),
 				 (rcp, idx, sz) -> new Icon(HEIGHT, rcp.rcp, spec -> rcp.book.rl.filter(new Recipe.CraftFilter(spec)))),
-		      ColSpec.of(0,            1.00, 0.0, 0.5, sorthead(HeadFactory.of(CharWnd.attrf.render("Formula").tex()),   Recipe.rcpinputsorder),
+		      ColSpec.of(0,            1.00, 0.0, 0.5, sorthead(HeadFactory.of(CharWnd.attrf.i10n_label("Formula").tex()),   Recipe.rcpinputsorder),
 				 (rcp, idx, sz) -> new Formula(rcp.book, rcp.inputs, inp -> rcp.book.rl.filter(new Recipe.InputFilter(inp)))),
-		      ColSpec.of(0,            0.25, 0.0, 0.5, sorthead(HeadFactory.of(CharWnd.attrf.render("Effects").tex()),   Recipe.rcpeffectorder),  
+		      ColSpec.of(0,            0.25, 0.0, 0.5, sorthead(HeadFactory.of(CharWnd.attrf.i10n_label("Effects").tex()),   Recipe.rcpeffectorder),
 				 (rcp, idx, sz) -> new Effects(rcp.effects, eff -> rcp.book.rl.filter(new Recipe.EffectFilter(eff)))),
-		      ColSpec.of(0,            0.25, 0.0, 0.5, sorthead(HeadFactory.of(CharWnd.attrf.render("Negatives").tex()), Recipe.rcpmmeffectorder),
+		      ColSpec.of(0,            0.25, 0.0, 0.5, sorthead(HeadFactory.of(CharWnd.attrf.i10n_label("Negatives").tex()), Recipe.rcpmmeffectorder),
 				 (rcp, idx, sz) -> new Effects(rcp.mmeffects, null)));
     public final Map<RKey, Recipe> recipes = new HashMap<>();
     public final Collection<Recipe> loading = new LinkedList<>();
