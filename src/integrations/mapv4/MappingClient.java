@@ -214,7 +214,7 @@ public class MappingClient {
     public void OpenMap(MapRef mapRef) {
 	try {
 	    if(mapRef == null) {return;}
-	    WebBrowser.self.show(new URL(
+	    haven.iosys.tk.Toolkit.instance().browse(new java.net.URI(
 		String.format(endpoint + "/#/grid/%d/%d/%d/6", mapRef.mapID, mapRef.gc.x, mapRef.gc.y)));
 	} catch (Exception ex) {}
     }

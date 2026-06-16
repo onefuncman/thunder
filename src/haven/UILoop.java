@@ -395,6 +395,7 @@ public abstract class UILoop implements Console.Directory {
 
     private final double[] frames = new double[128], waited = new double[frames.length];
     private int fps;
+    public static int currentFps;
     private double framelag, uidle;
     protected void updstats(Frame f) {
 	int fi = (int)(f.frameno % frames.length);
@@ -410,6 +411,7 @@ public abstract class UILoop implements Console.Directory {
 	}
 	if(f.ftime > frames[ckf]) {
 	    fps = (int)Math.round(i / (f.ftime - frames[ckf]));
+	    currentFps = fps;
 	    uidle = twait / (f.ftime - frames[ckf]);
 	}
     }

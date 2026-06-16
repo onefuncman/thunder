@@ -39,8 +39,12 @@ public class ElixirWdg extends Widget {
     }
     
     private void open() {
-	if(WebBrowser.self != null && elixir != null) {
-	    WebBrowser.self.show(Utils.url(elixir.toAlchemyUrl()));
+	if(elixir != null) {
+	    try {
+		ui.wnd.toolkit().browse(Utils.url(elixir.toAlchemyUrl()).toURI());
+	    } catch(Exception e) {
+		ui.error("Could not launch web browser: " + e.getMessage());
+	    }
 	}
     }
     
