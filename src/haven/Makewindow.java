@@ -183,18 +183,39 @@ public class Makewindow extends Widget {
 	return(ret);
     }
 
+    /* Decode an inpop/opop spec list, handling all three wire formats:
+     *   - new modular full-list:    each arg is a nested spec object-array
+     *   - new modular sparse update: (index, spec) pairs, spec being an object-array
+     *   - legacy flat:               [res, sdt?, num, info?, ...] specs spliced inline
+     * The discriminator must check args[1] for an object-array rather than just
+     * INT.is(args, 0), since a legacy flat spec leads with an integer resource-id
+     * that would otherwise be misread as a sparse-update index. */
+    private List<Spec> parsespecs(Object[] args, Spec[] cur) {
+	List<Spec> specs;
+	if(OBJS.is(args, 0)) {
+	    specs = new ArrayList<>();
+	    for(int i = 0; i < args.length; i++)
+		specs.add(parsespec(OBJS.of(args[i])));
+	} else if(OBJS.is(args, 1)) {
+	    specs = new ArrayList<>(Arrays.asList(cur));
+	    for(int i = 0; i < args.length; i += 2)
+		specs.set(INT.of(args, i), parsespec(OBJS.of(args, i + 1)));
+	} else {
+	    specs = new ArrayList<>();
+	    for(int i = 0; i < args.length;) {
+		Indir<Resource> res = ui.sess.getresv(args[i++]);
+		Message sdt = BYTES.is(args, i) ? new MessageBuf(BYTES.of(args, i++)) : MessageBuf.nil;
+		int num = INT.of(args, i++);
+		Object[] info = OBJS.is(args, i) ? OBJS.of(args, i++) : new Object[0];
+		specs.add(new Spec(new ResData(res, sdt), num, info));
+	    }
+	}
+	return(specs);
+    }
+
     public void uimsg(String msg, Object... args) {
 	if(msg == "inpop") {
-	    List<Spec> inputs;
-	    if(INT.is(args, 0)) {
-		inputs = Arrays.asList(this.inputs.stream().map(w -> w.spec).toArray(Spec[]::new));
-		for(int i = 0; i < args.length; i += 2)
-		    inputs.set(INT.of(args, i), parsespec(OBJS.of(args, i + 1)));
-	    } else {
-		inputs = new ArrayList<>();
-		for(int i = 0; i < args.length; i++)
-		    inputs.add(parsespec(OBJS.of(args[i])));
-	    }
+	    List<Spec> inputs = parsespecs(args, this.inputs.stream().map(w -> w.spec).toArray(Spec[]::new));
 	    List<Input> wdgs = new ArrayList<>();
 	    int idx = 0;
 	    for(Spec spec : inputs)
@@ -214,16 +235,7 @@ public class Makewindow extends Widget {
 		this.inputs = wdgs;
 	    }
 	} else if(msg == "opop") {
-	    List<Spec> outputs;
-	    if(INT.is(args, 0)) {
-		outputs = Arrays.asList(this.outputs.stream().map(w -> w.spec).toArray(Spec[]::new));
-		for(int i = 0; i < args.length; i += 2)
-		    outputs.set(INT.of(args, i), parsespec(OBJS.of(args, i + 1)));
-	    } else {
-		outputs = new ArrayList<>();
-		for(int i = 0; i < args.length; i++)
-		    outputs.add(parsespec(OBJS.of(args[i])));
-	    }
+	    List<Spec> outputs = parsespecs(args, this.outputs.stream().map(w -> w.spec).toArray(Spec[]::new));
 	    List<SpecWidget> wdgs = new ArrayList<>();
 	    for(Spec spec : outputs)
 		wdgs.add(new SpecWidget(spec));

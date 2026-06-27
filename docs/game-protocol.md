@@ -417,6 +417,16 @@ Common inbound `WDGMSG` names (from grepping real recordings):
 
 Per-widget semantics are defined in each widget class; there's no single canonical dispatch table.
 
+### Makewindow `inpop` / `opop` spec lists (format ambiguity)
+
+The crafting window (`src/haven/Makewindow.java`) receives input/output ingredient specs via the `inpop` and `opop` widget messages. There are **three** wire encodings in the wild, and they cannot be told apart by `args[0]` alone:
+
+1. **Legacy flat** -- specs spliced directly into the arg list: `[res, sdt?, num, info?, res, sdt?, num, info?, ...]`. The live server still sends this (e.g. `opop [3228, -1]` = one output, res-id 3228, num -1). The leading element is an integer resource-id.
+2. **Modular full-list** -- each spec is its own nested object-array: `[[res, ...], [res, ...], ...]`. `args[0]` is an `Object[]`.
+3. **Modular sparse update** -- `(index, spec)` pairs that patch the current list in place: `[idx, [res, ...], idx, [res, ...]]`. `args[0]` is an int index, `args[1]` is the spec `Object[]`.
+
+loftar's June 2026 "modular message format" rewrite discriminated on `INT.is(args, 0)`, which **misclassifies legacy flat as a sparse update** (the leading res-id looks like an index) and crashes with `expected object-array, got <num>` when it tries to read the num as a spec. The correct discriminator checks `args[1]` for an object-array, falling back to legacy-flat parsing otherwise. See `Makewindow.parsespecs`.
+
 ---
 
 ## 9. Protocol inspection and recording
