@@ -121,23 +121,26 @@ public class Config {
 	    /* localdir() can hand back null; fall through to the workdir if it does. */
 	    Path base = localdir();
 	    if(base != null) {
-		File file = new File(base.toFile(), "thunder");
+		File file = new File(base.toFile(), "thunder-client");
 		File legacy = new File(base.toFile(), "ender-client");
 		if(!file.exists() && legacy.exists()) {
 		    /* Copy, don't move: older builds and sibling forks still
-		     * read ender-client, so the original stays untouched.
-		     * Stage the copy and rename it into place at the end so a
-		     * crash mid-copy can't leave a half-migrated dir that
-		     * would then shadow the real data. On any failure, keep
-		     * using the legacy dir and retry next launch. */
-		    Path stage = base.resolve("thunder.migrating");
+		     * read ender-client, so the original stays untouched, and
+		     * this client only ever reads it here -- it is never used
+		     * as the live home dir. Stage the copy and rename it into
+		     * place at the end so a crash mid-copy can't leave a
+		     * half-migrated dir that would then shadow the real data.
+		     * If the copy fails, abort loudly rather than run on the
+		     * wrong profile; thunder-client still doesn't exist, so
+		     * the migration retries on the next launch. */
+		    Path stage = base.resolve("thunder-client.migrating");
 		    try {
 			if(Files.exists(stage))
 			    deltree(stage);
 			copytree(legacy.toPath(), stage);
 			Files.move(stage, file.toPath());
 		    } catch(IOException e) {
-			file = legacy;
+			throw(new RuntimeException("Could not migrate data directory " + legacy + " to " + file + ". Close any other running clients and launch again.", e));
 		    }
 		}
 		file.mkdirs();
