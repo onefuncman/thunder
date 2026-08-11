@@ -9,7 +9,8 @@ import haven.res.ui.alchbook.*;
 import java.awt.image.BufferedImage;
 
 /* >tt: HealWound */
-@haven.FromResource(name = "ui/tt/alch/ingr-heal", version = 6)
+/* KamiClient: override=true is load-bearing — see BuffAttr. get-code drops it. */
+@haven.FromResource(name = "ui/tt/alch/ingr-heal", version = 6, override = true)
 public class HealWound extends Effect implements EffectInfo {
     public final Resource res, repl;
 

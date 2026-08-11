@@ -401,6 +401,11 @@ public class MiniMap extends Widget {
 	    }
 	}
 	icons = findicons(icons);
+	if(tvisible()) {
+	    Location loc = this.curloc;
+	    if(loc != null)
+		redisplay(loc);
+	}
 	if(CFG.MMAP_SHOW_BIOMES.get()) {
 	    Coord mc = rootxlate(ui.mc);
 	    if(mc.isect(Coord.z, sz)) {
@@ -408,11 +413,6 @@ public class MiniMap extends Widget {
 	    } else {
 		setBiome(null);
 	    }
-	}
-	if(tvisible()) {
-	    Location loc = this.curloc;
-	    if(loc != null)
-		redisplay(loc);
 	}
     }
 
@@ -603,10 +603,24 @@ public class MiniMap extends Widget {
 	}
 
 	public GobIcon.Icon icon() {
+	    MarkerIcon minf = mm.markers.get(m);
+	    if(minf == null)
+		throw(new Loading());
+	    return(minf.icon());
+	}
+
+	public String name() {
+	    return(m.nm);
+	}
+	
+	public List<ItemInfo> info() {
+	    MarkerIcon minf = mm.markers.get(m);
+	    if(minf == null)
+		return(Collections.emptyList());
 	    try {
-		return(mm.markers.get(m).icon());
+		return(minf.info());
 	    } catch(Loading l) {
-		return(null);
+		return(Collections.emptyList());
 	    }
 	}
 
@@ -616,7 +630,7 @@ public class MiniMap extends Widget {
 	    else
 		this.sc = mm.l2dscale(m.tc).sub(mm.l2dscale(mm.dloc.tc)).add(mm.sz.div(2));
 	}
-
+	
 	public void draw(GOut g, Coord c) {
 	    try {
 		icon().draw(g, c);

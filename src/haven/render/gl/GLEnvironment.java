@@ -391,6 +391,10 @@ public abstract class GLEnvironment implements Environment {
 	GLRender gcmd = (GLRender)cmd;
 	if(gcmd.env != this)
 	    throw(new IllegalArgumentException("environment mismatch"));
+	if(gcmd.gl == null) {
+	    gcmd.dispose();
+	    return;
+	}
 	boolean inv;
 	synchronized(submitted) {
 	    inv = invalid;

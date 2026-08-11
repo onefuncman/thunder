@@ -99,9 +99,13 @@ public class Config {
     private static File getHomeDir() {
 	String dir = get().getprop("config.homedir", "workdir");
 	if("hashdir".equals(dir)) {
-	    File file = new File(Config.localdir().toFile(), "ender-client");
-	    file.mkdirs();
-	    return file.getAbsoluteFile();
+	    /* localdir() can hand back null; fall through to the workdir if it does. */
+	    Path base = localdir();
+	    if(base != null) {
+		File file = new File(base + File.separator + "ender-client");
+		file.mkdirs();
+		return file.getAbsoluteFile();
+	    }
 	}
 	
 	return new File("").getAbsoluteFile();
@@ -528,6 +532,10 @@ public class Config {
     
     public static void setUserName(String username) {
 	Config.username = username;
+    }
+
+    public static String getUserName() {
+	return username;
     }
     
     public static void setPlayerName(String playername) {

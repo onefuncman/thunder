@@ -53,8 +53,8 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
     public final static RichText.Foundry ttfnd = new RichText.Foundry(TextAttribute.FAMILY, "SansSerif", TextAttribute.SIZE, UI.scale(10f));
     private static Coord gsz = new Coord(4, 4);
     public final Set<Pagina> paginae = new HashSet<Pagina>();
-    public Pagina cur;
     public int pagseq = 0;
+    public Pagina cur;
     private final Map<Object, Pagina> pmap = new CacheMap<>(CacheMap.RefType.WEAK);
     private Pagina dragging;
     private Collection<PagButton> curbtns = Collections.emptyList();
@@ -756,8 +756,8 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
 			paginae.remove(pag);
 		    }
 		}
-		updlayout();
 		pagseq++;
+		updlayout();
 	    }
 	} else {
 	    super.uimsg(msg, args);
@@ -904,6 +904,7 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
 	makeLocal("paginae/add/auto/aggro_one", Action.AGGRO_ONE_PVE);
 	makeLocal("paginae/add/auto/aggro_one_pvp", Action.AGGRO_ONE_PVP);
 	makeLocal("paginae/add/auto/aggro_all", Action.AGGRO_ALL);
+	makeLocal("paginae/add/auto/distance_tool_wnd", Action.COMBAT_DISTANCE_TOOL);
 	makeLocal("paginae/add/auto/mount_horse", Action.BOT_MOUNT_HORSE);
 	makeLocal("paginae/add/auto/fill_cheese_tray", Action.FILL_CHEESE_TRAY);
 	makeLocal("paginae/add/info/plant-growth", Action.TOGGLE_GOB_INFO_PLANTS, () -> GobInfoOpts.enabled(InfoPart.PLANT_GROWTH));

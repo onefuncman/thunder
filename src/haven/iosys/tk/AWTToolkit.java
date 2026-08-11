@@ -495,17 +495,25 @@ public abstract class AWTToolkit implements Toolkit {
 	    public void windowIconified(WindowEvent e) {}
 	    public void windowDeiconified(WindowEvent e) {}
 
+	    /* KamiClient: eat ALT before AWT sees it, otherwise it goes off
+	     * poking at menu activation and steals focus mid-game. Used to
+	     * live in UIPanel.Dispatcher before the iosys restructure. */
+	    private void altgrab(java.awt.event.KeyEvent e) {
+		if(e.getKeyCode() == java.awt.event.KeyEvent.VK_ALT)
+		    e.consume();
+	    }
+
 	    public synchronized void keyTyped(java.awt.event.KeyEvent e) {
 		events.add(e);
-		if(e.getKeyCode() == java.awt.event.KeyEvent.VK_ALT) {e.consume();}
+		altgrab(e);
 	    }
 	    public synchronized void keyPressed(java.awt.event.KeyEvent e) {
 		events.add(e);
-		if(e.getKeyCode() == java.awt.event.KeyEvent.VK_ALT) {e.consume();}
+		altgrab(e);
 	    }
 	    public synchronized void keyReleased(java.awt.event.KeyEvent e) {
 		events.add(e);
-		if(e.getKeyCode() == java.awt.event.KeyEvent.VK_ALT) {e.consume();}
+		altgrab(e);
 	    }
 
 	    public void mouseEntered(java.awt.event.MouseEvent e) {}

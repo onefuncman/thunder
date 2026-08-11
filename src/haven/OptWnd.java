@@ -1129,9 +1129,6 @@ public class OptWnd extends WindowX {
 	panel.add(new CFGBox("Output missing translation lines", L10N.DBG), x, y);
     
 	y += STEP;
-	panel.add(new CFGBox("Force hardware cursor", CFG.FORCE_HW_CURSOR, null, true), x, y);
-	
-	y += STEP;
 	panel.add(new CFGBox("Store minimap tiles", CFG.STORE_MAP), x, y);
     
 	y += STEP;

@@ -69,7 +69,6 @@ public class CFG<T> {
     public static final CFG<Boolean> PRESERVE_SYMBEL = new CFG<>("general.preserve_symbel", true);
     
     public static final CFG<Theme> THEME = new CFG<>("ui.theme", Theme.Pretty);
-    public static final CFG<Boolean> FORCE_HW_CURSOR = new CFG<>("ui.force_hw_cursor", false);
     public static final CFG<Boolean> DISABLE_UI_HIDING = new CFG<>("ui.disable_ui_hide", true);
     public static final CFG<Boolean> UI_DISABLE_CONTAINER_POS = new CFG<>("ui.disable_container_pos", false);
     public static final CFG<Boolean> UI_SHOW_EQPROXY_HAND = new CFG<>("ui.eq_proxy.hands", true);
@@ -209,6 +208,7 @@ public class CFG<T> {
     public static final CFG<Boolean> AUTO_DRINK_ENABLED = new CFG<>("automation.autodrink.enabled", false);
     public static final CFG<Integer> AUTO_DRINK_THRESHOLD = new CFG<>("automation.autodrink.threshold", 74);
     public static final CFG<Integer> AUTO_DRINK_DELAY = new CFG<>("automation.autodrink.delay", 250);
+    public static final CFG<Integer> AUTO_DRINK_FORCED_INTERVAL = new CFG<>("automation.autodrink.forced_interval", 15000);
     public static final CFG<Boolean> ENABLE_PURGE_BUTTON_IN_KIN_LIST = new CFG<>("ui.enable_purge_button_kin_list", false);
     public static final CFG<Boolean> SHOW_FEP_NUMBERS_ON_FOOD = new CFG<>("ui.show_fep_numbers_on_food", false);
     public static final CFG<Boolean> EXTEND_ZOOM_ON_ORTHO = new CFG<>("cam.extend_zoom_on_ortho", false);
@@ -248,7 +248,7 @@ public class CFG<T> {
     public static final CFG<Boolean> FX_DISABLE_DRUNK    = new CFG<>("display.fx.disable_drunk",    true);
     public static final CFG<Boolean> MAP_COMPACT_LOCKED = new CFG<>("map.compact_locked", false);
     public static final CFG<Boolean> HIDE_ANIMAL_WARNING_IN_COMBAT = new CFG<>("ui.combat.hide_animal_warning_in_combat", false);
-    public static final CFG<Boolean> BLOCK_ATTACK_TAMED_HORSE = new CFG<>("ui.combat.block_attack_tamed_horse", true);
+    public static final CFG<Boolean> BLOCK_ATTACK_TAMED_HORSE = new CFG<>("ui.combat.block_attack_tamed_horse", false);
     public static final CFG<Boolean> LEGACY_BGM_ENABLED = new CFG<>("audio.legacy_bgm.enabled", false);
     public static final CFG<Boolean> LEGACY_BGM_NO_COOLDOWN = new CFG<>("audio.legacy_bgm.no_cooldown", false);
     public static final CFG<Double> LEGACY_BGM_VOLUME = new CFG<>("audio.legacy_bgm.volume", 0.5, new com.google.gson.reflect.TypeToken<Double>(){});

@@ -146,6 +146,7 @@ public enum GobTag {
         "gfx/kritter/caveangler/",
         "gfx/kritter/cavelouse/",
         "gfx/kritter/chasmconch/",
+        "gfx/kritter/crane/crane",
         "gfx/kritter/eagleowl/",
         "gfx/kritter/fox/",
         "gfx/kritter/goat/wildgoat",
@@ -443,6 +444,8 @@ public enum GobTag {
                 tags.add(MARE);
             } else if(name.contains("/stallion")) {
                 tags.add(STALLION);
+            } else if (name.contains("/horse/horse")) {
+                return false;
             }
             return true;
         } else if(name.contains("/pig/")) {
