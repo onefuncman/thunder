@@ -51,10 +51,17 @@ import javax.swing.JFileChooser;
 import static java.awt.event.KeyEvent.*;
 
 public abstract class AWTToolkit implements Toolkit {
-    public static void initawt() {
+    public static void initawt1() {
 	try {
 	    System.setProperty("sun.java2d.uiScale.enabled", "false");
 	    System.setProperty("apple.awt.application.name", "Haven & Hearth");
+	} catch(Throwable e) {
+	    new Warning(e, "AWT initialization failed").issue();
+	}
+    }
+
+    public static void initawt2() {
+	try {
 	    javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getSystemLookAndFeelClassName());
 	    // java.awt.Toolkit.getDefaultToolkit().getSystemEventQueue().push(new DebugEventQueue());
 	} catch(Throwable e) {
@@ -63,10 +70,11 @@ public abstract class AWTToolkit implements Toolkit {
     }
 
     static {
-	initawt();
+	initawt1();
     }
 
     protected AWTToolkit() {
+	initawt2();
 	try {
 	    emptycurs = java.awt.Toolkit.getDefaultToolkit().createCustomCursor(TexI.mkbuf(new Coord(1, 1)), new java.awt.Point(), "");
 	} catch(HeadlessException e) {
