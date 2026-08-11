@@ -102,7 +102,12 @@ public class Config {
 	    /* localdir() can hand back null; fall through to the workdir if it does. */
 	    Path base = localdir();
 	    if(base != null) {
-		File file = new File(base + File.separator + "ender-client");
+		File file = new File(base.toFile(), "thunder");
+		File legacy = new File(base.toFile(), "ender-client");
+		/* Migrate the pre-2026-08 data dir; on rename failure keep
+		 * using the old dir rather than starting over empty. */
+		if(!file.exists() && legacy.exists() && !legacy.renameTo(file))
+		    file = legacy;
 		file.mkdirs();
 		return file.getAbsoluteFile();
 	    }
