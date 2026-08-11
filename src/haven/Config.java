@@ -96,6 +96,25 @@ public class Config {
 	}
     }
     
+    private static void copytree(Path src, Path dst) throws IOException {
+	try(java.util.stream.Stream<Path> walk = Files.walk(src)) {
+	    for(Path p : (Iterable<Path>)walk::iterator) {
+		Path t = dst.resolve(src.relativize(p));
+		if(Files.isDirectory(p))
+		    Files.createDirectories(t);
+		else
+		    Files.copy(p, t, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+	    }
+	}
+    }
+
+    private static void deltree(Path dir) throws IOException {
+	try(java.util.stream.Stream<Path> walk = Files.walk(dir)) {
+	    for(Path p : (Iterable<Path>)walk.sorted(java.util.Comparator.reverseOrder())::iterator)
+		Files.delete(p);
+	}
+    }
+
     private static File getHomeDir() {
 	String dir = get().getprop("config.homedir", "workdir");
 	if("hashdir".equals(dir)) {
@@ -104,10 +123,23 @@ public class Config {
 	    if(base != null) {
 		File file = new File(base.toFile(), "thunder");
 		File legacy = new File(base.toFile(), "ender-client");
-		/* Migrate the pre-2026-08 data dir; on rename failure keep
-		 * using the old dir rather than starting over empty. */
-		if(!file.exists() && legacy.exists() && !legacy.renameTo(file))
-		    file = legacy;
+		if(!file.exists() && legacy.exists()) {
+		    /* Copy, don't move: older builds and sibling forks still
+		     * read ender-client, so the original stays untouched.
+		     * Stage the copy and rename it into place at the end so a
+		     * crash mid-copy can't leave a half-migrated dir that
+		     * would then shadow the real data. On any failure, keep
+		     * using the legacy dir and retry next launch. */
+		    Path stage = base.resolve("thunder.migrating");
+		    try {
+			if(Files.exists(stage))
+			    deltree(stage);
+			copytree(legacy.toPath(), stage);
+			Files.move(stage, file.toPath());
+		    } catch(IOException e) {
+			file = legacy;
+		    }
+		}
 		file.mkdirs();
 		return file.getAbsoluteFile();
 	    }
