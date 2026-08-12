@@ -31,6 +31,7 @@ Optionally pass a changelog message as the last argument. Reads `workshop-client
 - Local custom resources live in `resources/src/local/`
 - Pre-compiled resources in `resources/pre-compiled/`
 - `@FromResource(name, version)` annotation overrides server-sent resource code — use sparingly, blocks server updates
+- **Check for stale pins**: `java -cp bin/hafen.jar haven.Resource find-updates` lists local `@FromResource` copies the server has newer versions of (silent = all current). When one is stale, the client sidelines the local copy (and its Thunder features) with a "local copy ... is overridden" warning at startup. Fetch the new source with `java -cp bin/hafen.jar haven.Resource get-code -o <staging-dir> <res-name>`, port Thunder's changes onto it, bump the pins. Run after server updates and upstream merges.
 
 ### Paginae resource structure (`resources/src/local/paginae/`)
 
