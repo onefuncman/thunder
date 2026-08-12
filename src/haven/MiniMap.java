@@ -1462,14 +1462,14 @@ public class MiniMap extends Widget {
 		for(DisplayMarker mark : dgrid.markers(false)) {
 		    if(mark.sc == null)
 			continue;
-		    GobIcon.Icon icon = mark.icon();
-		    if(icon == null)
-			continue;
-		    Coord ic = ev.c.sub(mark.sc);
-		    if(icon.hover(ic, hovering && icon.checkhit(ic) && !filter(mark))) {
-			hovering = false;
-			ret = true;
-		    }
+		    try {
+			GobIcon.Icon icon = mark.icon();
+			Coord ic = ev.c.sub(mark.sc);
+			if(icon.hover(ic, hovering && icon.checkhit(ic) && !filter(mark))) {
+			    hovering = false;
+			    ret = true;
+			}
+		    } catch(Loading l) {}
 		}
 	    }
 	}
