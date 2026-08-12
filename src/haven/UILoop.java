@@ -394,8 +394,9 @@ public abstract class UILoop implements Console.Directory {
     }
 
     private final double[] frames = new double[128], waited = new double[frames.length];
-    private int fps;
-    public static int currentFps;
+    /* KamiClient: StatusWdg reads this off-thread to draw the FPS counter. */
+    public static volatile int currentFps;
+    public int fps;
     private double framelag, uidle;
     protected void updstats(Frame f) {
 	int fi = (int)(f.frameno % frames.length);
@@ -410,8 +411,7 @@ public abstract class UILoop implements Console.Directory {
 	    ckf = (ckf - 1 + frames.length) % frames.length;
 	}
 	if(f.ftime > frames[ckf]) {
-	    fps = (int)Math.round(i / (f.ftime - frames[ckf]));
-	    currentFps = fps;
+	    fps = currentFps = (int)Math.round(i / (f.ftime - frames[ckf]));
 	    uidle = twait / (f.ftime - frames[ckf]);
 	}
     }

@@ -47,7 +47,7 @@ import me.ender.minimap.*;
 
 import static haven.MCache.tilesz;
 import static haven.MCache.cmaps;
-import static haven.Utils.eq;
+import static haven.Utils.*;
 
 public class MapWnd extends WindowX implements Console.Directory {
     public static final Resource markcurs = Resource.local().loadwait("gfx/hud/curs/flag");
@@ -566,11 +566,12 @@ public class MapWnd extends WindowX implements Console.Directory {
 	view.markobjs();
 	if(visible) {
 	    if(mrefocus != null) {
-		for(Predicate<Marker> filter : Arrays.asList(pmarkers, smarkers)) {
-		    if(filter.test(mrefocus)) {
-			if(filter != mflt) {
-			    mflt = filter;
-			    markerseq = -1;
+		// KamiClient: go through the category dropbox, not mflt directly, or the list switches
+		// but the dropdown keeps showing the old category. Covers custom markers too.
+		for(MarkerCategory cat : MarkerCategory.values()) {
+		    if(cat.filter.test(mrefocus)) {
+			if(mflt != cat.filter) {
+			    tool.categories.change(cat);
 			}
 			break;
 		    }
@@ -1353,6 +1354,7 @@ public class MapWnd extends WindowX implements Console.Directory {
 	dialog.show().map(Promise.cnonnull(path -> {
 	    if(path.getFileName().toString().indexOf('.') < 0)
 		path = path.resolveSibling(path.getFileName() + ".hmap");
+	    /* KamiClient: keep the "it started" ping, export takes a while. */
 	    ui.gui.msg("Starting map export process.", GameUI.MsgType.INFO);
 	    exportmap(path);
 	})).report(ui);

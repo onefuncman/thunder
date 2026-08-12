@@ -65,6 +65,8 @@ public class Client implements Console.Directory {
 	}
 	wnd.add(queue);
 	wnd.show(true);
+	Utils.initPvpMap();
+	Utils.initPvpModeMarkers();
     }
 
     public static class EventQueue implements Toolkit.EventListener {
@@ -336,7 +338,7 @@ public class Client implements Console.Directory {
 		AuthClient cl = new AuthClient(Bootstrap.authserv.get());
 		try {
 		    try {
-			acct = new Session.User(new AuthClient.TokenCred(username, Utils.hex.dec(token)).tryauth(cl));
+			acct = new AuthClient.TokenCred(username, Utils.hex.dec(token)).tryauth(cl);
 		    } catch(AuthClient.Credentials.AuthException e) {
 			throw(new ConnectionError("authentication with saved token failed"));
 		    }
@@ -364,8 +366,10 @@ public class Client implements Console.Directory {
 
     private static void main2(String[] args) {
 	Utils.initlocale();
+	initfullscreen.set(CFG.VIDEO_FULL_SCREEN.get());
 	Config.cmdline(args);
 	haven.error.ErrorHandler.setprop("jar.config", Config.confid);
+	me.ender.LegacyBGM.onGameStart();
 	setupres();
 	initfullscreen.set(CFG.VIDEO_FULL_SCREEN.get());
 	Utils.initPvpMap();
@@ -405,7 +409,7 @@ public class Client implements Console.Directory {
     public static void main(String[] args) {
 	/* Set up the error handler as early as humanly possible. */
 	ThreadGroup g = new ThreadGroup("Haven main group");
-	String ed = Utils.getprop("haven.errorurl", "");
+	String ed = Config.get().getprop("haven.errorurl", "");
 	if(ed.equals("stderr")) {
 	    g = new haven.error.SimpleHandler("Haven main group", true);
 	} else {

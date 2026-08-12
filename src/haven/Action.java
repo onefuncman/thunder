@@ -46,6 +46,9 @@ public enum Action {
     AGGRO_ALL(Actions::aggroAll, "Aggro all creatures near player", "Will try to aggro all creatures near player that are not in party"),
     FILL_CHEESE_TRAY(Actions::fillCheeseTray, "Fill cheese tray", "Automatically fills an open cheese tray with curds from your inventories."),
     
+    COMBAT_DISTANCE_TOOL(GameUI::toggleCombatDistanceTool, "Combat Distancing Tool", "Open a window that shows the current distance to your combat target and can auto-move you to the perfect distance for the animal/player."),
+    COMBAT_DISTANCE_AUTO(gui -> new haven.bot.CombatDistancerLite(gui).run(), "Auto-distance combat target", "One-shot: move to the perfect distance for the current combat target."),
+
     EQUIP_BOW(gui -> Equip.twoHanded(gui, Equip.BOW), "Equip Bow"),
     EQUIP_SPEAR(gui -> Equip.twoHanded(gui, Equip.SPEAR), "Equip Boar Spear"),
     EQUIP_SWORD_N_BOARD(gui -> Equip.twoItems(gui, Equip.SHIELD, Equip.SWORD), "Equip Sword & Shield"),

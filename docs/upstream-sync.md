@@ -13,6 +13,68 @@ duplicate-vs-novel question every sync.
 
 ---
 
+## kami sync 2026-08-11 (merge commit 4d304ef9d)
+
+~75 commits on `upstream/master` since the previous sync (kami reactivated in
+May 2026). This was a **real content merge**, not `-s ours`, performed on
+`sync/loftar-kami-20260810` immediately after merging `loftar/master`
+9bba2bb9d directly (merge commit 226a276c0).
+
+### Adopted from kami
+
+- Marker flicker fix: MiniMap `redisplay()` reordered before the biome check,
+  and `CustomMarker` equals/hashCode removed on purpose (value equality made
+  MapFile marker lists swap markers for each other). Explicit
+  `CustomMarker.equals(a, b)` is used where value comparison is wanted.
+- `MenuSearch` now extends `WindowX` (was `Window`).
+- FightWndEx Savelist `ReadLine.Owner.ui()` fix.
+- `@FromResource(..., override = true)` restored on the four alch ingredient
+  tooltip classes (load-bearing: `me.ender.alchemy.Effect` does instanceof/new
+  on these exact classes).
+- alchbook `EffectList` Loading fix (poke `ik.input.type.name()` before
+  leaving the loading list).
+- AWTToolkit alt-key consume refactored into `altgrab()`.
+- GLEnvironment: dispose null-gl commands early instead of submitting.
+- `UILoop.currentFps` made volatile (read off-thread by StatusWdg);
+  `Config.getHomeDir` null-safe `localdir()` handling (dir name stays
+  `ender-client`, NOT kami-client, to preserve existing user data).
+- Resource-cache purge button in KamiOptPanels troubleshooting section.
+- Combat distance tool actions (`COMBAT_DISTANCE_TOOL`/`_AUTO`) alongside
+  Thunder's `FILL_CHEESE_TRAY`.
+- Auto-merged without conflict: dynres preview fixes, autodrink fix,
+  UTF-8 javac pin, ender catch-ups (shift-click transfer, crane aggro,
+  wound treatment data, marker category dropdown).
+
+### Kept Thunder over kami
+
+- Auth flow: AccountList token storage, `loginname` capture, Client `TITLE`,
+  error-handler wiring (functionally identical to kami's), `crashed` flag
+  (kami's 137-exit for launcher restart came along and works with it).
+- `Makewindow.parsespecs` (handles legacy flat-spec wire format; kami has
+  only the new-format parser).
+- Marker draw path with `upscaleMarker`/`iconmult` (Thunder feature).
+- OptWnd lazy Video/Audio panel buttons (both forks fixed the same bug
+  independently; kept Thunder's `addLazyPanelButton` naming).
+- HelpWnd Dismiss (same behavior as kami's `tryClose`, different layout),
+  changelog.txt, build.xml `play` target, `.gitignore` (kami's two entries
+  appended).
+
+### Post-merge fixes (folded into the merge commit)
+
+- `MenuGrid.pagseq` was silently dropped by the auto-merge (both sides have
+  it); restored declaration + increment. Callers: MenuSearch, CraftDBWnd,
+  ActWindow.
+- Deduplicated `Client.crashed` and `LessTime`/`MoreTime` `image()`/`desc()`
+  (kept Thunder's L10N variants).
+
+### Skipped
+
+- kami changelog entries (kami-release notes, not Thunder's).
+- kami's own loftar merges (we merge loftar directly).
+- `kami-client` homedir rename.
+
+---
+
 ## kami sync 2026-05-03 (merge commit efafb5f29)
 
 12 commits on `upstream/master` since the previous sync. Seven commits were

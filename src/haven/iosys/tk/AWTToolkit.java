@@ -51,10 +51,17 @@ import javax.swing.JFileChooser;
 import static java.awt.event.KeyEvent.*;
 
 public abstract class AWTToolkit implements Toolkit {
-    public static void initawt() {
+    public static void initawt1() {
 	try {
 	    System.setProperty("sun.java2d.uiScale.enabled", "false");
 	    System.setProperty("apple.awt.application.name", "Haven & Hearth");
+	} catch(Throwable e) {
+	    new Warning(e, "AWT initialization failed").issue();
+	}
+    }
+
+    public static void initawt2() {
+	try {
 	    javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getSystemLookAndFeelClassName());
 	    // java.awt.Toolkit.getDefaultToolkit().getSystemEventQueue().push(new DebugEventQueue());
 	} catch(Throwable e) {
@@ -63,10 +70,11 @@ public abstract class AWTToolkit implements Toolkit {
     }
 
     static {
-	initawt();
+	initawt1();
     }
 
     protected AWTToolkit() {
+	initawt2();
 	try {
 	    emptycurs = java.awt.Toolkit.getDefaultToolkit().createCustomCursor(TexI.mkbuf(new Coord(1, 1)), new java.awt.Point(), "");
 	} catch(HeadlessException e) {
@@ -487,17 +495,25 @@ public abstract class AWTToolkit implements Toolkit {
 	    public void windowIconified(WindowEvent e) {}
 	    public void windowDeiconified(WindowEvent e) {}
 
+	    /* KamiClient: eat ALT before AWT sees it, otherwise it goes off
+	     * poking at menu activation and steals focus mid-game. Used to
+	     * live in UIPanel.Dispatcher before the iosys restructure. */
+	    private void altgrab(java.awt.event.KeyEvent e) {
+		if(e.getKeyCode() == java.awt.event.KeyEvent.VK_ALT)
+		    e.consume();
+	    }
+
 	    public synchronized void keyTyped(java.awt.event.KeyEvent e) {
 		events.add(e);
-		if(e.getKeyCode() == java.awt.event.KeyEvent.VK_ALT) {e.consume();}
+		altgrab(e);
 	    }
 	    public synchronized void keyPressed(java.awt.event.KeyEvent e) {
 		events.add(e);
-		if(e.getKeyCode() == java.awt.event.KeyEvent.VK_ALT) {e.consume();}
+		altgrab(e);
 	    }
 	    public synchronized void keyReleased(java.awt.event.KeyEvent e) {
 		events.add(e);
-		if(e.getKeyCode() == java.awt.event.KeyEvent.VK_ALT) {e.consume();}
+		altgrab(e);
 	    }
 
 	    public void mouseEntered(java.awt.event.MouseEvent e) {}

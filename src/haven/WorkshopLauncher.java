@@ -378,7 +378,7 @@ public class WorkshopLauncher {
 	}
 
 	static {
-	    haven.iosys.tk.AWTToolkit.initawt();
+	    haven.iosys.tk.AWTToolkit.initawt2();
 	}
     }
 

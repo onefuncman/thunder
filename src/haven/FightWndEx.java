@@ -586,7 +586,7 @@ public class FightWndEx extends Widget {
 	    nmed = ReadLine.make(new ReadLine.Owner() {
 		@Override
 		public UI ui() {
-		    return FightWndEx.this.ui;
+		    return(Savelist.this.ui);
 		}
 
 		@Override

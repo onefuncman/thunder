@@ -131,7 +131,7 @@ public class Text implements Disposable {
         
     public static abstract class Furnace {
 	public abstract Text render(String text);
-    
+ 
 	public Text i10n_label(String text) {
 	    return render(L10N.label(text));
 	}

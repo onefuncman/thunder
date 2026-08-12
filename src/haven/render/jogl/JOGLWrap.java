@@ -79,11 +79,13 @@ public class JOGLWrap implements GL, WrappedJOGL {
     public void glDeleteTextures(int count, int[] buffers) {back.glDeleteTextures(count, buffers, 0);}
     public void glDeleteVertexArrays(int count, int[] buffers) {back.glDeleteVertexArrays(count, buffers, 0);}
     public void glDebugMessageControl(int source, int type, int severity, int count, int[] ids, boolean enabled) {back.glDebugMessageControl(source, type, severity, count, ids, 0, enabled);}
+    public void glDebugMessageInsert(int source, int type, int id, int severity, String message) {back.glDebugMessageInsert(source, type, id, severity, -1, message);}
     public void glDeleteSync(long id) {back.glDeleteSync(id);}
     public void glDepthFunc(int func) {back.glDepthFunc(func);}
     public void glDepthMask(boolean mask) {back.glDepthMask(mask);}
     public void glDisable(int cap) {back.glDisable(cap);}
     public void glDisablei(int cap, int index) {back.glDisablei(cap, index);}
+    //public void glDisableClientState(int cap) {back.glDisableClientState(cap);}
     public void glDisableVertexAttribArray(int location) {back.glDisableVertexAttribArray(location);}
     public void glDrawBuffer(int buf) {back.glDrawBuffer(buf);}
     public void glDrawBuffers(int n, int[] bufs) {back.glDrawBuffers(n, bufs, 0);}
@@ -94,6 +96,7 @@ public class JOGLWrap implements GL, WrappedJOGL {
     public void glDrawRangeElements(int mode, int start, int end, int count, int type, long indices) {back.glDrawRangeElements(mode, start, end, count, type, indices);}
     public void glEnable(int cap) {back.glEnable(cap);}
     public void glEnablei(int cap, int index) {back.glEnablei(cap, index);}
+    //public void glEnableClientState(int cap) {back.glEnableClientState(cap);}
     public void glEnableVertexAttribArray(int location) {back.glEnableVertexAttribArray(location);}
     public long glFenceSync(int condition, int flags) {return(back.glFenceSync(condition, flags));}
     public void glFinish() {back.glFinish();}
@@ -128,6 +131,8 @@ public class JOGLWrap implements GL, WrappedJOGL {
     public void glPointSize(float size) {back.glPointSize(size);}
     public void glPolygonMode(int face, int mode) {back.glPolygonMode(face, mode);}
     public void glPolygonOffset(float factor, float units) {back.glPolygonOffset(factor, units);}
+    public void glPopDebugGroup() {back.glPopDebugGroup();}
+    public void glPushDebugGroup(int source, int id, String message) {back.glPushDebugGroup(source, id, -1, (message + '\0').getBytes(), 0);}
     public void glQueryCounter(int id, int target) {back.glQueryCounter(id, target);}
     public void glReadBuffer(int buf) {back.glReadBuffer(buf);}
     public void glReadPixels(int x, int y, int width, int height, int format, int type, ByteBuffer data) {back.glReadPixels(x, y, width, height, format, type, data);}
