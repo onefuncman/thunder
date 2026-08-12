@@ -12,7 +12,7 @@ import haven.rx.Reactor;
 import rx.Subscription;
 import java.util.concurrent.atomic.AtomicReference;
 
-@haven.FromResource(name = "ui/croster", version = 77)
+@haven.FromResource(name = "ui/croster", version = 78)
 public abstract class CattleRoster <T extends Entry> extends Widget {
     public static final int WIDTH = UI.scale(900);
     public static final Comparator<Entry> namecmp = (a, b) -> a.name.compareTo(b.name);
