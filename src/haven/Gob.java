@@ -1519,6 +1519,16 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 	synchronized (this.tags) { this.tags.remove(tag); }
     }
     
+    private void updateArcheryIndicator() {
+	int range = CFG.SHOW_ARCHERY_RADIUS.get() ? ArcheryIndicator.aimRange(this) : 0;
+	ArcheryIndicator cur = getattr(ArcheryIndicator.class);
+	if(range <= 0) {
+	    if(cur != null) {delattr(ArcheryIndicator.class);}
+	} else if(cur == null || cur.range != range) {
+	    setattr(new ArcheryIndicator(this, range));
+	}
+    }
+
     private void updateWarnings() {
 	if(!GobWarning.needsWarning(this)) {
 	    warning = null;
@@ -1674,6 +1684,7 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 	
 	if(status.updated(StatusType.tags)) {
 	    updateWarnings();
+	    updateArcheryIndicator();
 	}
 	
 	if(status.updated(StatusType.info, StatusType.tags)) {
