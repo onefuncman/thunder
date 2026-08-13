@@ -53,9 +53,10 @@ public abstract class UILoop implements Console.Directory {
 	this.wnd = wnd;
 	wnd.drophandler(new Dropper());
 	setenv(wnd.env());
-	/* Hardware cursors go through AWT createCustomCursor, which on
-	 * Windows dithers semi-transparent pixels into noise (e.g. the aim
-	 * cursor). Default to the pre-toolkit-rework software cursor. */
+	/* The software cursor path renders some cursors (e.g. the aim
+	 * cursor) corrupted, so hardware cursors are the default; the AWT
+	 * toolkit alpha-thresholds them on Windows to avoid 1-bit
+	 * transparency dithering. The toggle remains as an escape hatch. */
 	this.curscaps = CFG.HARDWARE_CURSOR.get() ? wnd.toolkit().cursorcaps() : null;
 	newui(null);
 	this.th = new HackThread(this::run, "Haven UI thread");

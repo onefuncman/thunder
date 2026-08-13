@@ -1460,7 +1460,7 @@ public class OptWnd extends WindowX {
 	panel.add(new CFGBox("Always show UI on start", CFG.DISABLE_UI_HIDING), x, y);
 
 	y += STEP;
-	panel.add(new CFGBox("Use hardware cursor", CFG.HARDWARE_CURSOR, "Renders the mouse cursor through the OS instead of drawing it in-game. Slightly more responsive, but on Windows anti-aliased cursors lose their smooth edges. Requires restart."), x, y);
+	panel.add(new CFGBox("Use hardware cursor", CFG.HARDWARE_CURSOR, "Renders the mouse cursor through the OS instead of drawing it in-game. More responsive, and avoids the corrupted in-game aim cursor. Requires restart."), x, y);
 
 	y += STEP;
 	panel.add(new CFGBox("Enable container window spreading", CFG.UI_DISABLE_CONTAINER_POS, "If enabled container windows would be auto positioned next to other, if enabled then they will stack in same position."), x, y);
