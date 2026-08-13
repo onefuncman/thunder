@@ -50,7 +50,9 @@ public class CraftDBWnd extends WindowX implements ICraftParent {
     private final Pattern category = Pattern.compile("paginae/craft/.+");
     private int pagseq = 0;
     private boolean needfilter = false;
-    private final ReadLine filter = ReadLine.make(null, "");
+    private final ReadLine filter = ReadLine.make(new ReadLine.Owner() {
+	public UI ui() {return(CraftDBWnd.this.ui);}
+    }, "");
     private Mode mode = All;
     
     static {
