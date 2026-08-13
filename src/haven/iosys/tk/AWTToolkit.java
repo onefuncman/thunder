@@ -932,6 +932,17 @@ public abstract class AWTToolkit implements Toolkit {
 	java.awt.Graphics g = buf.getGraphics();
 	g.drawImage(img, 0, 0, null);
 	g.dispose();
+	/* Windows AWT cursors only support 1-bit transparency, rendering
+	 * semi-transparent pixels as dithered noise; threshold the alpha
+	 * channel so anti-aliased cursors degrade to clean edges instead. */
+	if(System.getProperty("os.name", "").toLowerCase().contains("windows")) {
+	    for(int y = 0; y < buf.getHeight(); y++) {
+		for(int x = 0; x < buf.getWidth(); x++) {
+		    int c = buf.getRGB(x, y);
+		    buf.setRGB(x, y, ((c >>> 24) < 128) ? 0 : (c | 0xff000000));
+		}
+	    }
+	}
 	return(new AWTCursor(tk.createCustomCursor(buf, new java.awt.Point(hs.x, hs.y), "")));
     }
 

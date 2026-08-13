@@ -249,6 +249,7 @@ public class CFG<T> {
     public static final CFG<Boolean> MAP_COMPACT_LOCKED = new CFG<>("map.compact_locked", false);
     public static final CFG<Boolean> HIDE_ANIMAL_WARNING_IN_COMBAT = new CFG<>("ui.combat.hide_animal_warning_in_combat", false);
     public static final CFG<Boolean> SHOW_ARCHERY_RADIUS = new CFG<>("ui.combat.show_archery_radius", true);
+    public static final CFG<Boolean> HARDWARE_CURSOR = new CFG<>("ui.hardware_cursor", false);
     public static final CFG<Boolean> BLOCK_ATTACK_TAMED_HORSE = new CFG<>("ui.combat.block_attack_tamed_horse", false);
     public static final CFG<Boolean> LEGACY_BGM_ENABLED = new CFG<>("audio.legacy_bgm.enabled", false);
     public static final CFG<Boolean> LEGACY_BGM_NO_COOLDOWN = new CFG<>("audio.legacy_bgm.no_cooldown", false);
