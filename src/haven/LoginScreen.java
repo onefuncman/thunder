@@ -37,7 +37,7 @@ public class LoginScreen extends Widget {
     public static final Text.Foundry
 	textf = new Text.Foundry(Text.sans, 16).aa(true),
 	textfs = new Text.Foundry(Text.sans, 14).aa(true);
-    public static final Tex bg = Resource.loadtex("gfx/loginscr_kami");
+    public static final Tex bg = Resource.loadtex("gfx/loginscr_thunder");
     public static final Position bgc = new Position(UI.scale(680, 460));
     public final Widget login;
     public final String confname;
