@@ -25,6 +25,19 @@ public class ArcheryIndicator extends GAttrib implements RenderTree.Node {
 	slot.add(radius);
     }
 
+    private static final String[] WATER_POSES = {"coracleidle", "coraclerowan", "dugout", "rowboat", "rowing", "snekkja", "knarr"};
+
+    /* The direction cone is suppressed on water vehicles, where facing does
+     * not track the aim (matches Hurricane's behavior). */
+    public static boolean onWaterVehicle(Gob gob) {
+	Drawable d = gob.drawable;
+	if(d == null) {return false;}
+	for (String pose : WATER_POSES) {
+	    if(d.hasPose(pose)) {return true;}
+	}
+	return false;
+    }
+
     /* Weapon reach in map units, or 0 when the gob is not aiming. Bow reach
      * depends on which bow is equipped, so peek at the composite equipment. */
     public static int aimRange(Gob gob) {

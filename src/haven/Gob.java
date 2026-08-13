@@ -1519,6 +1519,8 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 	synchronized (this.tags) { this.tags.remove(tag); }
     }
     
+    private Overlay archeryVector = null;
+
     private void updateArcheryIndicator() {
 	int range = CFG.SHOW_ARCHERY_RADIUS.get() ? ArcheryIndicator.aimRange(this) : 0;
 	ArcheryIndicator cur = getattr(ArcheryIndicator.class);
@@ -1526,6 +1528,18 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 	    if(cur != null) {delattr(ArcheryIndicator.class);}
 	} else if(cur == null || cur.range != range) {
 	    setattr(new ArcheryIndicator(this, range));
+	}
+	boolean vector = (range > 0) && !ArcheryIndicator.onWaterVehicle(this);
+	synchronized (ols) {
+	    if(archeryVector != null && (!vector || ((ArcheryVectorSprite) archeryVector.spr).range != range)) {
+		archeryVector.remove();
+		archeryVector.spr.dispose();
+		archeryVector = null;
+	    }
+	    if(vector && archeryVector == null) {
+		archeryVector = new Overlay(this, new ArcheryVectorSprite(this, range));
+		addol(archeryVector);
+	    }
 	}
     }
 
