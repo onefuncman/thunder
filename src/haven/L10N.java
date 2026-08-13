@@ -55,7 +55,7 @@ public class L10N {
     static {
 	Set<String> set = new LinkedHashSet<>();
 	set.add(DEFAULT_LANGUAGE);
-	List<String> tmp = getJARLanguages();
+	List<String> tmp = new ArrayList<>(getJARLanguages());
 	tmp.addAll(getFSLanguages());
 	tmp.sort(String::compareTo);
 	set.addAll(tmp);
