@@ -195,7 +195,9 @@ public class LoginScreen extends Widget {
 		    protected void unpress() {ui.sfx(Button.clbtup.stream());}
 		    public void click() {enter();}
 		},
-		pos("cmid").y(Math.max(pwbox.pos("bl").y, tkbox.pos("bl").y)).adds(0, 35), 0.5, 0.0);
+		/* Keep the button just below the cave entrance in the splash
+		 * art, touching its base (~y665 of the 1360x768 background). */
+		pos("cmid").y(Math.max(pwbox.pos("bl").y, tkbox.pos("bl").y)).adds(0, 50), 0.5, 0.0);
 	    pack();
 	}
 
@@ -292,7 +294,8 @@ public class LoginScreen extends Widget {
 		    protected void unpress() {ui.sfx(Button.clbtup.stream());}
 		    public void click() {enter();}
 		},
-		prev.pos("bl").adds(0, 10).x(sz.x / 2), 0.5, 0.0)
+		/* Match Credbox: keep the button just below the splash cave entrance. */
+		prev.pos("bl").adds(0, 135).x(sz.x / 2), 0.5, 0.0)
 		.setgkey(key_act);
 	}
 
