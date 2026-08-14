@@ -882,11 +882,6 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
     
     private void initCustomPaginae() {
 	makeLocal("paginae/add/timer", Action.TOGGLE_TIMERS);
-	makeDoc("tile_quality", "tile-quality", "Tile Quality Tracker");
-	makeDoc("cattle_roster", "cattle-roster", "Cattle Roster");
-	makeDoc("macros", "macros", "Macros");
-	makeDoc("plob_snap", "plob-snap", "Placement Snap");
-	makeDoc("claim_overlays", "claim-overlays", "Claims on the Map");
 	makeLocal("paginae/add/clear_player_dmg", Action.CLEAR_PLAYER_DAMAGE);
 	makeLocal("paginae/add/clear_all_dmg", Action.CLEAR_ALL_DAMAGE);
 	makeLocal("paginae/add/craftdb", Action.OPEN_CRAFT_DB);
@@ -943,13 +938,6 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
 	makeLocal("paginae/add/decks/deck5", Action.SELECT_DECK_5, () -> FightWndEx.isCurrentDeck(4));
     }
     
-    private void makeDoc(String res, String topic, String title) {
-	makeLocal("paginae/add/doc/" + res, (ctx, iact) -> {
-	    thunder.DocWnd.toggle(ctx.context(UI.class), topic, title);
-	    return true;
-	}, null);
-    }
-
     private void makeLocal(String path, CustomPaginaAction action, Supplier<Boolean> toggleState) {
 	Resource.Named res = Resource.local().loadwait(path).indir();
 	Pagina pagina = new CustomPagina(this, res, action, toggleState);
