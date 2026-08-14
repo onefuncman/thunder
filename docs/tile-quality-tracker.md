@@ -74,11 +74,27 @@ On info update:
    - `gfx/invobjs/<name>` matching tile `gfx/tiles/rocks/<name>` → KIND_STONE
 4. Record max quality at the pending action's tile
 
-### Dig detection (TODO)
+### Dig detection
 
-Need to identify a trigger for above-ground digging (no Cavein sprite). Options:
-- Player pose change to dig animation
-- Detect shovel in equipment + terrain interaction
+Verified live (2026-08-13) with the `dev.tq` event log; earlier assumptions about an
+"area drag" for dig were wrong:
+
+- Activating Dig sets the root cursor to `gfx/hud/curs/dig`. **No selector** — the
+  server only ever sends the `sel` (area-select) widget message for mine. Dig is a
+  plain click action.
+- A left click with the dig cursor sends an ordinary map `click`; the character
+  walks to the tile and digs the tile under itself. Produce (`Soil`, `Soil, stack
+  of`, clays) arrives in the main inventory **while the cursor is still the dig
+  cursor**. Digging also yields side products (`Earthworm`) that must be rejected
+  by name.
+- The cursor stays up across multiple digs and is cleared by the server when the
+  action is cancelled (right-click). So dig pendings are **cursor-gated exactly
+  like mine** — no TTL needed.
+
+Wiring: `MapView.click()` (plain map clicks) calls `TileQuality.markPendingForClick`,
+which arms a pending when the root cursor is mine or dig. `Selector.mmousedown`
+calls the same hook for area mine. Attribution uses the player's position at item
+arrival, since the character digs the tile under itself.
 
 ### Fill detection (TODO)
 
@@ -122,9 +138,11 @@ A searchable list window (similar to existing marker list in `MapWnd`). Accessib
 - `AnimSprite.java` — `TileQuality.markPendingMine(owner)` when `gfx/terobjs/mineout` spawns (wall destruction)
 - `GItem.java` — `TileQuality.onItemInfoUpdate(this)` on "tt" message arrival
 
-### TODO: Dig detection
-- Identify trigger for above-ground digging
-- Wire `TileQuality.markPendingDig()` from trigger
+### Done: Dig detection
+- `MapView.click()` — plain-click hook arms mine/dig pendings via `markPendingForClick` (dig has no area-select mode)
+- Dig pendings are cursor-gated (`gfx/hud/curs/dig`), cleared when the server clears the cursor on cancel
+- `classifyDugItem()` — item-name classification (`Soil`, `Sand`, `Clay`, any `* Clay`); side products (`Earthworm`) rejected
+- `TileQualityDebug` (`dev.tq`, CFG `debug.tile_quality`) — event log of cursor changes, selector lifecycle, map clicks, pending set/clear/expiry, classification verdicts, and records; painter overlay + `dev.tq.dump`/`snapshot`/`clear`
 
 ### Done: Water fill detection
 - `MapHelper.isSaltWaterTile()` — owater/odeep/odeeper classifier

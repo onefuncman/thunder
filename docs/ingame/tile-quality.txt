@@ -5,7 +5,8 @@ Thunder remembers the best quality you have ever seen on each tile, automaticall
 $size[12]{$u{What gets recorded}}
 $font[Monospaced,11]{ Mining    Stone and ore per cave wall tile, plus crystals,}
 $font[Monospaced,11]{           shells, quarryartz and cat's gold}
-$font[Monospaced,11]{ Digging   Dirt and clay per tile}
+$font[Monospaced,11]{ Digging   Soil, sand and each diggable clay}
+$font[Monospaced,11]{           (Ball/Acre/River/Sea) as separate kinds}
 $font[Monospaced,11]{ Water     Freshwater tiles, and saltwater from ocean tiles}
 A single tile can hold several kinds at once (e.g. stone + crystal from the same wall).
 
