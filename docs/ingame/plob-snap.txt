@@ -1,6 +1,6 @@
 $size[14]{$u{Placement Snap (Q/E/W/S)}}
 
-While placing an object (walls, barrels, fences, furniture...), press a snap key to place it flush against an existing object or tile edge - no gaps, no overlaps, no rejected placements.
+While viewing a placement preview for lifted, built or stockpiled objects, press a snap key to place it flush against an existing object or tile edge.
 
 $size[12]{$u{Keys}}
 $font[Monospaced,11]{ Q   Snap left}
@@ -13,7 +13,12 @@ $size[12]{$u{How it behaves}}
 * Cursor $u{near} an object: the placer slides in that direction and stops flush against the first object in its path.
 * Cursor on empty ground: the placer aligns with that edge of the tile it is in.
 
+Note: This feature is a work in progress and may struggle with rotated placements.
+
 $size[12]{$u{Tips}}
-* Point at the $u{base} of tall objects (cupboards etc.) - the snap targets the ground footprint, not the painted top.
-* The snap works in world coordinates, so rows stay straight regardless of camera rotation, and the server accepts the placements.
+* Point at the $u{base} of tall objects (cupboards etc.) - the snap targets the ground footprint, not the top.
+* The snap direction works according to your camera perspective. Up is towards the top of your screen.
 * Repeat the key along a row to build tight lines and grids quickly.
+* You might need to ensure focus is on the game world, this can be done by rotating your camera slightly
+* Be careful not to move the object after pressing a snap key, as your placegrid fidelity will be set to coninuous.
+

@@ -11,4 +11,4 @@ $size[12]{$u{How it works}}
 * Claims are drawn from your local map cache, so they appear on any grid you have ever explored - not just what is currently loaded.
 * The claim state is as fresh as your last visit: a claim extended or removed since you were last there will show its old shape until you pass by again.
 * Colors match the in-world claim display (personal and village each have their own color, provinces are per-realm).
-* Overlay transparency is shared with the provinces overlay: hold $b{Shift} and scroll the mouse wheel over the provinces button to adjust it.
+* Overlay transparency is shared with the provinces overlay: hold $b{Shift} and scroll the mouse wheel over the provinces button when active to adjust it.

@@ -1,4 +1,4 @@
-$size[14]{$u{Macros}}
+$size[14]{$u{Macros - Early WIP}}
 
 Record sequences of in-game actions and replay them any number of times.
 

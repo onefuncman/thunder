@@ -1,21 +1,54 @@
 $size[14]{$u{Cattle Roster Upgrades}}
 
-Thunder extends the animal roster window (cattle, horses, sheep, goats, pigs) with sorting, recoloring and milking helpers.
+Thunder improves the animal roster window with new tools for selection, sorting, recoloring and milking helpers.
+
+* The window can be resized, and can be collapsed with Space or Double-clicking the heading.
+* Name display height has been adjusted and now accounts for different heights of animals. It can be further adjusted in Options > Display > Cattle roster name height
+* Animal names will now be cleared from the screen when they are removed from the roster.
+
+Note: default client behaviour includes an area selection for adding animals to the cattle roster. Hold left shift and click on the cattle roster icon to get a selection cursor.
+
+$size[12]{$u{Selection by Trait}}
+* Animals can still be selected by clicking on the desired trait.
+* The selection can now be modified more intuitively. clicking another trait from a selected animal row will deselect all with that trait.
+* Similarly, the selection can be added to by clicking the desired trait from an unselected row.
+
+Example: select only all male children by first clicking the male symbol, then the unwanted adult growth stage from a male.
+
+New selection options exist in the "Select by..." drop down menu below the roster:
+* By colour opens a window to choose from the available colours of animals in the list
+* Castrated and Noncastrated will check though each animal of the current type within render by automatically right clicking on them as a macro. This option is therefore slow and not recommended for large herds.
+
+$size[12]{$u{Manual Selection}}
+* Addition of Select All, Select None and Invert selection buttons below list.
+* $font[Monospaced,11]{Shift + Up} : Selects all from highest current selection to the top of the list
+* $font[Monospaced,11]{Shift + Down} : Selects all from lowest current selection to the bottom of the list
+* $font[Monospaced,11]{Shift + Left-click to select a row} : Selects all between two previous selections, OR selects from last selection to the clicked row.
 
 $size[12]{$u{Sorting}}
 $font[Monospaced,11]{ Left-click header    Sort by that column; click again to reverse}
 $font[Monospaced,11]{ Right-click header   Secondary sort, used to break ties}
 Name is always the final tiebreaker, so the order is stable.
 
+*Additional option for sort by Selected column.
+
 $size[12]{$u{Columns}}
 * Drag the edge of a column header to resize it.
 
-$size[12]{$u{Recoloring}}
-* Select animals with the checkboxes, then use the color swatch picker to recolor all selected animals at once.
-* This is the same color as the animal's right-click window - it changes the marker color visible to your village.
+$size[12]{$u{Highlight}}
+* When enabled, selected animals will be colourised to make their selection clearer.
+* Highlight colour can be adjusted in options > colors > Cattle Roster Highlight
 
-$size[12]{$u{Milking assist}}
-* Enable the "Milking assist" checkbox on the roster window.
-* When you successfully milk an animal, its roster checkbox clears automatically and its floating name disappears - so the animals still showing names are the ones left to milk.
-* If your milk containers are full, the name stays visible so you know to come back with empty ones.
-* A failed milking attempt (no milk) is detected and leaves the animal marked.
+$size[12]{$u{Hide When Closed}}
+* When enabled, all names, highlights etc will be cleared from the screen while the cattle roster remains closed.
+* They will be remembered and reappear when it is opened again.
+
+$size[12]{$u{Milking assist WIP-usable}}
+* Enable the "Milking assist" checkbox in the lower right corner.
+* Select lactating animals - recommend also enabling highlights.
+* When you successfully milk an animal, its roster checkbox clears automatically. Removing any highlights.
+* A failed milking attempt (no milk) is detected and leaves the animal selected.
+
+$size[12]{$u{Recoloring WIP}}
+* Select animals with the checkboxes, then use the color swatch picker to recolor all selected animals at once.
+* This is the same color as the animal's right-click window.
