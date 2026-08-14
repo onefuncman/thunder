@@ -1743,6 +1743,26 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	    super.draw(g);
 	}
 
+	public void drawgrid(GOut g, Coord ul, DisplayGrid disp) {
+	    super.drawgrid(g, ul, disp);
+	    drawol(g, ul, disp, "cplot", CFG.MMAP_SHOW_PCLAIM);
+	    drawol(g, ul, disp, "vlg", CFG.MMAP_SHOW_VCLAIM);
+	}
+
+	private void drawol(GOut g, Coord ul, DisplayGrid disp, String tag, CFG<Boolean> vis) {
+	    if(!vis.get())
+		return;
+	    try {
+		Tex img = disp.olimg(tag);
+		if(img != null) {
+		    g.chcolor(255, 255, 255, 64);
+		    g.image(img, ul, UI.scale(img.sz()).mul(dmag));
+		    g.chcolor();
+		}
+	    } catch(Loading l) {
+	    }
+	}
+
 	protected boolean allowzoomout() {
 	    /* XXX? The corner-map has the property that its size
 	     * makes it so that the one center grid will very commonly
