@@ -1,0 +1,21 @@
+$size[14]{$u{Cattle Roster Upgrades}}
+
+Thunder extends the animal roster window (cattle, horses, sheep, goats, pigs) with sorting, recoloring and milking helpers.
+
+$size[12]{$u{Sorting}}
+$font[Monospaced,11]{ Left-click header    Sort by that column; click again to reverse}
+$font[Monospaced,11]{ Right-click header   Secondary sort, used to break ties}
+Name is always the final tiebreaker, so the order is stable.
+
+$size[12]{$u{Columns}}
+* Drag the edge of a column header to resize it.
+
+$size[12]{$u{Recoloring}}
+* Select animals with the checkboxes, then use the color swatch picker to recolor all selected animals at once.
+* This is the same color as the animal's right-click window - it changes the marker color visible to your village.
+
+$size[12]{$u{Milking assist}}
+* Enable the "Milking assist" checkbox on the roster window.
+* When you successfully milk an animal, its roster checkbox clears automatically and its floating name disappears - so the animals still showing names are the ones left to milk.
+* If your milk containers are full, the name stays visible so you know to come back with empty ones.
+* A failed milking attempt (no milk) is detected and leaves the animal marked.

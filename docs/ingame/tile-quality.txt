@@ -1,0 +1,21 @@
+$size[14]{$u{Tile Quality Tracker}}
+
+Thunder remembers the best quality you have ever seen on each tile, automatically, while you play.
+
+$size[12]{$u{What gets recorded}}
+$font[Monospaced,11]{ Mining    Stone and ore per cave wall tile, plus crystals,}
+$font[Monospaced,11]{           shells, quarryartz and cat's gold}
+$font[Monospaced,11]{ Digging   Dirt and clay per tile}
+$font[Monospaced,11]{ Water     Freshwater tiles, and saltwater from ocean tiles}
+A single tile can hold several kinds at once (e.g. stone + crystal from the same wall).
+
+$size[12]{$u{How to use it}}
+* Just mine, dig or fill containers as normal - qualities are captured from the items that appear.
+* Open the map window and press the $b{Q} button to open the Tile Quality window.
+* Search for a kind (e.g. a specific stone) to find your best recorded spots; selecting a result navigates the map to it.
+* Enable the overlay to tint recorded tiles directly on the map.
+
+$size[12]{$u{Notes}}
+* Data is stored locally per map grid, alongside your map cache. Nothing is shared or uploaded.
+* Only the highest observed quality per tile and kind is kept.
+* You must be present when the item appears - qualities cannot be recorded from areas you have not worked.

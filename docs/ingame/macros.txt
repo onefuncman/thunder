@@ -1,0 +1,28 @@
+$size[14]{$u{Macros}}
+
+Record sequences of in-game actions and replay them any number of times.
+
+$size[12]{$u{What can be recorded}}
+* Item clicks in inventories
+* Right-clicks on world objects
+* Flower menu selections
+* Dropping items
+* Waits and pauses (added in the editor)
+
+$size[12]{$u{Windows}}
+* The macro list window lets you record, save, play, edit and delete macros.
+* The editor shows each recorded step and lets you reorder, tweak or delete steps, insert waits, and set the repeat count.
+* The Pick button in the editor re-targets a world-object step: the next right-click in the world becomes the new target.
+
+$size[12]{$u{Console commands}} (open console with $b{:})
+$font[Monospaced,11]{ :macro show                 Toggle the macro list window}
+$font[Monospaced,11]{ :macro record               Start recording}
+$font[Monospaced,11]{ :macro save <name>          Stop and save the recording}
+$font[Monospaced,11]{ :macro discard              Stop and throw away the recording}
+$font[Monospaced,11]{ :macro run <name> [count]   Play a macro}
+$font[Monospaced,11]{ :macro list                 Print all saved macros}
+$font[Monospaced,11]{ :macro cancel               Cancel the running macro}
+
+$size[12]{$u{Notes}}
+* $b{Esc} also cancels a running macro.
+* Macros are saved to a local file and persist between sessions.

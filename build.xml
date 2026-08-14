@@ -208,6 +208,7 @@
       <fileset dir="build/classes" />
       <fileset dir="build/classes-lib" />
       <fileset file="changelog.txt" />
+      <zipfileset dir="docs/ingame" prefix="docs" includes="*.txt" />
       <manifest>
 	<attribute name="Main-Class" value="haven.Client" />
 	<attribute name="Class-Path" value="hafen-panama.jar jogl-all.jar gluegen-rt.jar lwjgl-fat.jar lwjgl-awt.jar client-res.jar lwjgl-opengl-fat.jar steamworks4j.jar builtin-res.jar hafen-res.jar" />
