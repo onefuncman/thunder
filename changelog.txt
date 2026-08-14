@@ -1,3 +1,10 @@
+$size[14]{$u{update on 13.08.2026:}
+* Added personal and village claim overlays to the map window (toggles in the top-left icon column, below heightmap).
+* Claims also show on the corner minimap, controlled by the same toggles.
+* Claims draw from your map cache, so they appear on any grid you have previously explored.
+* Toggles persist across sessions and can be given hotkeys in Options -> Keybindings -> Map window.
+* Fixed a crash when opening the alchemy window.
+`
 $size[14]{$u{update on 23.01.2026:}
 * Merged with newest updates.
 * Added higher zoom out for ortho cam.
