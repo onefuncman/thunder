@@ -224,6 +224,7 @@ public class CFG<T> {
     public static final CFG<Integer> PROTO_RETRO_WINDOW_SEC = new CFG<>("debug.proto_inspector.retro_window_sec", 300);
     public static final CFG<Integer> PROTO_RETRO_MAX_EVENTS = new CFG<>("debug.proto_inspector.retro_max_events", 100000);
     public static final CFG<Boolean> DEBUG_MILKING_ASSIST = new CFG<>("debug.milking_assist", false);
+    public static final CFG<Boolean> DEBUG_TILE_QUALITY = new CFG<>("debug.tile_quality", false);
     public static final CFG<Boolean> DEBUG_PLOB_SNAP = new CFG<>("debug.plob_snap", false);
 
     public static final CFG<Integer> ANIM_FRAME_SKIP = new CFG<>("perf.anim_frame_skip", 0);

@@ -162,6 +162,7 @@ public class RootWidget extends ConsoleHost implements UI.Notice.Handler, Widget
 	if(msg == "curs") {
 	    ui.sess.character.updateCursor(cursor);
 	    TileQuality.onRootCursorChange(cursor, ui.gui);
+	    thunder.TileQualityDebug.cursorEvent(cursor);
 	}
     }
     

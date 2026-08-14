@@ -18,6 +18,7 @@ public final class DebugBoot {
 	if(done) return;
 	done = true;
 	touch("thunder.MilkingAssistDebug");
+	touch("thunder.TileQualityDebug");
     }
 
     private static void touch(String fqcn) {

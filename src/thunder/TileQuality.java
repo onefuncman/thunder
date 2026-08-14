@@ -23,6 +23,7 @@ public class TileQuality {
     public static final String KEY_QUARTZ = "quartz";
     public static final String KEY_CATGOLD = "catgold";
     public static final String KEY_DIG = "dig";
+    public static final String KEY_DIG_PREFIX = "dig/";
     public static final String KEY_WATER = "water";
     public static final String KEY_SPRING_WATER = "spring_water";
     public static final String KEY_SALT_WATER = "salt_water";
@@ -128,11 +129,34 @@ public class TileQuality {
 	return group == GROUP_FILL_WATER || group == GROUP_FILL_SPRING_WATER || group == GROUP_FILL_SALT_WATER;
     }
 
-    /** Called from MapView.Selector.mmousedown — captures mine/dig click based on current root cursor. */
+    /** Debug accessor for {@link TileQualityDebug}. */
+    PendingAction debugPeekPending() {
+	synchronized (lock) {return currentPending;}
+    }
+
+    static String debugGroupName(byte group) {
+	switch (group) {
+	    case GROUP_MINE: return "mine";
+	    case GROUP_DIG: return "dig";
+	    case GROUP_FILL_WATER: return "fill-water";
+	    case GROUP_FILL_SPRING_WATER: return "fill-spring";
+	    case GROUP_FILL_SALT_WATER: return "fill-salt";
+	    default: return "unknown(" + group + ")";
+	}
+    }
+
+    /**
+     * Captures a mine/dig click based on the current root cursor. Called from
+     * MapView.Selector.mmousedown (area mine: the server-created selector is up
+     * with the mine cursor active) and from MapView.click (plain map clicks: dig
+     * has no area-select mode -- the server only ever sends "sel" for mine -- so
+     * dig arms from an ordinary click made while the dig cursor is up).
+     */
     public static void markPendingForClick(Coord2d rc, GameUI gui) {
 	if(gui == null || gui.tileQuality == null || gui.ui == null) {return;}
 	byte group = groupForCursor(gui.ui.root.cursor);
 	if(group < 0) {return;}
+	TileQualityDebug.event("pending set: group=%s rc=%s", debugGroupName(group), rc);
 	gui.tileQuality.setPending(group, rc);
     }
 
@@ -234,6 +258,7 @@ public class TileQuality {
 	    if(p == null) {return;}
 	    if(!cursorMatchesGroup(cursorName, p.group)) {
 		currentPending = null;
+		TileQualityDebug.event("pending cleared: cursor now %s (was group=%s)", cursorName, debugGroupName(p.group));
 	    }
 	}
     }
@@ -241,8 +266,13 @@ public class TileQuality {
     private static boolean cursorMatchesGroup(String cursorName, byte group) {
 	switch (group) {
 	    case GROUP_MINE: return CURSOR_MINE.equals(cursorName);
+	    // Dig is a plain click action: the server keeps curs/dig up for the
+	    // whole dig session (produce arrives with the cursor still set) and
+	    // clears it when the action is cancelled, so dig is cursor-gated
+	    // exactly like mine. Verified live 2026-08-13; there is no
+	    // area-select for dig.
 	    case GROUP_DIG: return CURSOR_DIG.equals(cursorName);
-	    // fill groups not wired yet: keep their pending until explicitly replaced.
+	    // Fill groups are TTL-gated: keep their pending until replaced.
 	    default: return true;
 	}
     }
@@ -259,6 +289,7 @@ public class TileQuality {
 	    action = gui.tileQuality.currentPending;
 	    if(action != null && action.expired()) {
 		gui.tileQuality.currentPending = null;
+		TileQualityDebug.event("pending expired: group=%s", debugGroupName(action.group));
 		action = null;
 	    }
 	}
@@ -289,7 +320,13 @@ public class TileQuality {
 	    synchronized (lock) {retries.put(item, action);}
 	    return;
 	}
-	if(key == null) {return;}
+	if(key == null) {
+	    // Definitively not produce for this action (e.g. an Earthworm during a
+	    // dig): drop any retry entry, or an item that entered `retries` while
+	    // its info was loading would re-classify every tick forever.
+	    synchronized (lock) {retries.remove(item);}
+	    return;
+	}
 
 	double q;
 	try {
@@ -303,7 +340,16 @@ public class TileQuality {
 	}
 	synchronized (lock) {retries.remove(item);}
 
-	Coord gc = action.rc.floor(MCache.tilesz);
+	Coord2d loc = action.rc;
+	if(action.group == GROUP_DIG) {
+	    // The character walks to the clicked tile and digs the tile under
+	    // itself, so the digger's position at item arrival is the accurate
+	    // source tile.
+	    Gob player = (gui.map == null) ? null : gui.map.player();
+	    if(player != null) {loc = player.rc;}
+	}
+
+	Coord gc = loc.floor(MCache.tilesz);
 	MCache.Grid grid;
 	try {
 	    grid = gui.ui.sess.glob.map.getgridt(gc);
@@ -312,6 +358,7 @@ public class TileQuality {
 
 	Coord tc = gc.sub(grid.gc.mul(MCache.cmaps));
 	short val = (short) Math.min(Math.round(q * 10), Short.MAX_VALUE);
+	TileQualityDebug.event("record %s q=%.1f tile=%s (group=%s)", key, q, gc, debugGroupName(action.group));
 	recordQuality(grid.id, tc, val, key);
     }
 
@@ -352,7 +399,7 @@ public class TileQuality {
 	if(action.group == GROUP_MINE) {
 	    return classifyMinedItem(item);
 	} else if(action.group == GROUP_DIG) {
-	    return KEY_DIG;
+	    return classifyDugItem(item);
 	} else if(isFillGroup(action.group)) {
 	    return classifyFilledItem(item, action.group);
 	}
@@ -374,6 +421,55 @@ public class TileQuality {
 	    case GROUP_FILL_SALT_WATER: return KEY_SALT_WATER;
 	    default: return null;
 	}
+    }
+
+    /**
+     * A dig pending stays armed for the whole dig session (the dig cursor is up
+     * until the action is cancelled), and digging yields side products beyond
+     * terrain material (e.g. earthworms), so we gate on the item actually being
+     * dig produce -- otherwise any quality item entering the inventory during a
+     * dig session would be misattributed. Classification is by item NAME (not
+     * res slug) so single items and stack contents produce the same kind key,
+     * and new diggable materials (River Clay, Sea Clay, ...) work without a
+     * res-name table. Rejected names are visible via the dev.tq event log.
+     */
+    private static String classifyDugItem(GItem item) {
+	List<ItemInfo> info = item.info(); // throws Loading until parsed, so the item retries
+	ItemInfo.Name name = ItemInfo.find(ItemInfo.Name.class, info);
+	String key = (name == null || name.original == null) ? null : digKeyForName(name.original);
+	if(key != null) {
+	    TileQualityDebug.event("dug item name='%s' -> %s", name.original, key);
+	    return key;
+	}
+	ItemData.Content content = item.contains.get();
+	if(content != null && !content.empty()) {
+	    String ckey = digKeyForName(content.name);
+	    TileQualityDebug.event("dug stack content='%s' -> %s", content.name, ckey);
+	    return ckey;
+	}
+	TileQualityDebug.event("dug item name='%s' rejected (not dig produce)",
+			       (name == null) ? "(no name)" : name.original);
+	return null;
+    }
+
+    /**
+     * Pure helper: maps a dig-produce item name (single item, "X, stack of"
+     * stack title, or stack contents) to a dig kind key, or null for non-dig
+     * items. Any "<something> Clay" counts as dig produce; other materials are
+     * listed explicitly.
+     */
+    static String digKeyForName(String name) {
+	if(name == null) {return null;}
+	String n = name.trim().toLowerCase();
+	if(n.endsWith(", stack of")) {n = n.substring(0, n.length() - ", stack of".length()).trim();}
+	switch (n) {
+	    case "clay": case "soil": case "sand":
+		return KEY_DIG_PREFIX + n;
+	}
+	if(n.endsWith(" clay")) {
+	    return KEY_DIG_PREFIX + n.replace(' ', '-');
+	}
+	return null;
     }
 
     /** Throws Loading if the item's info isn't ready yet (gems need the name text). */
@@ -416,6 +512,21 @@ public class TileQuality {
 	if(key.startsWith(KEY_STONE_PREFIX)) {
 	    String rock = key.substring(KEY_STONE_PREFIX.length());
 	    return Character.toUpperCase(rock.charAt(0)) + rock.substring(1);
+	}
+	if(key.startsWith(KEY_DIG_PREFIX)) {
+	    String mat = key.substring(KEY_DIG_PREFIX.length());
+	    switch (mat) {
+		// res-slug keys from the interim build; new keys are name-derived
+		case "clay-gray": return "Ball Clay";
+		case "clay-acre": return "Acre Clay";
+	    }
+	    StringBuilder b = new StringBuilder();
+	    for(String w : mat.split("-")) {
+		if(w.isEmpty()) {continue;}
+		if(b.length() > 0) {b.append(' ');}
+		b.append(Character.toUpperCase(w.charAt(0))).append(w.substring(1));
+	    }
+	    return b.toString();
 	}
 	switch (key) {
 	    case KEY_CRYSTAL: return "Strange Crystal";

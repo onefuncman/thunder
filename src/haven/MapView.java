@@ -2225,6 +2225,8 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	    flashol(ols, tm);
 	} else if(msg == "sel") {
 	    boolean sel = Utils.bv(args[0]);
+	    thunder.TileQualityDebug.event("selector %s (cursor=%s)", sel ? "created" : "removed",
+					   thunder.TileQualityDebug.cursorName(ui.root.cursor));
 	    synchronized(this) {
 		if(selection != null) {
 		    selection.destroy();
@@ -3014,6 +3016,15 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	    }
 	}
 	if(send) {
+	    thunder.TileQualityDebug.event("map click mc=%s button=%d (cursor=%s)", mc, button,
+					   thunder.TileQualityDebug.cursorName(ui.root.cursor));
+	    // Dig has no area-select mode (the server only sends "sel" for mine),
+	    // so dig-quality pendings arm from plain map clicks made while the
+	    // dig cursor is up. TileQuality checks the cursor and ignores
+	    // ordinary walk clicks.
+	    if(button == 1) {
+		TileQuality.markPendingForClick(mc, ui.gui);
+	    }
 	    wdgmsg("click", args);
 	}
     }
@@ -3272,6 +3283,8 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 		mgrab = ui.grabmouse(MapView.this);
 		ol = glob.map.new RectOverlay(selol, Area.sized(sc, new Coord(1, 1)));
 		glob.map.add(ol);
+		thunder.TileQualityDebug.event("selector down mc=%s button=%d (cursor=%s)", mc, button,
+					       thunder.TileQualityDebug.cursorName(ui.root.cursor));
 		if(button == 1) {
 		    TileQuality.markPendingForClick(new Coord2d(mc), MapView.this.ui.gui);
 		}
@@ -3297,6 +3310,8 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 		    tt = null;
 		    glob.map.remove(ol);
 		    mgrab.remove();
+		    thunder.TileQualityDebug.event("selector up mc=%s -> sel %s..%s (cursor=%s)", mc, sc, ec,
+						   thunder.TileQualityDebug.cursorName(ui.root.cursor));
 		    wdgmsg("sel", sc, ec, modflags);
 		    sc = null;
 		}
