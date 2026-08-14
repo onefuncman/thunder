@@ -105,6 +105,8 @@ public class CFG<T> {
     public static final CFG<Boolean> MMAP_SHOW_BIOMES = new CFG<>("ui.mmap_biomes", true);
     public static final CFG<Boolean> MMAP_SHOW_PATH = new CFG<>("ui.mmap_path", false);
     public static final CFG<Boolean> MMAP_SHOW_MARKER_NAMES = new CFG<>("ui.mmap_mnames", false);
+    public static final CFG<Boolean> MMAP_SHOW_PCLAIM = new CFG<>("ui.mmap_pclaim", false);
+    public static final CFG<Boolean> MMAP_SHOW_VCLAIM = new CFG<>("ui.mmap_vclaim", false);
     public static final CFG<Boolean> MMAP_SHOW_PARTY_NAMES = new CFG<>("ui.mmap_party_names", false);
     public static final CFG<Integer> MMAP_SHOW_PARTY_NAMES_STYLE = new CFG<>("ui.mmap_party_names_style", 0);
     public static final CFG<Boolean> MENU_SINGLE_CTRL_CLICK = new CFG<>("ui.menu_single_ctrl_click", true);

@@ -85,6 +85,8 @@ public class MapWnd extends WindowX implements Console.Directory {
     public static final KeyBinding kb_hmark = KeyBinding.get("mapwnd/hmark", KeyMatch.forcode(KeyEvent.VK_M, KeyMatch.C));
     public static final KeyBinding kb_compact = KeyBinding.get("mapwnd/compact", KeyMatch.forchar('A', KeyMatch.M));
     public static final KeyBinding kb_prov = KeyBinding.get("mapwnd/prov", KeyMatch.nil);
+    public static final KeyBinding kb_pclaim = KeyBinding.get("mapwnd/pclaim", KeyMatch.nil);
+    public static final KeyBinding kb_vclaim = KeyBinding.get("mapwnd/vclaim", KeyMatch.nil);
     public MapWnd(MapFile file, MapView mv, Coord sz, String title) {
 	super(sz, title, true);
 	this.file = file;
@@ -178,6 +180,24 @@ public class MapWnd extends WindowX implements Console.Directory {
 	btn = topbar.add(new ICheckBox("gfx/hud/mmap/heightmap", "", "-d", "-h"), btn.pos("bl"))
 	    .changed(a -> toggleol("heightmap", a))
 	    .settip("Enable Heightmap");
+
+	btn = topbar.add(new ICheckBox("gfx/hud/mmap/pclaim", "", "-d", "-h", "-dh"), btn.pos("bl"))
+	    .state(CFG.MMAP_SHOW_PCLAIM::get)
+	    .set(a -> {
+		    CFG.MMAP_SHOW_PCLAIM.set(a);
+		    toggleol("cplot", a);
+		})
+	    .settip("Display personal claims").setgkey(kb_pclaim);
+	toggleol("cplot", CFG.MMAP_SHOW_PCLAIM.get());
+
+	btn = topbar.add(new ICheckBox("gfx/hud/mmap/vclaim", "", "-d", "-h", "-dh"), btn.pos("bl"))
+	    .state(CFG.MMAP_SHOW_VCLAIM::get)
+	    .set(a -> {
+		    CFG.MMAP_SHOW_VCLAIM.set(a);
+		    toggleol("vlg", a);
+		})
+	    .settip("Display village claims").setgkey(kb_vclaim);
+	toggleol("vlg", CFG.MMAP_SHOW_VCLAIM.get());
 
 	btn = topbar.add(new Button(UI.scale(20), "Q"), btn.pos("bl"))
 	    .action(() -> thunder.TileQualityWnd.toggle(ui));

@@ -653,6 +653,9 @@ public class OptWnd extends WindowX {
 	    y = addbtn(cont, "Place marker", MapWnd.kb_mark, y);
 	    y = addbtn(cont, "Toggle markers", MapWnd.kb_hmark, y);
 	    y = addbtn(cont, "Compact mode", MapWnd.kb_compact, y);
+	    y = addbtn(cont, "Show provinces", MapWnd.kb_prov, y);
+	    y = addbtn(cont, "Show personal claims", MapWnd.kb_pclaim, y);
+	    y = addbtn(cont, "Show village claims", MapWnd.kb_vclaim, y);
 	    y = cont.adda(new Label("Walking speed"), cont.sz.x / 2, y + UI.scale(10), 0.5, 0.0).pos("bl").adds(0, 5).y;
 	    y = addbtn(cont, "Increase speed", Speedget.kb_speedup, y);
 	    y = addbtn(cont, "Decrease speed", Speedget.kb_speeddn, y);
