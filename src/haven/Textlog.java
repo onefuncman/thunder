@@ -38,7 +38,7 @@ public class Textlog extends Widget {
     List<Text> lines;
     int maxy, cury;
     int margin = UI.scale(3);;
-    boolean quote = true;
+    public boolean quote = true;
     public int maxLines = 150;
     UI.Grab sdrag = null;
 	
