@@ -1,3 +1,8 @@
+$size[14]{$u{update on 14.08.2026:}
+* Added an in-game Thunder Docs menu under Xtended -> Thunder Docs, with manual windows for cattle roster, claim overlays, macros, plob snapping and tile quality.
+* Expanded the cattle roster docs: selection by trait and colour, shift-click range selection, select all/none/invert, and window resize/name-height tips.
+* Tile quality tracker now records dig produce (soil, sand and clays) per tile.
+`
 $size[14]{$u{update on 13.08.2026:}
 * Added personal and village claim overlays to the map window (toggles in the top-left icon column, below heightmap).
 * Claims also show on the corner minimap, controlled by the same toggles.
