@@ -19,10 +19,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Set up JDK 25
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '25'
           distribution: 'temurin'
 
       - name: Build with Ant
@@ -30,7 +30,7 @@ jobs:
 
       - name: Fetch Windows x64 JRE to bundle
         run: |
-          curl -sSfL -o jre.zip "https://api.adoptium.net/v3/binary/latest/17/ga/windows/x64/jre/hotspot/normal/eclipse"
+          curl -sSfL -o jre.zip "https://api.adoptium.net/v3/binary/latest/25/ga/windows/x64/jre/hotspot/normal/eclipse"
           unzip -q jre.zip -d jre-tmp
 
       - name: Stage and zip release packages
