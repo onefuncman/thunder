@@ -1,0 +1,5 @@
+# Launchers shipped in release zips must keep their native line endings
+# regardless of the platform that checks them out (the release workflow
+# zips them from a Linux runner).
+*.bat text eol=crlf
+*.sh  text eol=lf
