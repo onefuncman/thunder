@@ -53,6 +53,41 @@ public class IMeter extends LayerMeter {
 	set(meters);
     }
 
+    /* Ported from Hurricane's energy alarm: two latched warnings off the energy
+     * meter - one on falling below 25% (where "You have begun to starve." shows
+     * up), one below 20% - re-armed once energy climbs back above 25%. Hurricane
+     * plays a custom wav from disk; we route through the standard message
+     * pipeline instead (red system-log line + error sound). */
+    private static final String ENERGY_METER_RES = "gfx/hud/meter/nrj";
+    private boolean warnedLow = false, warnedCritical = false;
+
+    @Override
+    public void set(List<Meter> meters) {
+	super.set(meters);
+	checkStarvation();
+    }
+
+    private void checkStarvation() {
+	if(ui == null || meters.isEmpty() || !CFG.WARN_STARVATION.get()) return;
+	try {
+	    if(!ENERGY_METER_RES.equals(bg.get().name)) return;
+	} catch(Loading l) {
+	    return;
+	}
+	double a = meters.get(0).a;
+	if(a > 0.25) {
+	    warnedLow = warnedCritical = false;
+	} else if(a <= 0.20) {
+	    if(!warnedCritical) {
+		warnedCritical = warnedLow = true;
+		ui.message("Energy critically low - you are starving!", UI.ErrorMessage.color, UI.ErrorMessage.sfx);
+	    }
+	} else if(!warnedLow) {
+	    warnedLow = true;
+	    ui.message("You have begun to starve - eat something soon.", UI.ErrorMessage.color, UI.ErrorMessage.sfx);
+	}
+    }
+
     @Override
     public Widget settip(String text) {
 	tip = text;

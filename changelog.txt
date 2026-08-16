@@ -1,6 +1,7 @@
 $size[14]{$u{update on 16.08.2026:}
 * Move-all (shift+alt-click) on food no longer takes a bite per item while the eating cursor is up - it is simply ignored, so one click can no longer gorge a whole food group at the table.
 * Deliberate eating is unchanged: plain clicks and single shift-clicks with the fork cursor work as before.
+* Added a starvation warning (Options -> General): a red system-log message with error sound when energy falls below 25%, and again below 20%. Re-arms once energy is back above 25%.
 `
 $size[14]{$u{update on 14.08.2026:}
 * Added an in-game Thunder Docs menu under Xtended -> Thunder Docs, with manual windows for cattle roster, claim overlays, macros, plob snapping and tile quality.
