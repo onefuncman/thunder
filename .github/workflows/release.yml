@@ -1,0 +1,73 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v1.0.0); created at the current commit if it does not exist'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Build with Ant
+        run: ant bin
+
+      - name: Fetch Windows x64 JRE to bundle
+        run: |
+          curl -sSfL -o jre.zip "https://api.adoptium.net/v3/binary/latest/17/ga/windows/x64/jre/hotspot/normal/eclipse"
+          unzip -q jre.zip -d jre-tmp
+
+      - name: Stage and zip release packages
+        run: |
+          mkdir -p stage/win/Thunder stage/xp/Thunder
+          cp -r bin/. stage/win/Thunder/
+          cp -r bin/. stage/xp/Thunder/
+          cp changelog.txt stage/win/Thunder/
+          cp changelog.txt stage/xp/Thunder/
+          cp etc/release/Thunder.bat stage/win/Thunder/
+          cp etc/release/README-windows.txt stage/win/Thunder/README.txt
+          mv jre-tmp/jdk-* stage/win/Thunder/jre
+          cp etc/release/Thunder.bat stage/xp/Thunder/
+          install -m 755 etc/release/thunder.sh stage/xp/Thunder/thunder.sh
+          cp etc/release/README-cross-platform.txt stage/xp/Thunder/README.txt
+          (cd stage/win && zip -qr ../../Thunder-windows-x64.zip Thunder)
+          (cd stage/xp && zip -qr ../../Thunder-cross-platform.zip Thunder)
+
+      - name: Extract release notes from changelog
+        run: |
+          awk 'NR==1{sub(/^\$size\[14\]\{\$u\{/,""); sub(/:\}$/,""); print "## " $0; next} /^`/{exit} {print}' changelog.txt > RELEASE_NOTES.md
+          {
+            echo
+            echo '**Windows (easiest):** download `Thunder-windows-x64.zip`, unzip anywhere, run `Thunder.bat`. Java is bundled - nothing to install.'
+            echo
+            echo '**Linux/macOS:** download `Thunder-cross-platform.zip` (needs Java 17+ installed), run `thunder.sh`.'
+          } >> RELEASE_NOTES.md
+          cat RELEASE_NOTES.md
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          name: ${{ github.event.inputs.tag || github.ref_name }}
+          body_path: RELEASE_NOTES.md
+          files: |
+            Thunder-windows-x64.zip
+            Thunder-cross-platform.zip
+            bin/hafen.jar
+            bin/client-res.jar

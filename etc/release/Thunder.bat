@@ -1,0 +1,6 @@
+@echo off
+cd /d "%~dp0"
+set JAVA=java
+if exist "jre\bin\java.exe" set JAVA=jre\bin\java.exe
+"%JAVA%" -Dsun.java2d.uiScale.enabled=false -Dsun.java2d.win.uiScaleX=1.0 -Dsun.java2d.win.uiScaleY=1.0 -Xss8m -Xms1024m -Xmx4096m --add-exports java.base/java.lang=ALL-UNNAMED --add-exports java.desktop/sun.awt=ALL-UNNAMED --add-exports java.desktop/sun.java2d=ALL-UNNAMED -DrunningThroughSteam=false -jar hafen.jar
+if errorlevel 1 pause
