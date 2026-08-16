@@ -1,4 +1,31 @@
-			Haven & Hearth Client
+			   Thunder Client
+
+Thunder is a modified client for Haven & Hearth, forked from Kami.
+
+			 Just want to play?
+
+You do not need Java, Ant, or any of the developer setup described
+below. Pick one of these:
+
+ * Steam: subscribe to the Thunder Client item on the Steam Workshop
+   and launch the game through Steam.
+
+ * Windows standalone: download `Thunder-windows-x64.zip' from the
+   latest release at <https://github.com/onefuncman/thunder/releases/latest>,
+   unzip it anywhere, and run `Thunder.bat'. A Java runtime is bundled
+   inside the zip - there is nothing to install.
+
+ * Linux/macOS (or Windows with your own Java 17+): download
+   `Thunder-cross-platform.zip' from the same releases page and run
+   `thunder.sh' (or `Thunder.bat' on Windows).
+
+If your anti-virus complains about the launcher, add the unzipped
+folder to its exceptions list.
+
+The rest of this file describes building the client from source, for
+developers.
+
+		     Haven & Hearth Client
 
 This client is used to connect to the server for the Haven & Hearth
 online game and play said game. For details regarding the game itself,

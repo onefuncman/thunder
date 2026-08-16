@@ -61,6 +61,20 @@ public class IMeter extends LayerMeter {
     private static final String ENERGY_METER_RES = "gfx/hud/meter/nrj";
     private boolean warnedLow = false, warnedCritical = false;
 
+    /* Dedicated alarm clip if the local sfx/thunder/starvation resource is
+     * bundled; the stock error sound until then. */
+    private static Audio.Clip starvationSfx = null;
+    private static Audio.Clip starvationSfx() {
+	if(starvationSfx == null) {
+	    try {
+		starvationSfx = Audio.resclip(Resource.local().loadwait("sfx/thunder/starvation"));
+	    } catch(Throwable t) {
+		starvationSfx = UI.ErrorMessage.sfx;
+	    }
+	}
+	return starvationSfx;
+    }
+
     @Override
     public void set(List<Meter> meters) {
 	super.set(meters);
@@ -80,11 +94,11 @@ public class IMeter extends LayerMeter {
 	} else if(a <= 0.20) {
 	    if(!warnedCritical) {
 		warnedCritical = warnedLow = true;
-		ui.message("Energy critically low - you are starving!", UI.ErrorMessage.color, UI.ErrorMessage.sfx);
+		ui.message("Energy critically low - you are starving!", UI.ErrorMessage.color, starvationSfx());
 	    }
 	} else if(!warnedLow) {
 	    warnedLow = true;
-	    ui.message("You have begun to starve - eat something soon.", UI.ErrorMessage.color, UI.ErrorMessage.sfx);
+	    ui.message("You have begun to starve - eat something soon.", UI.ErrorMessage.color, starvationSfx());
 	}
     }
 
