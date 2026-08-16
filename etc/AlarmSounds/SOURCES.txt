@@ -1,0 +1,5 @@
+starvation.wav
+  "Railway Crossing Warning Bell / Signal" by mycompasstv
+  https://freesound.org/people/mycompasstv/sounds/457125/
+  License: Creative Commons 0 (public domain)
+  Trimmed to 6s, faded, normalized, resampled to 44.1kHz 16-bit PCM.

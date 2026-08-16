@@ -61,17 +61,12 @@ public class IMeter extends LayerMeter {
     private static final String ENERGY_METER_RES = "gfx/hud/meter/nrj";
     private boolean warnedLow = false, warnedCritical = false;
 
-    /* Dedicated alarm clip if the local sfx/thunder/starvation resource is
-     * bundled; the stock error sound until then. */
+    /* Crossing-bell alarm from AlarmSounds/starvation.wav (user drop-in wins
+     * over the jar-bundled default); stock error sound if neither loads. */
     private static Audio.Clip starvationSfx = null;
     private static Audio.Clip starvationSfx() {
-	if(starvationSfx == null) {
-	    try {
-		starvationSfx = Audio.resclip(Resource.local().loadwait("sfx/thunder/starvation"));
-	    } catch(Throwable t) {
-		starvationSfx = UI.ErrorMessage.sfx;
-	    }
-	}
+	if(starvationSfx == null)
+	    starvationSfx = thunder.AlarmSound.load("starvation", UI.ErrorMessage.sfx);
 	return starvationSfx;
     }
 
