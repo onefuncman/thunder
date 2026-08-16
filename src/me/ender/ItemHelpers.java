@@ -76,7 +76,16 @@ public class ItemHelpers {
 	}
     }
 
-    private static boolean eatCursorActive(UI ui) {
+    /**
+     * With the eat (fork) cursor up, the server interprets a transfer of a food item
+     * as taking a bite. Batch transfers (move-all and friends) must check this so one
+     * click doesn't gorge an entire item group.
+     */
+    public static boolean transferWouldBite(GItem item, UI ui) {
+	return ui != null && ItemData.hasFoodInfo(item) && eatCursorActive(ui);
+    }
+
+    public static boolean eatCursorActive(UI ui) {
 	try {
 	    Indir<Resource> cur = ui.root.cursor;
 	    if(cur == null) {return false;}

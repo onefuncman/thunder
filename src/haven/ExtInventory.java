@@ -583,6 +583,10 @@ public class ExtInventory extends Widget {
 	}
 	
 	private static void process(final List<WItem> items, boolean all, boolean reverse, String action, Object... args) {
+	    if(all && !"drop".equals(action) && !items.isEmpty()
+	       && me.ender.ItemHelpers.transferWouldBite(items.get(0).item, items.get(0).ui)) {
+		return;
+	    }
 	    if(reverse) {
 		items.sort(ExtInventory::byReverseQuality);
 	    } else {

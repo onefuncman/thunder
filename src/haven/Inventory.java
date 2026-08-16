@@ -222,6 +222,10 @@ public class Inventory extends Widget implements DTarget {
     }
     
     private void process(List<WItem> items, String action) {
+	if("transfer".equals(action) && !items.isEmpty()
+	   && me.ender.ItemHelpers.transferWouldBite(items.get(0).item, ui)) {
+	    return;
+	}
 	for (WItem item : items){
 	    item.item.wdgmsg(action, Coord.z);
 	}
