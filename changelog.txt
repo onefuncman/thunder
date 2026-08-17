@@ -3,6 +3,8 @@ $size[14]{$u{update on 16.08.2026:}
 * Deliberate eating is unchanged: plain clicks and single shift-clicks with the fork cursor work as before.
 * Added a starvation warning (Options -> General): a red system-log message and a train-crossing bell when energy falls below 25%, and again below 20%. Re-arms once energy is back above 25%.
 * The bell can be replaced with any wav: drop your own AlarmSounds/starvation.wav next to the client.
+* Thunder now has standalone downloads: grab Thunder-windows-x64.zip from github.com/onefuncman/thunder/releases - unzip and run Thunder.bat, Java is bundled so there is nothing to install. A cross-platform zip for Linux/macOS is there too.
+* Rewrote the README to lead with how to play (Steam, standalone, or cross-platform) instead of developer build instructions.
 `
 $size[14]{$u{update on 14.08.2026:}
 * Added an in-game Thunder Docs menu under Xtended -> Thunder Docs, with manual windows for cattle roster, claim overlays, macros, plob snapping and tile quality.
