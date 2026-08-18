@@ -28,6 +28,25 @@ jobs:
       - name: Build with Ant
         run: ant bin
 
+      # LayerUtil prints per-resource errors but always exits 0, and ant's <exec>
+      # ignores its exit code anyway, so a failed encode ships silently. Compare
+      # the jar against the source tree: every src/local *.res dir must appear in
+      # the jar, and no encoded resource may be an 18-byte header-only stub.
+      - name: Verify encoded resources in client-res.jar
+        run: |
+          expected=$(find resources/src/local -type d -name '*.res' | wc -l)
+          actual=$(unzip -l bin/client-res.jar | awk '$4 ~ /^res\/.*\.res$/' | wc -l)
+          expected_pre=$(find resources/src/remote -type d -name '*.res' | wc -l)
+          actual_pre=$(unzip -l bin/client-res.jar | awk '$4 ~ /^res-preload\/.*\.res$/' | wc -l)
+          stubs=$(unzip -l bin/client-res.jar | awk '$4 ~ /\.res$/ && $1 <= 18 {print $4}')
+          echo "res: $actual/$expected, res-preload: $actual_pre/$expected_pre"
+          if [ "$actual" -lt "$expected" ] || [ "$actual_pre" -lt "$expected_pre" ]; then
+            echo "ERROR: jar is missing encoded resources"; exit 1
+          fi
+          if [ -n "$stubs" ]; then
+            echo "ERROR: header-only (empty) resources in jar:"; echo "$stubs"; exit 1
+          fi
+
       - name: Fetch Windows x64 JRE to bundle
         run: |
           curl -sSfL -o jre.zip "https://api.adoptium.net/v3/binary/latest/25/ga/windows/x64/jre/hotspot/normal/eclipse"

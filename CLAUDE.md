@@ -68,6 +68,7 @@ Per-feature design notes. Check the relevant file before reading source for an e
 - [docs/changelog-popup.md](docs/changelog-popup.md) — login-screen Changelog window
 - [docs/dev-iteration-toolkit.md](docs/dev-iteration-toolkit.md) — `DevFeature` / `DebugSnapshot` / `DebugReplay` / `FeatureCapture` infrastructure
 - [docs/game-protocol.md](docs/game-protocol.md) — general protocol notes
+- [docs/layerutil-linux-fix.md](docs/layerutil-linux-fix.md) — LayerUtil.jar listFiles-order patch + release-workflow resource guard
 - [docs/macros.md](docs/macros.md) — record/replay sequences of in-game actions; `:macro` console + `MacroListWnd`/`MacroEditorWnd`
 - [docs/milking-assistant.md](docs/milking-assistant.md) — sfx-driven cattle deselect after milking; movement-probe for no-milk rejection
 - [docs/plob-snap-design.md](docs/plob-snap-design.md) — placeable-object snap geometry
