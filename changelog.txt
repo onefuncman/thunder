@@ -1,3 +1,8 @@
+$size[14]{$u{update on 18.08.2026:}
+* Standalone downloads now update themselves: on every launch the client checks the latest release on GitHub and applies it automatically before starting. If you are offline the current version just launches. Set THUNDER_NO_UPDATE=1 to skip the check.
+* If you downloaded a standalone zip before 19.08.2026, grab it once more from github.com/onefuncman/thunder/releases - updates are automatic from then on.
+* Fixed the standalone release build shipping broken resources (the client crashed at the login screen). The release pipeline now verifies every resource before publishing.
+`
 $size[14]{$u{update on 16.08.2026:}
 * Move-all (shift+alt-click) on food no longer takes a bite per item while the eating cursor is up - it is simply ignored, so one click can no longer gorge a whole food group at the table.
 * Deliberate eating is unchanged: plain clicks and single shift-clicks with the fork cursor work as before.
