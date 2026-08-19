@@ -19,6 +19,12 @@ below. Pick one of these:
    `Thunder-cross-platform.zip' from the same releases page and run
    `thunder.sh' (or `Thunder.bat' on Windows).
 
+Both standalone packages keep themselves up to date: each time you
+launch, the client checks the latest release on GitHub and applies any
+update automatically before starting (set the environment variable
+THUNDER_NO_UPDATE=1 to skip the check). Downloads older than the first
+auto-updating release need one manual re-download to pick it up.
+
 If your anti-virus complains about the launcher, add the unzipped
 folder to its exceptions list.
 
