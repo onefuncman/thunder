@@ -57,6 +57,9 @@ jobs:
           mkdir -p stage/win/Thunder stage/xp/Thunder
           cp -r bin/. stage/win/Thunder/
           cp -r bin/. stage/xp/Thunder/
+          # Version stamp read by updater.jar to compare against the latest release tag
+          echo "${{ github.event.inputs.tag || github.ref_name }}" > stage/win/Thunder/VERSION
+          echo "${{ github.event.inputs.tag || github.ref_name }}" > stage/xp/Thunder/VERSION
           cp changelog.txt stage/win/Thunder/
           cp changelog.txt stage/xp/Thunder/
           cp etc/release/Thunder.bat stage/win/Thunder/

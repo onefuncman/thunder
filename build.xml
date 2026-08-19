@@ -131,6 +131,21 @@
     <copy file="local-boot.properties" tofile="build/classes/haven/boot-props" failonerror="false" quiet="true" />
   </target>
 
+  <!-- Standalone self-updater run by the release launchers before the client
+       starts. Compiled separately at release 17 (java.net.http); must not be
+       part of hafen.jar, since a running jar cannot replace itself on Windows. -->
+  <target name="updater-jar" depends="build-env">
+    <mkdir dir="build/updater-classes" />
+    <javac srcdir="updater" destdir="build/updater-classes" release="17"
+	   debug="on" includeantruntime="no" encoding="UTF-8" />
+    <jar destfile="build/updater.jar">
+      <fileset dir="build/updater-classes" />
+      <manifest>
+	<attribute name="Main-Class" value="updater.UpdaterMain" />
+      </manifest>
+    </jar>
+  </target>
+
   <target name="client-res-java" depends="hafen-client">
     <mkdir dir="resources/classes" />
     <javac srcdir="resources/java" destdir="resources/classes" debug="on" source="1.8" target="1.8" includeantruntime="no" encoding="UTF-8">
@@ -246,12 +261,13 @@
     <copy file="local-config.properties" tofile="build/haven-config.properties" failonerror="false" quiet="true" />
   </target>
 
-  <target name="bin" depends="jar, extlib/jogl, extlib/lwjgl-gl, extlib/steamworks, res-jar, resources">
+  <target name="bin" depends="jar, extlib/jogl, extlib/lwjgl-gl, extlib/steamworks, res-jar, resources, updater-jar">
     <mkdir dir="bin" />
     <copy todir="bin">
       <fileset dir="build">
 	<include name="hafen.jar" />
 	<include name="client-res.jar" />
+	<include name="updater.jar" />
       </fileset>
       <fileset dir="lib/ext">
 	<include name="hafen-res.jar" />
