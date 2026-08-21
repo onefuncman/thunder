@@ -1,3 +1,9 @@
+$size[14]{$u{update on 21.08.2026:}
+* Merged the latest upstream client updates from loftar.
+* Windows display scaling is now interpreted correctly, and multi-monitor DPI detection is more precise on both Windows and Linux.
+* Fixed the map-window import button typo and a Linux file-picker filter bug.
+* Groundwork for opening multiple client windows and various engine, audio and console improvements under the hood.
+`
 $size[14]{$u{update on 18.08.2026:}
 * Standalone downloads now update themselves: on every launch the client checks the latest release on GitHub and applies it automatically before starting. If you are offline the current version just launches. Set THUNDER_NO_UPDATE=1 to skip the check.
 * If you downloaded a standalone zip before 19.08.2026, grab it once more from github.com/onefuncman/thunder/releases - updates are automatic from then on.
