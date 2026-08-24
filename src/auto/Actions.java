@@ -50,17 +50,8 @@ public class Actions {
 	pickup(gui, gobIs(GobTag.PICKUP), false);
     }
     
-    public static void openGate(GameUI gui) {
-	List<ITarget> targets = gui.ui.sess.glob.oc.stream()
-	    .filter(gobIs(GobTag.GATE))
-	    .filter(gob -> !gob.isVisitorGate())
-	    .filter(gob -> PositionHelper.distanceToPlayer(gob) <= 35)
-	    .sorted(PositionHelper.byDistanceToPlayer)
-	    .limit(1)
-	    .map(GobTarget::new)
-	    .collect(Collectors.toList());
-	
-	Bot.process(targets).actions(ITarget::rclick).start(gui.ui, true);
+    public static void interactNearest(GameUI gui) {
+	NearestInteract.run(gui);
     }
     
     public static void saltFood(GameUI gui) {

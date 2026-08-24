@@ -1,5 +1,6 @@
 $size[14]{$u{update on 23.08.2026:}
 * Gob search (ctrl+F) matches are now marked with the target arrow (same as ctrl+alt-click sharing) and a pulsing green glow instead of the solid purple tint.
+* "Toggle closest gate" is now "Interact with closest ...": besides fence gates it can right-click the nearest doorway, cellar door, minehole/ladder or milestone. Pick which kinds it targets in Options -> General -> "Interact with closest ...". Existing keybinds carry over.
 `
 $size[14]{$u{update on 21.08.2026:}
 * Merged the latest upstream client updates from loftar.

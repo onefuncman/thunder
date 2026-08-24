@@ -1160,7 +1160,19 @@ public class OptWnd extends WindowX {
     
 	y += STEP;
 	panel.add(new CFGBox("Auto pickup only visible", CFG.AUTO_PICK_ONLY_RADAR, "If on will pickup only objects with enabled minimap icons"), x, y);
-    
+
+	y += STEP;
+	panel.add(new Button(UI.scale(150), "Interact with closest ...", false) {
+	    @Override
+	    public void click() {
+		if(ui.gui != null) {
+		    auto.NearestInteract.Opts.toggle(ui.gui);
+		} else {
+		    auto.NearestInteract.Opts.toggle(ui.root);
+		}
+	    }
+	}, x, y);
+
 	y += 2 * STEP;
 	panel.add(new CFGBox("Starvation warning", CFG.WARN_STARVATION, "Red message and crossing-bell alarm when energy drops below 25% (starving) and again below 20%. Replace the sound by dropping your own AlarmSounds\\starvation.wav next to the client."), x, y);
 

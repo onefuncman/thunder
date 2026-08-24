@@ -33,6 +33,7 @@ public class CFG<T> {
     public static final CFG<Boolean> DISPLAY_GOB_PATHS = new CFG<>("display.gob_paths.show", false);
     public static final CFG<Set<PathCategory>> DISPLAY_GOB_PATHS_FOR = new CFG<>("display.gob_paths.categories", PathVisualizer.DEF_CATEGORIES, new TypeToken<Set<PathCategory>>(){});
     public static final CFG<Boolean> QUEUE_PATHS = new CFG<>("general.queue_path", false);
+    public static final CFG<Set<auto.NearestInteract.Kind>> INTERACT_NEAREST_FOR = new CFG<>("general.interact_nearest.kinds", new HashSet<>(Arrays.asList(auto.NearestInteract.Kind.values())), new TypeToken<Set<auto.NearestInteract.Kind>>(){});
     public static final CFG<Boolean> HIDE_TREES = new CFG<>("display.hide_gobs", false);
     public static final CFG<Boolean> SKIP_HIDING_RADAR_TREES = new CFG<>("display.skip_hide_radar_gobs", false);
     public static final CFG<Boolean> DISPLAY_FOOD_CATEGORIES = new CFG<>("display.food_category", true);
