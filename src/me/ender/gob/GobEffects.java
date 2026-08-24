@@ -88,13 +88,14 @@ public class GobEffects {
      * out, track the zoom 1:1 (constant, readable apparent size), capped
      * at 8x world. Zoomed in, shrink the apparent size linearly with the
      * zoom so the marker visibly settles down onto the object, flooring
-     * at 40% apparent so it always stays findable. */
+     * at 80% apparent -- lower floors left the marker miniscule at full
+     * zoom-in. */
     private float zoomScale() {
 	MapView map = (ui.gui != null) ? ui.gui.map : null;
 	if(map == null || map.camera == null) {return 1f;}
 	float zf = map.camera.zoomfac();
 	if(zf >= 1f) {return Math.min(zf, 8f);}
-	return zf * Math.max(0.4f, zf);
+	return zf * Math.max(0.8f, zf);
     }
 
     private class Effect implements RenderTree.Node {
