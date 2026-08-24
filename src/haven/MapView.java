@@ -130,7 +130,12 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	public abstract void tick(double dt);
 	
 	public String stats() {return("N/A");}
-	
+
+	/* How far the camera is zoomed out relative to its default zoom
+	 * (1 = default, 2 = twice as far out). Used to keep world-space
+	 * markers readable at long zooms. */
+	public float zoomfac() {return(1.0f);}
+
 	protected Coord inversion(Coord c, Coord o) {
 	    return c.add(
 		CFG.CAMERA_INVERT_X.get() ? (o.x - c.x) * 2 : 0,
@@ -271,6 +276,9 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	public String stats() {
 	    return(String.format("%f %f %f", elev, dist(elev), field(elev)));
 	}
+
+	@Override
+	public float zoomfac() {return(dist(elev) / mindist);}
     }
     static {camtypes.put("follow", FollowCam.class);}
     
@@ -348,7 +356,9 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 		    break;
 	    }
 	}
-	
+
+	@Override
+	public float zoomfac() {return(dist / 50.0f);}
     }
     static {camtypes.put("worse", SimpleCam.class);}
     
@@ -443,6 +453,9 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	    tdist = d;
 	    return(true);
 	}
+
+	@Override
+	public float zoomfac() {return(dist / 50.0f);}
     }
     static {camtypes.put("bad", FreeCam.class);}
     
@@ -500,6 +513,9 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	public String stats() {
 	    return(String.format("%.1f %.2f %.2f %.1f", dist, elev / Math.PI, angl / Math.PI, field));
 	}
+
+	@Override
+	public float zoomfac() {return(field / dfield);}
     }
     
     public static KeyBinding kb_camleft  = KeyBinding.get("cam-left",  KeyMatchFake.forcode(KeyEvent.VK_LEFT, 0));

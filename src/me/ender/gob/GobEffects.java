@@ -81,57 +81,92 @@ public class GobEffects {
 	    }
 	}
     }
-    
-    private static class Effect implements RenderTree.Node {
+
+    /* The returned world-space scale s renders on screen at apparent size
+     * s/zoom, where zoom is the camera's zoom factor (1 = default view)
+     * and apparent 1 = the arrow's vanilla size at default zoom. Zoomed
+     * out, track the zoom 1:1 (constant, readable apparent size), capped
+     * at 8x world. Zoomed in, shrink the apparent size linearly with the
+     * zoom so the marker visibly settles down onto the object, flooring
+     * at 40% apparent so it always stays findable. */
+    private float zoomScale() {
+	MapView map = (ui.gui != null) ? ui.gui.map : null;
+	if(map == null || map.camera == null) {return 1f;}
+	float zf = map.camera.zoomfac();
+	if(zf >= 1f) {return Math.min(zf, 8f);}
+	return zf * Math.max(0.4f, zf);
+    }
+
+    private class Effect implements RenderTree.Node {
 	private final Sprite spr;
 	private final RenderTree.Slot where;
 	protected Pipe.Op place;
 	protected RenderTree.Slot slot;
 	double duration = 0;
-	
+
 	Effect(RenderTree.Slot where, Sprite spr, Pipe.Op place) {
 	    this.where = where;
 	    this.place = place;
 	    this.spr = spr;
 	}
-	
+
 	public void added(RenderTree.Slot slot) {
 	    slot.add(spr);
 	}
-	
+
+	/* The trgtarw mesh spans z 21..28.3 in gob space: the tip already
+	 * hovers 21 units over the ground. Anchor the zoom scale at the tip
+	 * so the arrow grows upward from its natural hover height, instead
+	 * of the scale multiplying that offset and lifting it into the sky. */
+	private static final float TIP_Z = 21f;
+
+	protected Pipe.Op state() {
+	    float s = zoomScale();
+	    if(s == 1f) {return place;}
+	    return Pipe.Op.compose(place,
+		Location.xlate(new Coord3f(0, 0, TIP_Z * (1 - s))),
+		Location.scale(s));
+	}
+
 	public boolean tick(double dt) {
-	    if(slot == null) {
-		try {
-		    slot = where.add(spr, place);
-		} catch (Loading ignored) {}
+	    if(place != null) {
+		if(slot == null) {
+		    try {
+			slot = where.add(spr, state());
+		    } catch (Loading ignored) {}
+		} else {
+		    slot.cstate(state());
+		}
 	    }
-	    
+
 	    duration -= dt;
 	    spr.tick(dt);
-	    
+
 	    return duration >= 0;
 	}
     }
-    
-    
-    private static class GobEffect extends Effect {
+
+
+    private class GobEffect extends Effect {
 	private final Gob gob;
-	
+
 	GobEffect(Gob gob, RenderTree.Slot where, Sprite spr) {
-	    super(where, spr, gob.placed.curplace());
+	    /* Placement resolves lazily in tick: computing it here can throw
+	     * Loading while the map grid under the gob is still being fetched
+	     * (e.g. right after zoning via a ladder). */
+	    super(where, spr, null);
 	    this.gob = gob;
 	}
-	
+
 	@Override
 	public boolean tick(double dt) {
 	    if(gob.disposed()) {
 		return false;
 	    }
-	    boolean active = super.tick(dt);
-	    if(!active) {return false;}
-	    place = gob.placed.curplace();
-	    if(slot != null) {slot.cstate(place);}
-	    return true;
+	    try {
+		place = gob.placed.curplace();
+	    } catch (Loading ignored) {}
+	    return super.tick(dt);
 	}
     }
 }
