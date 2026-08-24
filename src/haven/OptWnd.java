@@ -599,6 +599,13 @@ public class OptWnd extends WindowX {
 			   dpy);
 		}
 	    }
+	    prev = add(new CFGBox("Snap placement to nearby hitbox edges", CFG.PLOB_SNAP,
+				  "While placing, the ghost is pulled flush against the collision boxes of nearby objects " +
+				  "and cave walls, one axis at a time, and lines its edges up with close neighbours. " +
+				  "Hold Shift to place smoothly with no snapping. " +
+				  "Use the \"placesnap\" console command to tune how eagerly it grabs (default 3.5) and " +
+				  "how far you drag to let go (default 6.5); a tile is 11 units wide."),
+		       prev.pos("bl").adds(0, 8).x(0));
 	    add(new PButton(UI.scale(200), "Back", 27, back), prev.pos("bl").adds(0, 30).x(0));
 	    pack();
 	}
@@ -1086,6 +1093,9 @@ public class OptWnd extends WindowX {
 	y += STEP;
 
 	panel.add(new CFGBox("Cattle roster debug", CFG.CROSTER_DEBUG, "Ctrl+Right-click a cattle roster row to dump entry fields to stderr"), x, y);
+	y += STEP;
+
+	panel.add(new CFGBox("Placement snap diagnostics", CFG.DEBUG_PLOB_SNAP, "Records what the last placement snap did; read it with the \"placesnap\" console command"), x, y);
 	y += STEP + UI.scale(14);
 
 	panel.add(new PButton(UI.scale(200), "Back", 27, main), 0, y);
