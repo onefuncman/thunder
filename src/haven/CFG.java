@@ -33,7 +33,9 @@ public class CFG<T> {
     public static final CFG<Boolean> DISPLAY_GOB_PATHS = new CFG<>("display.gob_paths.show", true);
     public static final CFG<Set<PathCategory>> DISPLAY_GOB_PATHS_FOR = new CFG<>("display.gob_paths.categories", PathVisualizer.DEF_CATEGORIES, new TypeToken<Set<PathCategory>>(){});
     public static final CFG<Boolean> QUEUE_PATHS = new CFG<>("general.queue_path", true);
-    public static final CFG<Set<auto.NearestInteract.Kind>> INTERACT_NEAREST_FOR = new CFG<>("general.interact_nearest.kinds", new HashSet<>(Arrays.asList(auto.NearestInteract.Kind.values())), new TypeToken<Set<auto.NearestInteract.Kind>>(){});
+    // Default: everything except the gates that commonly sit in defensive perimeters
+    // (palisade, brickwall), where a misclick opening the gate is costly.
+    public static final CFG<Set<auto.NearestInteract.Kind>> INTERACT_NEAREST_FOR = new CFG<>("general.interact_nearest.kinds", new HashSet<>(EnumSet.complementOf(EnumSet.of(auto.NearestInteract.Kind.GATE_PALISADE, auto.NearestInteract.Kind.GATE_BRICK))), new TypeToken<Set<auto.NearestInteract.Kind>>(){});
     public static final CFG<Boolean> HIDE_TREES = new CFG<>("display.hide_gobs", false);
     public static final CFG<Boolean> SKIP_HIDING_RADAR_TREES = new CFG<>("display.skip_hide_radar_gobs", true);
     public static final CFG<Boolean> DISPLAY_FOOD_CATEGORIES = new CFG<>("display.food_category", true);
