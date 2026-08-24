@@ -27,7 +27,7 @@
 package haven;
 
 public class Speedget extends Widget {
-    private static final CFG<Integer> SPEED = new CFG<>("general.speed", 1);
+    private static final CFG<Integer> SPEED = new CFG<>("general.speed", 2);
     public static final Tex imgs[][];
     public static final String tips[];
     public static final Coord tsz;

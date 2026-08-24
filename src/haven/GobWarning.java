@@ -156,9 +156,17 @@ public class GobWarning extends GAttrib implements RenderTree.Node {
 	static boolean get(WarnTarget target, WarnMethod method) {
 	    if(target != null) {
 		Map<String, Boolean> cfg = CFG.WARN_CONFIG.get().getOrDefault(target.name(), new HashMap<>());
-		return cfg.getOrDefault(method.name(), false);
+		return cfg.getOrDefault(method.name(), defval(target, method));
 	    }
 	    return false;
+	}
+
+	/* Defaults when the user has never touched the checkbox; an explicit
+	 * saved value always wins. Everything warns and highlights out of the
+	 * box except gems, which only highlight. */
+	private static boolean defval(WarnTarget target, WarnMethod method) {
+	    if(target == gem) {return method == highlight;}
+	    return true;
 	}
 	
 	static void set(WarnTarget target, WarnMethod method, boolean value) {

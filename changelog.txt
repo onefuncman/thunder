@@ -3,6 +3,7 @@ $size[14]{$u{update on 23.08.2026:}
 * "Toggle closest gate" is now "Interact with closest ...": besides fence gates it can right-click the nearest doorway, cellar door (indoor cellar stairs too), minehole/ladder or milestone. Pick which kinds it targets in Options -> General -> "Interact with closest ...". Existing keybinds carry over.
 * The target-arrow marker (ctrl+alt-click sharing, gob search) now scales with camera zoom on every camera: it grows as you zoom out so it stays visible at long range, shrinks down onto the object as you zoom in, and always stays anchored just above the marked object.
 * Fixed a crash when gob search results were active while transitioning areas (e.g. climbing a minehole ladder).
+* Friendlier defaults for new installs: run speed, minimap on start, extra toolbar, pouches widget, drinks meter, curio timers/lp-hr, fep numbers, damage tooltips, time/stats display, object info, path drawing, warnings, auto-drink, container spreading, drop/decal protection, cupboard scaling and more start enabled. Settings you have already changed are untouched.
 `
 $size[14]{$u{update on 21.08.2026:}
 * Merged the latest upstream client updates from loftar.

@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.*;
 
 public class PathVisualizer implements RenderTree.Node {
-    public static final HashSet<PathCategory> DEF_CATEGORIES = new HashSet<>(Arrays.asList(PathCategory.ME, PathCategory.FOE));
+    public static final HashSet<PathCategory> DEF_CATEGORIES = new HashSet<>(Arrays.asList(PathCategory.ME, PathCategory.FOE, PathCategory.AGGRESSIVE_ANIMAL));
     private static final VertexArray.Layout LAYOUT = new VertexArray.Layout(new VertexArray.Layout.Input(Homo3D.vertex, new VectorFormat(3, NumberFormat.FLOAT32), 0, 0, 12));
     
     public PathQueue path;
