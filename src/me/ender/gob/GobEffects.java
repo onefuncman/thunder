@@ -8,17 +8,31 @@ import haven.render.Transform;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 
 public class GobEffects {
     private static final Resource tgtfx = Resource.local().loadwait("gfx/hud/combat/trgtarw");
     private final Collection<Effect> curfx = new ArrayList<>();
+    private final Map<Long, Effect> sticky = new HashMap<>();
     private final UI ui;
-    
+
     public GobEffects(UI ui) {this.ui = ui;}
-    
+
     public void markGob(Gob gob) {
 	fxon(gob, tgtfx, 7);
+    }
+
+    public void stickGob(Gob gob) {
+	if(sticky.containsKey(gob.id)) {return;}
+	Effect fx = fxon(gob, tgtfx, Double.POSITIVE_INFINITY);
+	if(fx != null) {sticky.put(gob.id, fx);}
+    }
+
+    public void unstickGob(long gobId) {
+	Effect fx = sticky.remove(gobId);
+	if(fx != null) {fx.duration = -1;}
     }
     
     public void markPoint(MCache.Grid grid, Coord off) {
@@ -28,7 +42,7 @@ public class GobEffects {
 	fxat(new Location(Transform.makexlate(new Matrix4f(), new Coord3f(rc.x, -rc.y, z)), "gobx"), tgtfx, 7);
     }
     
-    private Effect fxon(Gob gob, Resource fx, long duration) {
+    private Effect fxon(Gob gob, Resource fx, double duration) {
 	MapView map = ui.gui.map;
 	
 	if(map == null) {return (null);}
@@ -63,6 +77,7 @@ public class GobEffects {
 		    fx.slot = null;
 		}
 		i.remove();
+		sticky.values().remove(fx);
 	    }
 	}
     }

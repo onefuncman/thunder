@@ -1,3 +1,6 @@
+$size[14]{$u{update on 23.08.2026:}
+* Gob search (ctrl+F) matches are now marked with the target arrow (same as ctrl+alt-click sharing) and a pulsing green glow instead of the solid purple tint.
+`
 $size[14]{$u{update on 21.08.2026:}
 * Merged the latest upstream client updates from loftar.
 * Windows display scaling is now interpreted correctly, and multi-monitor DPI detection is more precise on both Windows and Linux.

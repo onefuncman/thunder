@@ -119,23 +119,17 @@ public class GobSearchWnd extends GameUI.Hidewnd {
 		if(h == null) {
 		    h = new GobHighlight(g);
 		    g.setattr(h);
-		    h.setPersistent(true);
-		    highlighted.add(g.id);
-		} else if(highlighted.contains(g.id) && !h.isPersistent()) {
-		    h.setPersistent(true);
 		}
+		h.setFlashing(true);
+		ui.root.effects.stickGob(g);
+		highlighted.add(g.id);
 	    }
 	    Set<Long> toClear = new HashSet<>(highlighted);
 	    toClear.removeAll(keep);
 	    for(Long id : toClear) {
 		Gob g = oc.getgob(id);
-		if(g != null) {
-		    GobHighlight h = g.getattr(GobHighlight.class);
-		    if(h != null && h.isPersistent()) {
-			h.setPersistent(false);
-			g.delattr(GobHighlight.class);
-		    }
-		}
+		if(g != null) {unmark(g);}
+		ui.root.effects.unstickGob(id);
 		highlighted.remove(id);
 	    }
 	}
@@ -156,16 +150,20 @@ public class GobSearchWnd extends GameUI.Hidewnd {
 	OCache oc = ui.sess.glob.oc;
 	synchronized(oc) {
 	    for(Long id : highlighted) {
+		ui.root.effects.unstickGob(id);
 		Gob g = oc.getgob(id);
 		if(g == null) {continue;}
-		GobHighlight h = g.getattr(GobHighlight.class);
-		if(h != null && h.isPersistent()) {
-		    h.setPersistent(false);
-		    g.delattr(GobHighlight.class);
-		}
+		unmark(g);
 	    }
 	}
 	highlighted.clear();
+    }
+
+    private static void unmark(Gob g) {
+	GobHighlight h = g.getattr(GobHighlight.class);
+	if(h == null || !h.isFlashing()) {return;}
+	h.setFlashing(false);
+	if(!h.isActive()) {g.delattr(GobHighlight.class);}
     }
 
     private static class ResidHit {

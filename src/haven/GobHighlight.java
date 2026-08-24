@@ -11,6 +11,7 @@ public class GobHighlight extends GAttrib implements Gob.SetupMod {
     private static final long duration = 7200;
     private long start = 0;
     private boolean persistent = false;
+    private boolean flashing = false;
 
     public GobHighlight(Gob g) {
 	super(g);
@@ -28,17 +29,25 @@ public class GobHighlight extends GAttrib implements Gob.SetupMod {
 
     public boolean isPersistent() {return(persistent);}
 
+    public void setFlashing(boolean on) {this.flashing = on;}
+
+    public boolean isFlashing() {return(flashing);}
+
     public boolean isActive() {
-	return(persistent || (System.currentTimeMillis() - start) <= duration);
+	return(persistent || flashing || (System.currentTimeMillis() - start) <= duration);
     }
 
     @Override
     public void ctick(double dt) {
-	if(persistent || System.currentTimeMillis() - start <= duration + cycle)
+	if(persistent || flashing || System.currentTimeMillis() - start <= duration + cycle)
 	    gob.markStateDirty();
     }
 
     public Pipe.Op gobstate() {
+	if(flashing) {
+	    float k = (float) Math.abs(Math.sin(Math.PI * (System.currentTimeMillis() % cycle) / (double) cycle));
+	    return(new MixColor(COLOR.getRed(), COLOR.getGreen(), COLOR.getBlue(), (int) (255 * k)));
+	}
 	if(persistent) {
 	    Color c = CFG.COLOR_CATTLE_HIGHLIGHT.get();
 	    return(new MixColor(c.getRed(), c.getGreen(), c.getBlue(), c.getAlpha()));
