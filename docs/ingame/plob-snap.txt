@@ -1,20 +1,24 @@
-$size[14]{$u{Placement Snap}}
+$size[14]{$u{Placement Snap (Q/E/W/S)}}
 
-While placing a lifted, built or stockpiled object, the placement ghost is pulled flush against the collision boxes of nearby objects - just move the mouse close to something and the ghost snaps against it. No keys needed.
+While viewing a placement preview for lifted, built or stockpiled objects, press a snap key to place it flush against an existing object or tile edge.
+
+$size[12]{$u{Keys}}
+$font[Monospaced,11]{ Q   Snap left}
+$font[Monospaced,11]{ E   Snap right}
+$font[Monospaced,11]{ W   Snap up}
+$font[Monospaced,11]{ S   Snap down}
 
 $size[12]{$u{How it behaves}}
-* Each axis snaps independently: caught on a wall, the ghost slides smoothly along it while staying flush, and catches the corner when one comes into range.
-* Nearby objects you are not touching get their edges lined up with, so rows of cupboards or barrels come out straight.
-* Cave walls snap too, even though they are terrain rather than objects.
-* A small gap is left on purpose - the server rejects placements that touch exactly. Walls get a slightly larger gap for the same reason.
-* Rotating the ghost off the 90-degree grid (Ctrl+scroll) turns snapping off until it is square again.
-* While the ghost is snapped, it stops auto-turning to face you, so it stays flush as you slide it.
+* Cursor $u{on} an object: the placer is pushed flush against that side of the object. The direction key picks which side.
+* Cursor $u{near} an object: the placer slides in that direction and stops flush against the first object in its path.
+* Cursor on empty ground: the placer aligns with that edge of the tile it is in.
 
-$size[12]{$u{Controls}}
-* Hold $u{Shift} to place smoothly with no snapping at all.
-* The checkbox lives in Options > Interface settings ("Snap placement to nearby hitbox edges"). Turning it off restores the vanilla tile-center placement.
+Note: This feature is a work in progress and may struggle with rotated placements.
 
-$size[12]{$u{Tuning}}
-* Console command $font[Monospaced,11]{:placesnap} on its own shows the current grab/release distances.
-* $font[Monospaced,11]{:placesnap <grab> <deadzone>} changes how eagerly the snap grabs an edge and how far you must drag to let go again. Defaults are 3.5 and 6.5; a tile is 11 units wide.
-* If a placement seems wrong, enable "Placement snap diagnostics" in Options > Debug, place again, and $font[Monospaced,11]{:placesnap} will report what the snap decided and why.
+$size[12]{$u{Tips}}
+* Point at the $u{base} of tall objects (cupboards etc.) - the snap targets the ground footprint, not the top.
+* The snap direction works according to your camera perspective. Up is towards the top of your screen.
+* Repeat the key along a row to build tight lines and grids quickly.
+* You might need to ensure focus is on the game world, this can be done by rotating your camera slightly
+* Be careful not to move the object after pressing a snap key, as your placegrid fidelity will be set to coninuous.
+

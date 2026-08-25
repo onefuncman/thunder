@@ -1,197 +1,223 @@
 package haven;
 
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-
-import java.util.Arrays;
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.*;
 
-// Ported from Vantazz/Hurricane's PlobSnapCheck. All distances are world units
-// and a tile is 11 of them, so the numbers below are in thirds-of-a-tile
-// rather than anything round.
 public class PlobSnapTest {
-    private static final double EPS = 1e-6;
+    private static final double EPS = 1e-9;
+    private static final double LOOSE = 1e-6;
 
-    // The tunables are mutable statics initialized from user prefs; pin them so
-    // a locally-tuned client doesn't change what the tests assert.
-    @BeforeAll
-    static void pinTunables() {
-	PlobSnap.capture = 3.5;
-	PlobSnap.deadzone = 6.5;
-	PlobSnap.abutgap = 0.1;
-	PlobSnap.wallgap = 1.0;
-    }
-
-    /** The 6x6 ghost used throughout. */
-    private static final PlobSnap.Box SELF = new PlobSnap.Box(-3, -3, 3, 3);
-
-    private static double ax(boolean xaxis, List<PlobSnap.Box> near, double cx, double cy) {
-	return PlobSnap.axis(xaxis, near, SELF, Coord2d.of(cx, cy), PlobSnap.deadzone);
-    }
-
-    /** The two-pass resolution snap() does, minus the hysteresis. */
-    private static Coord2d settle(List<PlobSnap.Box> near, Coord2d mc) {
-	Coord2d c = mc;
-	double rx = Double.NaN, ry = Double.NaN;
-	for(int p = 0; p < 2; p++) {
-	    rx = ax(true, near, c.x, c.y);
-	    ry = ax(false, near, c.x, c.y);
-	    c = Coord2d.of(Double.isNaN(rx) ? mc.x : rx, Double.isNaN(ry) ? mc.y : ry);
-	}
-	double sx = (!Double.isNaN(rx) && Math.abs(rx - mc.x) <= PlobSnap.capture) ? rx : Double.NaN;
-	double sy = (!Double.isNaN(ry) && Math.abs(ry - mc.y) <= PlobSnap.capture) ? ry : Double.NaN;
-	return Coord2d.of(Double.isNaN(sx) ? mc.x : sx, Double.isNaN(sy) ? mc.y : sy);
-    }
-
-    private static final PlobSnap.Box HWALL = new PlobSnap.Box(-50, -2, 50, 2);      // runs east-west
-    private static final PlobSnap.Box VWALL = new PlobSnap.Box(-52, -50, -48, 50);   // runs north-south
-
-    // --- against a single wall --------------------------------------------
+    // --- abutAgainst (placer flush against a gob, outside it) -------------
 
     @Test
-    void yGoesFlushUnderAWall() {
-	assertEquals(5.0, ax(false, Arrays.asList(HWALL), 0, 8), EPS);
+    void abutAgainst_nullInputs() {
+	double[] ok = {0, 0, 1, 1};
+	assertNull(PlobSnap.abutAgainst(null, ok, PlobSnap.Dir.LEFT));
+	assertNull(PlobSnap.abutAgainst(ok, null, PlobSnap.Dir.LEFT));
+	assertNull(PlobSnap.abutAgainst(new double[3], ok, PlobSnap.Dir.LEFT));
+    }
+
+    // Post-condition sanity check for each direction: after the computed delta is applied, the
+    // placer's edge facing the target must coincide with the target's edge facing the placer.
+    private static double[] apply(double[] aabb, double[] d) {
+	return new double[] { aabb[0] + d[0], aabb[1] + d[1], aabb[2] + d[0], aabb[3] + d[1] };
     }
 
     @Test
-    void xStaysFreeSoTheGhostSlidesAlong() {
-	assertTrue(Double.isNaN(ax(true, Arrays.asList(HWALL), 0, 8)));
+    void abutAgainst_leftPutsPlacerOnTargetLeftSide() {
+	// User pressed LEFT expecting placer to end up on the target's left side.
+	// Invariant: new placer.right == target.left.
+	double[] placer = {614, 468, 714, 538};
+	double[] target = {710, 468, 834, 573};   // overlaps placer
+	double[] after = apply(placer, PlobSnap.abutAgainst(placer, target, PlobSnap.Dir.LEFT));
+	assertEquals(target[0], after[2], LOOSE, "placer.right must meet target.left");
+	assertTrue(after[2] <= target[0] + LOOSE, "placer must end up on LEFT of target");
     }
 
     @Test
-    void letsGoOnceDraggedPastTheDeadZone() {
-	assertTrue(Double.isNaN(ax(false, Arrays.asList(HWALL), 0, 20)));
-    }
-
-    // --- into a corner ----------------------------------------------------
-
-    @Test
-    void cornerCatchesBothAxes() {
-	List<PlobSnap.Box> two = Arrays.asList(HWALL, VWALL);
-	Coord2d corner = settle(two, Coord2d.of(-42, 8));
-	assertEquals(-45.0, corner.x, EPS);
-	assertEquals(5.0, corner.y, EPS);
+    void abutAgainst_rightPutsPlacerOnTargetRightSide() {
+	// Invariant: new placer.left == target.right.
+	double[] placer = {614, 468, 714, 538};
+	double[] target = {710, 468, 834, 573};
+	double[] after = apply(placer, PlobSnap.abutAgainst(placer, target, PlobSnap.Dir.RIGHT));
+	assertEquals(target[2], after[0], LOOSE, "placer.left must meet target.right");
+	assertTrue(after[0] >= target[2] - LOOSE, "placer must end up on RIGHT of target");
     }
 
     @Test
-    void outInTheOpenOnlyTheWallAxisHolds() {
-	List<PlobSnap.Box> two = Arrays.asList(HWALL, VWALL);
-	Coord2d midway = settle(two, Coord2d.of(-20, 8));
-	assertEquals(-20.0, midway.x, EPS, "still free on x out in the open");
-	assertEquals(5.0, midway.y, EPS, "still held against the wall on y");
-    }
-
-    // --- a small object leaning on a big one ------------------------------
-
-    // The bug this guards: aligning edges with a wall you are touching buries
-    // the object in it. Alignment needs separation on the other axis.
-    @Test
-    void goesFlushOnTheFaceNotEdgeAligned() {
-	List<PlobSnap.Box> house = Arrays.asList(new PlobSnap.Box(0, -30, 40, 30));
-	assertEquals(-3.0, ax(true, house, -2, 0), EPS, "goes flush on the face");
-	assertEquals(-3.0, settle(house, Coord2d.of(-2, 0)).x, EPS, "and does not line up its edges instead");
-    }
-
-    // --- a second object beside the first, both on the wall ---------------
-
-    @Test
-    void flushAgainstNeighbourAndEdgeAlignedUnderTheWall() {
-	PlobSnap.Box chest = new PlobSnap.Box(-8, -1, -2, 5);
-	Coord2d beside = settle(Arrays.asList(HWALL, chest), Coord2d.of(2, 6));
-	assertEquals(1.0, beside.x, EPS, "flush against the first");
-	assertEquals(5.0, beside.y, EPS, "edges lined up under the wall");
-    }
-
-    // --- clearance the server insists on ----------------------------------
-
-    @Test
-    void stopsShortOfTheNeighbourByItsGap() {
-	assertEquals(6.0, ax(false, Arrays.asList(new PlobSnap.Box(-50, -2, 50, 2, 1.0)), 0, 8), EPS,
-		     "stops 1.0 short of a wall face");
-	assertEquals(5.1, ax(false, Arrays.asList(new PlobSnap.Box(-50, -2, 50, 2, 0.1)), 0, 8), EPS,
-		     "stops 0.1 short of an ordinary face");
-	for(double g : new double[]{0.0, 0.1, 1.0}) {
-	    double c = ax(false, Arrays.asList(new PlobSnap.Box(-50, -2, 50, 2, g)), 0, 8);
-	    assertEquals(g, (c - 3.0) - 2.0, EPS, "the gap never eats into the neighbour (gap " + g + ")");
-	}
-    }
-
-    // --- the dead zone holds and then lets go ------------------------------
-
-    // Grabs inside `capture`, holds out to `deadzone`, releases past it.
-    @Test
-    void hysteresisGrabsHoldsAndReleases() {
-	List<PlobSnap.Box> one = Arrays.asList(HWALL);
-	double held = Double.NaN;
-	boolean grabbed = false, heldOn = false, released = false;
-	for(double y : new double[]{12, 9, 8, 10, 11.5, 12, 20}) {
-	    double cand = ax(false, one, 0, y);
-	    held = PlobSnap.resolve(cand, y, held);
-	    boolean on = !Double.isNaN(held);
-	    if(y == 8) grabbed = on;
-	    if(y == 11.5) heldOn = on;
-	    if(y == 20) released = !on;
-	    if(on)
-		assertEquals(5.0, held, EPS, "held the flush edge at y=" + y);
-	}
-	assertTrue(grabbed, "grabs when the cursor comes inside the capture radius");
-	assertTrue(heldOn, "still holding at the edge of the dead zone");
-	assertTrue(released, "free again well past it");
-    }
-
-    // --- terrain walls, which carry no gob at all --------------------------
-
-    @Test
-    void backsUpAgainstAnEastWestCaveWall() {
-	double ts = MCache.tilesz.x;
-	double gap = PlobSnap.abutgap, reach = PlobSnap.deadzone;
-	// Rock everywhere at tile y <= 0; open floor below it.
-	PlobSnap.Rock roof = (tx, ty) -> ty <= 0;
-	assertEquals(ts + 3 + gap,
-		     PlobSnap.faceaxis((along, across) -> roof.at(across, along), -3, 3, 25 - 3, 25 + 3, 16, reach, gap),
-		     EPS);
-    }
-
-    // The regression that killed the box-per-tile approach: a wall is a run of
-    // tiles, and each tile's side faces would chop the slide into steps.
-    @Test
-    void noFaceAnywhereAlongTheRunSoTheSlideStaysSmooth() {
-	PlobSnap.Rock roof = (tx, ty) -> ty <= 0;
-	for(double cx = 14; cx <= 36; cx += 2.0) {
-	    assertTrue(Double.isNaN(PlobSnap.faceaxis(roof, -3, 3, 16 - 3, 16 + 3, cx, PlobSnap.deadzone, PlobSnap.abutgap)),
-		       "no face at cx=" + cx);
-	}
+    void abutAgainst_upPutsPlacerOnTargetTopSide() {
+	// Screen-Y grows downward, so "UP" means lower Y.
+	// Invariant: new placer.bottom == target.top.
+	double[] placer = {0, 200, 10, 220};
+	double[] target = {0, 100, 10, 180};
+	double[] after = apply(placer, PlobSnap.abutAgainst(placer, target, PlobSnap.Dir.UP));
+	assertEquals(target[1], after[3], LOOSE, "placer.bottom must meet target.top");
+	assertTrue(after[3] <= target[1] + LOOSE, "placer must end up ABOVE target");
     }
 
     @Test
-    void caveCornerCatchesBothAxes() {
-	double ts = MCache.tilesz.x;
-	double gap = PlobSnap.abutgap, reach = PlobSnap.deadzone;
-	PlobSnap.Rock corner = (tx, ty) -> (ty <= 0) || (tx <= 0);
-	assertEquals(ts + 3 + gap, PlobSnap.faceaxis(corner, -3, 3, 16 - 3, 16 + 3, 16, reach, gap), EPS, "cave corner, x");
-	assertEquals(ts + 3 + gap,
-		     PlobSnap.faceaxis((along, across) -> corner.at(across, along), -3, 3, 16 - 3, 16 + 3, 16, reach, gap),
-		     EPS, "cave corner, y");
+    void abutAgainst_downPutsPlacerOnTargetBottomSide() {
+	// Invariant: new placer.top == target.bottom.
+	double[] placer = {0, 200, 10, 220};
+	double[] target = {0, 100, 10, 180};
+	double[] after = apply(placer, PlobSnap.abutAgainst(placer, target, PlobSnap.Dir.DOWN));
+	assertEquals(target[3], after[1], LOOSE, "placer.top must meet target.bottom");
+	assertTrue(after[1] >= target[3] - LOOSE, "placer must end up BELOW target");
     }
 
     @Test
-    void solidRockAndOpenFloorOfferNoFace() {
-	double gap = PlobSnap.abutgap, reach = PlobSnap.deadzone;
-	assertTrue(Double.isNaN(PlobSnap.faceaxis((tx, ty) -> true, -3, 3, 13, 19, 25, reach, gap)), "solid rock");
-	assertTrue(Double.isNaN(PlobSnap.faceaxis((tx, ty) -> false, -3, 3, 13, 19, 25, reach, gap)), "open floor");
+    void abutAgainst_leftOnlyAffectsX() {
+	double[] placer = {50, 50, 60, 60};
+	double[] target = { 0, 20, 20, 40};
+	double[] d = PlobSnap.abutAgainst(placer, target, PlobSnap.Dir.LEFT);
+	assertEquals(0, d[1], EPS, "LEFT must not touch Y axis");
     }
 
-    // --- the rotated-box helper -------------------------------------------
+    @Test
+    void abutAgainst_chainLeftThenUp_composesToCorner() {
+	// Placer starts inside the target. LEFT: placer.right meets target.left. X preserved after UP.
+	// UP: placer.bottom meets target.top. Final: placer flush top-left corner of target.
+	double[] placer = {50, 50, 70, 70};
+	double[] target = {40, 40, 80, 80};
+
+	double[] after1 = apply(placer, PlobSnap.abutAgainst(placer, target, PlobSnap.Dir.LEFT));
+	assertEquals(target[0], after1[2], LOOSE); // placer.right == target.left
+	assertEquals(placer[1], after1[1], LOOSE); // Y preserved
+
+	double[] after2 = apply(after1, PlobSnap.abutAgainst(after1, target, PlobSnap.Dir.UP));
+	assertEquals(target[0], after2[2], LOOSE); // X preserved after UP
+	assertEquals(target[1], after2[3], LOOSE); // placer.bottom == target.top
+    }
+
+    // Regression guard matching the exact numbers from the game log where the bug surfaced.
+    // placer=[614.84, 468.64 .. 714.56, 538.19]  target=[710.86, 468.64 .. 834.84, 573.04]
+    // Pressing LEFT must move placer left (dSX negative), not right.
+    @Test
+    void abutAgainst_leftRegressionFromLiveLog() {
+	double[] placer = {614.84, 468.64, 714.56, 538.19};
+	double[] target = {710.86, 468.64, 834.84, 573.04};
+	double[] d = PlobSnap.abutAgainst(placer, target, PlobSnap.Dir.LEFT);
+	assertTrue(d[0] < 0, "LEFT on overlapping target must produce negative dSX");
+	assertEquals(target[0] - placer[2], d[0], EPS);
+    }
+
+    // --- alignEdgeWith (placer flush with a region's same-side edge) ------
 
     @Test
-    void rotSwapsExtentsAtNinetyDegrees() {
-	PlobSnap.Box b = new PlobSnap.Box(-2, -5, 2, 5, 0.1).rot(Math.PI / 2);
-	assertEquals(-5, b.lx, EPS);
-	assertEquals(-2, b.ly, EPS);
-	assertEquals(5, b.hx, EPS);
-	assertEquals(2, b.hy, EPS);
-	assertEquals(0.1, b.gap, EPS, "gap survives rotation");
+    void alignEdgeWith_nullInputs() {
+	double[] ok = {0, 0, 1, 1};
+	assertNull(PlobSnap.alignEdgeWith(null, ok, PlobSnap.Dir.LEFT));
+	assertNull(PlobSnap.alignEdgeWith(ok, null, PlobSnap.Dir.LEFT));
+    }
+
+    @Test
+    void alignEdgeWith_leftAlignsPlacerLeftWithRegionLeft() {
+	// Placer starts inside the region, not flush; LEFT snaps placer.left to region.left.
+	double[] placer = {5, 5, 8, 8};
+	double[] region = {0, 0, 10, 10};
+	double[] d = PlobSnap.alignEdgeWith(placer, region, PlobSnap.Dir.LEFT);
+	assertEquals(-5, d[0], EPS); // placer.left 5 -> 0
+	assertEquals(0,  d[1], EPS);
+    }
+
+    @Test
+    void alignEdgeWith_rightAlignsPlacerRightWithRegionRight() {
+	double[] placer = {2, 2, 5, 5};
+	double[] region = {0, 0, 10, 10};
+	double[] d = PlobSnap.alignEdgeWith(placer, region, PlobSnap.Dir.RIGHT);
+	assertEquals(5, d[0], EPS); // placer.right 5 -> 10
+	assertEquals(0, d[1], EPS);
+    }
+
+    @Test
+    void alignEdgeWith_upAlignsPlacerTopWithRegionTop() {
+	double[] placer = {2, 5, 5, 8};
+	double[] region = {0, 0, 10, 10};
+	double[] d = PlobSnap.alignEdgeWith(placer, region, PlobSnap.Dir.UP);
+	assertEquals(0,  d[0], EPS);
+	assertEquals(-5, d[1], EPS); // placer.top 5 -> 0
+    }
+
+    @Test
+    void alignEdgeWith_downAlignsPlacerBottomWithRegionBottom() {
+	double[] placer = {2, 2, 5, 5};
+	double[] region = {0, 0, 10, 10};
+	double[] d = PlobSnap.alignEdgeWith(placer, region, PlobSnap.Dir.DOWN);
+	assertEquals(0, d[0], EPS);
+	assertEquals(5, d[1], EPS); // placer.bottom 5 -> 10
+    }
+
+    @Test
+    void alignEdgeWith_alreadyAlignedIsNoOp() {
+	double[] placer = {0, 0, 3, 3};
+	double[] region = {0, 0, 10, 10};
+	double[] d = PlobSnap.alignEdgeWith(placer, region, PlobSnap.Dir.LEFT);
+	assertEquals(0, d[0], EPS);
+	assertEquals(0, d[1], EPS);
+    }
+
+    // --- jacobianInvert ---------------------------------------------------
+
+    @Test
+    void jacobianInvert_identity() {
+	Coord2d w = PlobSnap.jacobianInvert(1, 0, 0, 1, 3, -4);
+	assertNotNull(w);
+	assertEquals(3,  w.x, EPS);
+	assertEquals(-4, w.y, EPS);
+    }
+
+    @Test
+    void jacobianInvert_singularReturnsNull() {
+	// Zero matrix.
+	assertNull(PlobSnap.jacobianInvert(0, 0, 0, 0, 1, 1));
+	// Rank-1 (both rows proportional).
+	assertNull(PlobSnap.jacobianInvert(1, 2, 2, 4, 1, 1));
+    }
+
+    @Test
+    void jacobianInvert_rotation90() {
+	// Screen basis is world rotated 90 CCW:
+	// dScreenX =  0*dwx + 1*dwy
+	// dScreenY = -1*dwx + 0*dwy
+	// Inverse: dwx = -dSY, dwy = dSX.
+	Coord2d w = PlobSnap.jacobianInvert(0, 1, -1, 0, 3, 5);
+	assertNotNull(w);
+	assertEquals(-5, w.x, EPS);
+	assertEquals( 3, w.y, EPS);
+    }
+
+    @Test
+    void jacobianInvert_scaledAxes() {
+	// Screen has 2x x-zoom, 3x y-zoom.
+	Coord2d w = PlobSnap.jacobianInvert(2, 0, 0, 3, 10, 9);
+	assertNotNull(w);
+	assertEquals(5, w.x, EPS);
+	assertEquals(3, w.y, EPS);
+    }
+
+    @Test
+    void jacobianInvert_zeroDisplacementIsZero() {
+	Coord2d w = PlobSnap.jacobianInvert(2, 1, -1, 2, 0, 0);
+	assertNotNull(w);
+	assertEquals(0, w.x, EPS);
+	assertEquals(0, w.y, EPS);
+    }
+
+    // --- integration: abut + Jacobian round-trip ------------------------
+
+    @Test
+    void roundTrip_identityProjectionPlacerEndsUpOnTargetLeftSide() {
+	// Identity Jacobian (pretend screen == world).
+	// Placer overlaps target; pressing LEFT must put placer.right on target.left.
+	double[] placer = {  0, -1, 10, 1 };
+	double[] target = {  5, -1, 15, 1 };
+
+	double[] screenDelta = PlobSnap.abutAgainst(placer, target, PlobSnap.Dir.LEFT);
+	Coord2d worldDelta = PlobSnap.jacobianInvert(1, 0, 0, 1, screenDelta[0], screenDelta[1]);
+
+	double newRight = placer[2] + worldDelta.x;
+	assertEquals(target[0], newRight, LOOSE);       // placer.right = target.left
+	assertTrue(worldDelta.x < 0, "LEFT must move placer left");
+	assertEquals(0, worldDelta.y, EPS);
     }
 }
