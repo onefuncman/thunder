@@ -33,6 +33,7 @@ public class CFG<T> {
     public static final CFG<Boolean> DISPLAY_GOB_PATHS = new CFG<>("display.gob_paths.show", true);
     public static final CFG<Set<PathCategory>> DISPLAY_GOB_PATHS_FOR = new CFG<>("display.gob_paths.categories", PathVisualizer.DEF_CATEGORIES, new TypeToken<Set<PathCategory>>(){});
     public static final CFG<Boolean> QUEUE_PATHS = new CFG<>("general.queue_path", true);
+    public static final CFG<Map<String, Integer>> SFX_VOLUMES = new CFG<>("audio.sfx_volumes", new HashMap<>(), new TypeToken<Map<String, Integer>>(){});
     // Default: everything except the gates that commonly sit in defensive perimeters
     // (palisade, brickwall), where a misclick opening the gate is costly.
     public static final CFG<Set<auto.NearestInteract.Kind>> INTERACT_NEAREST_FOR = new CFG<>("general.interact_nearest.kinds", new HashSet<>(EnumSet.complementOf(EnumSet.of(auto.NearestInteract.Kind.GATE_PALISADE, auto.NearestInteract.Kind.GATE_BRICK))), new TypeToken<Set<auto.NearestInteract.Kind>>(){});

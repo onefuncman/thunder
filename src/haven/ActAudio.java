@@ -292,12 +292,15 @@ public class ActAudio extends State {
 	    }
 
 	    private double curvol() {
+		/* Read per cycle rather than baked into bvol, so a slider
+		 * change is heard on an ambient loop already playing. */
+		double gvol = SfxVol.mult(res);
 		double acc = 0;
 		for(RenderList.Slot<Ambience> slot : active) {
 		    Coord3f pos = spos(slot.state());
 		    double bvol = slot.obj().bvol;
 		    double svol = Math.min(1.0, 50.0 / Math.hypot(pos.x, pos.y));
-		    acc += svol * bvol;
+		    acc += svol * bvol * gvol;
 		}
 		return(acc);
 	    }

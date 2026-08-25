@@ -519,6 +519,18 @@ public class OptWnd extends WindowX {
 			me.ender.LegacyAudioPlayer.setVolume(v);
 		    }
 		}, prev.pos("bl").adds(0, 2));
+	    {
+		int scol = UI.scale(240);
+		Widget sprev = add(new Label("Sound source volumes"), scol, 0);
+		for(SfxVol.Group g : SfxVol.Group.values()) {
+		    sprev = add(new Label(g.label), sprev.pos("bl").adds(0, 5));
+		    sprev = add(new HSlider(UI.scale(200), 0, 100, SfxVol.percent(g)) {
+			    public void changed() {
+				SfxVol.set(g, val);
+			    }
+			}, sprev.pos("bl").adds(0, 2));
+		}
+	    }
 	    add(new PButton(UI.scale(200), "Back", 27, back), prev.pos("bl").adds(0, 30));
 	    pack();
 	}

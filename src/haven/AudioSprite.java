@@ -68,7 +68,7 @@ public class AudioSprite {
 
 	public ClipSprite(Owner owner, Resource res, Audio.Clip clip) {
 	    super(owner, res);
-	    this.clip = new ActAudio.PosClip(new Audio.Monitor(clip.stream()) {
+	    this.clip = new ActAudio.PosClip(new Audio.Monitor(SfxVol.adjust(res, clip.stream())) {
 		    protected void eof() {
 			super.eof();
 			done = true;
@@ -126,7 +126,7 @@ public class AudioSprite {
 			return(clips.get((int)(Math.random() * clips.size())).stream());
 		    }
 		};
-	    this.clip = new ActAudio.PosClip(rep);
+	    this.clip = new ActAudio.PosClip(SfxVol.adjust(res, rep));
 	}
 
 	private void parts(RenderTree.Slot slot) {
@@ -149,7 +149,7 @@ public class AudioSprite {
 
 	public void delete() {
 	    if(end != null) {
-		clip = new ActAudio.PosClip(new Audio.Monitor(end.stream()) {
+		clip = new ActAudio.PosClip(new Audio.Monitor(SfxVol.adjust(res, end.stream())) {
 			protected void eof() {
 			    super.eof();
 			    RepeatSprite.this.clip = null;
