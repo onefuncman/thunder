@@ -40,6 +40,7 @@ public enum Action {
     BOT_PICK_ALL_HERBS(Actions::pickup, "Auto-pick stuff", "Will automatically pickup all herbs/mussels/clay/frogs/grasshoppers etc. in radius that can be changed in Options->General."),
     BOT_MOUNT_HORSE(Actions::mountClosestHorse, "Mount nearest domestic horse", "Whistle at a closest domestic horse and mount it once it is close enough. If it is very close - mount without whistling."),
     BOT_OPEN_GATE(Actions::interactNearest, "Interact with closest ...", "Right-clicks the closest enabled object in 3 tile radius: fence gates, doorways, cellar doors, mineholes/ladders, milestones. Configure the list in Options->General."),
+    TOGGLE_ANIMAL_WARNINGS(GobWarning::toggleAnimalWarnings, "Toggle animal warnings", "Turns \"Highlight animals\" and \"Warn about animals\" off and on together."),
     TOGGLE_PEACE(GameUI::togglePeace, "Toggle Peace", "Toggle peace for current target"),
     AGGRO_ONE_PVE(Actions::aggroOnePVE, "Aggro closest non-player to cursor", "Will try to aggro (or switch target to) one non-player target closest to cursor"),
     AGGRO_ONE_PVP(Actions::aggroOnePVP, "Aggro closest player to cursor", "Will try to aggro (or switch target to) one player closest to cursor"),

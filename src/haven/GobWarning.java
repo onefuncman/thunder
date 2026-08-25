@@ -15,10 +15,16 @@ public class GobWarning extends GAttrib implements RenderTree.Node {
     private final WarnTarget tgt;
     
     public GobWarning(Gob gob) {
+	this(gob, true);
+    }
+
+    /* announce=false rebuilds the attrib to pick up changed warn settings
+     * without re-firing the "spotted!" message for a gob already on screen. */
+    GobWarning(Gob gob, boolean announce) {
 	super(gob);
 	tgt = categorize(gob);
 	if(tgt != null) {
-	    if(WarnCFG.get(tgt, message)) {
+	    if(announce && WarnCFG.get(tgt, message)) {
 		String label = (tgt == player && isSkeleton(gob)) ? "Skeleton" : tgt.message;
 		gob.glob.sess.ui.message(String.format("%s spotted!", label), tgt.mcol, UI.ErrorMessage.sfx);
 	    }
@@ -36,6 +42,26 @@ public class GobWarning extends GAttrib implements RenderTree.Node {
     
     public static boolean needsWarning(Gob gob) {
 	return categorize(gob) != null;
+    }
+
+    /* One-key toggle for both animal warn methods: if either is on, turn both
+     * off, otherwise both on. Refreshes gobs already on screen so highlight
+     * circles appear/disappear immediately. */
+    public static void toggleAnimalWarnings(GameUI gui) {
+	boolean on = !(WarnCFG.get(animal, highlight) || WarnCFG.get(animal, message));
+	WarnCFG.set(animal, highlight, on);
+	WarnCFG.set(animal, message, on);
+	OCache oc = gui.ui.sess.glob.oc;
+	List<Gob> gobs = new java.util.ArrayList<>();
+	synchronized(oc) {
+	    for(Gob gob : oc) {gobs.add(gob);}
+	}
+	for(Gob gob : gobs) {
+	    try {
+		gob.refreshWarning();
+	    } catch(Loading ignored) {}
+	}
+	gui.ui.message(String.format("Animal highlight & warnings turned %s", on ? "ON" : "OFF"), GameUI.MsgType.INFO);
     }
     
     private static WarnTarget categorize(Gob gob) {

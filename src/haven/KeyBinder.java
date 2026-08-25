@@ -102,6 +102,7 @@ public class KeyBinder {
 	add(KeyEvent.VK_Z, CTRL,  TOGGLE_TILE_CENTERING);
 	add(KeyEvent.VK_T, ALT,  TOGGLE_FLAT_TERRAIN);
 	
+	add(TOGGLE_ANIMAL_WARNINGS);
 	add(TOGGLE_PEACE);
 	add(AGGRO_ONE_PVE);
 	add(AGGRO_ONE_PVP);

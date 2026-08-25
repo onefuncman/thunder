@@ -1552,6 +1552,15 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 	    setattr(warning);
 	}
     }
+
+    /* Re-create the warning attrib so it picks up changed warn settings;
+     * quiet -- does not re-fire the "spotted!" message. */
+    public void refreshWarning() {
+	if(warning != null) {
+	    warning = new GobWarning(this, false);
+	    setattr(warning);
+	}
+    }
     
     public boolean is(GobTag tag) {
 	synchronized (tags) {
