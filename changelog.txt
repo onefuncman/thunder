@@ -1,3 +1,6 @@
+$size[14]{$u{update on 25.08.2026:}
+* The high-performance GPU fix from the last update now covers the Steam version too: on Windows the Steam launcher registers the client for the fast GPU (the per-app profile in Settings -> System -> Display -> Graphics). As before, a choice you made yourself in the Settings UI is never overridden.
+`
 $size[14]{$u{update on 24.08.2026:}
 * Volume sliders for specific sound sources in Options -> Audio settings: cauldrons, querns, grinders, sawmills, noisy hats (grammophone, duck, bells), clapping, butchering, mining, creaks and knarrs. Cauldrons and querns start at 50%; a slider change is heard immediately, even on a cauldron already boiling.
 * New bindable shortcut "Toggle animal warnings" (Options -> Shortcuts -> General, unbound by default): flips "Highlight animals" and "Warn about animals" together, and highlight circles on animals already on screen appear or disappear immediately.
