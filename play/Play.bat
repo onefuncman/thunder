@@ -1,3 +1,4 @@
+@echo off
 @rem Register the PATH java.exe for the high-performance GPU (the per-app
 @rem profile from Settings ^> System ^> Display ^> Graphics). Only written
 @rem when no entry exists yet, so a choice made in the Settings UI is never
