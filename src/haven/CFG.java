@@ -374,14 +374,18 @@ public class CFG<T> {
 	return value;
     }
 
-    @SuppressWarnings("unchecked")
     public static synchronized <E> void set(CFG<E> name, E value) {
 	cache.put(name.path, value);
 	if(name.path == null) {return;}
 	String[] parts = name.path.split("\\.");
-	int i;
-	Object cur = cfg;
-	for (i = 0; i < parts.length - 1; i++) {
+	putpath(cfg, parts, value);
+	store(parts, value);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void putpath(Map<Object, Object> root, String[] parts, Object value) {
+	Object cur = root;
+	for (int i = 0; i < parts.length - 1; i++) {
 	    String part = parts[i];
 	    if(cur instanceof Map) {
 		Map<Object, Object> map = (Map<Object, Object>) cur;
@@ -397,11 +401,26 @@ public class CFG<T> {
 	    Map<Object, Object> map = (Map<Object, Object>) cur;
 	    map.put(parts[parts.length - 1], value);
 	}
-	store();
     }
 
-    private static synchronized void store() {
-	Config.saveFile(CONFIG_JSON, gson.toJson(cfg));
+    /* Merge the one changed path into a fresh read of the file instead of
+     * writing this process's whole startup snapshot. With two clients open,
+     * the snapshot write meant whichever client saved anything last erased
+     * every setting the other had stored since it launched -- a toggle
+     * changed in one client silently reverted on the next restart. */
+    private static synchronized void store(String[] parts, Object value) {
+	Map<Object, Object> disk = null;
+	try {
+	    Type type = new TypeToken<Map<Object, Object>>() {}.getType();
+	    disk = gson.fromJson(Config.loadFile(CONFIG_JSON), type);
+	} catch (Exception ignored) {
+	}
+	if(disk == null) {
+	    Config.saveFile(CONFIG_JSON, gson.toJson(cfg));
+	    return;
+	}
+	putpath(disk, parts, value);
+	Config.saveFile(CONFIG_JSON, gson.toJson(disk));
     }
 
     @SuppressWarnings("rawtypes")
