@@ -11,20 +11,21 @@ import java.util.Map;
  * audio pipeline. The pipeline hooks are AudioSprite (one-shot "cl" clips and
  * "rep" loops, applied when the sound starts) and ActAudio.Ambience.Glob
  * ("amb" loops, re-read continuously so the slider works on a sound that is
- * already playing). Res names taken from Hurricane's matchers.
+ * already playing). Res names verified against the live resource listing at
+ * https://brodgar.io/res (Hurricane's matchers, the original inspiration,
+ * include res paths that do not exist).
  */
 public class SfxVol {
     public enum Group {
 	CAULDRON("Cauldrons", "sfx/terobjs/cauldron"),
 	QUERN("Querns", "sfx/terobjs/quern"),
-	GRINDER("Grinders & squeaks", "sfx/terobjs/grinder", "sfx/squeak"),
+	GRINDER("Grinders", "sfx/terobjs/grinder"),
 	SAWMILL("Sawmills", "sfx/terobjs/sawmill"),
 	HATS("Noisy hats", "sfx/items/hats/", "sfx/items/bells"),
 	CLAP("Clapping", "sfx/borka/clap"),
 	BUTCHER("Butchering", "sfx/borka/butcher"),
-	MINING("Mining & chipping", "sfx/items/pickaxe", "sfx/mineout", "sfx/chip"),
-	SWOOSH("Weapon swooshes", "sfx/swoosh"),
-	CREAK("Structure creaks", "sfx/creak"),
+	MINING("Mining", "sfx/items/pickaxe", "sfx/mineout"),
+	CREAK("Creaks", "sfx/creakrubbery", "sfx/ropecreak"),
 	KNARR("Knarrs", "sfx/terobjs/knarr");
 
 	public final String label;

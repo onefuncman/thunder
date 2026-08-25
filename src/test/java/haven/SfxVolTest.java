@@ -8,9 +8,10 @@ public class SfxVolTest {
     void exactNamesMatchTheirGroup() {
 	assertEquals(SfxVol.Group.CAULDRON, SfxVol.group("sfx/terobjs/cauldron"));
 	assertEquals(SfxVol.Group.QUERN, SfxVol.group("sfx/terobjs/quern"));
-	assertEquals(SfxVol.Group.GRINDER, SfxVol.group("sfx/squeak"));
+	assertEquals(SfxVol.Group.GRINDER, SfxVol.group("sfx/terobjs/grinder"));
 	assertEquals(SfxVol.Group.SAWMILL, SfxVol.group("sfx/terobjs/sawmill"));
 	assertEquals(SfxVol.Group.MINING, SfxVol.group("sfx/mineout"));
+	assertEquals(SfxVol.Group.CREAK, SfxVol.group("sfx/ropecreak"));
     }
 
     @Test
