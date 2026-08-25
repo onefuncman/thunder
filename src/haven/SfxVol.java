@@ -17,8 +17,8 @@ import java.util.Map;
  */
 public class SfxVol {
     public enum Group {
-	CAULDRON("Cauldrons", "sfx/terobjs/cauldron"),
-	QUERN("Querns", "sfx/terobjs/quern"),
+	CAULDRON("Cauldrons", 50, "sfx/terobjs/cauldron"),
+	QUERN("Querns", 50, "sfx/terobjs/quern"),
 	GRINDER("Grinders", "sfx/terobjs/grinder"),
 	SAWMILL("Sawmills", "sfx/terobjs/sawmill"),
 	HATS("Noisy hats", "sfx/items/hats/", "sfx/items/bells"),
@@ -29,11 +29,18 @@ public class SfxVol {
 	KNARR("Knarrs", "sfx/terobjs/knarr");
 
 	public final String label;
+	/* Slider position when the user has never touched it. */
+	public final int defval;
 	/* Exact res name, or a prefix when it ends with '/'. */
 	private final String[] names;
 
 	Group(String label, String... names) {
+	    this(label, 100, names);
+	}
+
+	Group(String label, int defval, String... names) {
 	    this.label = label;
+	    this.defval = defval;
 	    this.names = names;
 	}
 
@@ -58,7 +65,7 @@ public class SfxVol {
 
     public static int percent(Group g) {
 	Integer v = CFG.SFX_VOLUMES.get().get(g.name());
-	return (v == null) ? 100 : Math.max(0, Math.min(100, v));
+	return (v == null) ? g.defval : Math.max(0, Math.min(100, v));
     }
 
     public static void set(Group g, int percent) {
