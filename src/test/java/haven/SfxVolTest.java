@@ -9,6 +9,7 @@ public class SfxVolTest {
 	assertEquals(SfxVol.Group.CAULDRON, SfxVol.group("sfx/terobjs/cauldron"));
 	assertEquals(SfxVol.Group.QUERN, SfxVol.group("sfx/terobjs/quern"));
 	assertEquals(SfxVol.Group.GRINDER, SfxVol.group("sfx/squeak"));
+	assertEquals(SfxVol.Group.SAWMILL, SfxVol.group("sfx/terobjs/sawmill"));
 	assertEquals(SfxVol.Group.MINING, SfxVol.group("sfx/mineout"));
     }
 

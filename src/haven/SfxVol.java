@@ -18,6 +18,7 @@ public class SfxVol {
 	CAULDRON("Cauldrons", "sfx/terobjs/cauldron"),
 	QUERN("Querns", "sfx/terobjs/quern"),
 	GRINDER("Grinders & squeaks", "sfx/terobjs/grinder", "sfx/squeak"),
+	SAWMILL("Sawmills", "sfx/terobjs/sawmill"),
 	HATS("Noisy hats", "sfx/items/hats/", "sfx/items/bells"),
 	CLAP("Clapping", "sfx/borka/clap"),
 	BUTCHER("Butchering", "sfx/borka/butcher"),
