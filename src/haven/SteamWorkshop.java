@@ -112,7 +112,7 @@ public class SteamWorkshop {
 	} else if((prop = props.getProperty("description")) != null) {
 	    update.description(prop);
 	} else {
-	    err("upload: %s: lacks description or description-file property\n", pfile);
+	    System.err.println("upload: note: no description or description-file property; keeping current workshop description");
 	}
 	if((prop = props.getProperty("preview-image")) == null)
 	    err("upload: %s: lacks preview-image property\n", pfile);
