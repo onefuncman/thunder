@@ -1,3 +1,10 @@
+$size[14]{$u{update on 24.08.2026:}
+* Volume sliders for specific sound sources in Options -> Audio settings: cauldrons, querns, grinders, sawmills, noisy hats (grammophone, duck, bells), clapping, butchering, mining, creaks and knarrs. Cauldrons and querns start at 50%; a slider change is heard immediately, even on a cauldron already boiling.
+* New bindable shortcut "Toggle animal warnings" (Options -> Shortcuts -> General, unbound by default): flips "Highlight animals" and "Warn about animals" together, and highlight circles on animals already on screen appear or disappear immediately.
+* "Interact with closest ..." no longer targets palisade and brickwall gates by default, so a stray keypress cannot swing open your perimeter. Re-enable them in Options -> General if you want them; settings you have already changed are untouched.
+* The target-arrow marker no longer shrinks to a speck at full zoom-in.
+* On Windows, the launcher now asks the system for the high-performance GPU (the per-app profile from Settings -> System -> Display -> Graphics). Mainly helps laptops with both an integrated and a dedicated GPU, which otherwise ran the client on the slow one. A choice you made yourself in the Settings UI is never overridden.
+`
 $size[14]{$u{update on 23.08.2026:}
 * Gob search (ctrl+F) matches are now marked with the target arrow (same as ctrl+alt-click sharing) and a pulsing green glow instead of the solid purple tint.
 * "Toggle closest gate" is now "Interact with closest ...": besides fence gates it can right-click the nearest doorway, cellar door (indoor cellar stairs too), minehole/ladder or milestone. Pick which kinds it targets in Options -> General -> "Interact with closest ...". Existing keybinds carry over.
