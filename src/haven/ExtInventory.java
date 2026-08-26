@@ -766,6 +766,14 @@ public class ExtInventory extends Widget {
     }
     
     private Object[] getTransferTargets() {
+	/* Only target other containers when transferring out of the main
+	 * inventory; from a container, fall through to the default server
+	 * transfer so shift-click moves the item to your inventory, not to
+	 * another open cupboard. (Reverts kami's bb52d458c source-side
+	 * change while keeping its topmost/visible target sorting.) */
+	if(inv != ui.gui.maininv) {
+	    return null;
+	}
 	// KamiClient: topmost window first, skip anything hidden, and never target ourselves.
 	List<Widget> widgets = ui.gui.children();
 	List<Widget> inventories = ui.EXT_INVENTORIES.stream()
