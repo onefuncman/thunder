@@ -62,7 +62,7 @@ public class HSlider extends Widget {
 	g.image(sflarp, new Coord(fx, 0));
     }
     
-    private void update(Coord c) {
+    protected void update(Coord c) {
 	double a = (double)(c.x - (sflarp.sz().x / 2)) / (double)(sz.x - sflarp.sz().x);
 	if(a < 0)
 	    a = 0;

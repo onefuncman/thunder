@@ -247,10 +247,11 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 		float nx = cc.x + ((float)Math.cos(a) * fr), ny = cc.y + ((float)Math.sin(a) * fr);
 		Coord3f tgtc = new Coord3f(nx, ny, cc.z);
 		/* The built-in glide answers to the same "Smooth camera" option
-		 * as the jitter filter, so unchecking it leaves no camera
-		 * trailing after the character has stopped. */
+		 * and catch-up slider as the jitter filter, so one setting
+		 * governs all trailing after the character has stopped. */
 		if(CFG.CAMERA_SMOOTH_JITTER.get()) {
-		    curc = curc.add(tgtc.sub(curc).mul((float)(1.0 - Math.pow(500, -dt))));
+		    float rate = 4000f / Utils.clip(CFG.CAMERA_CATCHUP_MS.get(), 50, 2000);
+		    curc = curc.add(tgtc.sub(curc).mul((float)(1.0 - Math.exp(-rate * dt))));
 		    if(curc.dist(tgtc) < 0.01)
 			curc = tgtc;
 		} else {
@@ -1408,10 +1409,9 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
     private final CamJitterFilter camfilter = new CamJitterFilter();
 
     private static class CamJitterFilter {
-	// Critically-damped spring. OMEGA controls how fast the camera reaches
-	// the target — roughly 4/OMEGA seconds to settle from rest. OMEGA=6
-	// gives ~0.65s settle on big jumps with smooth ease-in-out.
-	private static final float OMEGA = 6f;
+	// Critically-damped spring. omega controls how fast the camera reaches
+	// the target — roughly 4/omega seconds to settle from rest; it is
+	// derived from the catch-up slider so settle time ≈ CAMERA_CATCHUP_MS.
 	private double lastTime = Double.NaN;
 	private Coord3f filtered;
 	private float vx, vy;
@@ -1447,10 +1447,11 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	    // Critically-damped spring integration (semi-implicit). Produces
 	    // ease-in-out: accelerates from rest, decelerates into the target,
 	    // no overshoot, no exponential tail.
+	    float omega = 4000f / Utils.clip(CFG.CAMERA_CATCHUP_MS.get(), 50, 2000);
 	    float dx = filtered.x - raw.x;
 	    float dy = filtered.y - raw.y;
-	    float ax = -2f * OMEGA * vx - OMEGA * OMEGA * dx;
-	    float ay = -2f * OMEGA * vy - OMEGA * OMEGA * dy;
+	    float ax = -2f * omega * vx - omega * omega * dx;
+	    float ay = -2f * omega * vy - omega * omega * dy;
 	    vx += ax * dt;
 	    vy += ay * dt;
 	    float fx = filtered.x + vx * dt;

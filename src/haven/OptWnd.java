@@ -1019,6 +1019,18 @@ public class OptWnd extends WindowX {
 	    }
 	}, x, y);
 
+	String catchupTip = "How long the camera takes to settle on the character after movement stops, in milliseconds. Lower is snappier."
+	    + "\nNotches: " + CFG.CAMERA_CATCHUP_HURRICANE + " ms matches Hurricane's free camera, " + CFG.CAMERA_CATCHUP_CLASSIC + " ms is the old Thunder behavior.";
+	y += STEP;
+	camera.add(new Label("Catch-up speed (ms)"), x, y).settip(catchupTip, true);
+	y += UI.scale(15);
+	camera.add(new NotchedHSlider(UI.scale(200), 50, 1000, CFG.CAMERA_CATCHUP_MS.get(),
+				      CFG.CAMERA_CATCHUP_HURRICANE, CFG.CAMERA_CATCHUP_CLASSIC) {
+	    public void changed() {
+		CFG.CAMERA_CATCHUP_MS.set(val);
+	    }
+	}, x, y).settip(catchupTip, true);
+
 	y += STEP;
 	camera.add(new Label("Rotation smoothing (ms)"), x, y).settip("Only affects the free camera. The ortho cameras have their own built-in smoothing.");
 	y += UI.scale(15);

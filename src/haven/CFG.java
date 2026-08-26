@@ -220,7 +220,11 @@ public class CFG<T> {
     public static final CFG<Boolean> SHOW_FEP_NUMBERS_ON_FOOD = new CFG<>("ui.show_fep_numbers_on_food", true);
     public static final CFG<Boolean> EXTEND_ZOOM_ON_ORTHO = new CFG<>("cam.extend_zoom_on_ortho", false);
     public static final CFG<Boolean> EXTENDED_ORTHO_VIEW = new CFG<>("cam.extended_ortho_view", false);
+    /* Camera catch-up settle time (ms): 667 matches the original spring
+     * (OMEGA=6), 215 matches the tail decay of Hurricane's free camera. */
+    public static final int CAMERA_CATCHUP_CLASSIC = 667, CAMERA_CATCHUP_HURRICANE = 215;
     public static final CFG<Boolean> CAMERA_SMOOTH_JITTER = new CFG<>("cam.smooth_jitter", true);
+    public static final CFG<Integer> CAMERA_CATCHUP_MS = new CFG<>("cam.catchup_ms", CAMERA_CATCHUP_CLASSIC);
     public static final CFG<Integer> CAMERA_SMOOTH_STRENGTH = new CFG<>("cam.smooth_strength", 30);
     public static final CFG<Integer> CAMERA_ROTATION_SMOOTHING_MS = new CFG<>("cam.rotation_smoothing_ms", 0);
     public static final CFG<Integer> FREE_CAM_SENSITIVITY = new CFG<>("cam.free_rotation_sensitivity", 100);
