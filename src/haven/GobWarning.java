@@ -44,6 +44,10 @@ public class GobWarning extends GAttrib implements RenderTree.Node {
 	return categorize(gob) != null;
     }
 
+    public WarnTarget target() {
+	return tgt;
+    }
+
     /* One-key toggle for both animal warn methods: if either is on, turn both
      * off, otherwise both on. Refreshes gobs already on screen so highlight
      * circles appear/disappear immediately. */
@@ -58,7 +62,7 @@ public class GobWarning extends GAttrib implements RenderTree.Node {
 	}
 	for(Gob gob : gobs) {
 	    try {
-		gob.refreshWarning();
+		gob.refreshWarning(animal);
 	    } catch(Loading ignored) {}
 	}
 	gui.ui.message(String.format("Animal highlight & warnings turned %s", on ? "ON" : "OFF"), GameUI.MsgType.INFO);

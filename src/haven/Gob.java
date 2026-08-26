@@ -1554,11 +1554,23 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
     }
 
     /* Re-create the warning attrib so it picks up changed warn settings;
-     * quiet -- does not re-fire the "spotted!" message. */
-    public void refreshWarning() {
-	if(warning != null) {
-	    warning = new GobWarning(this, false);
-	    setattr(warning);
+     * quiet -- does not re-fire the "spotted!" message. Only touches
+     * warnings for the given target, so e.g. the animal toggle cannot
+     * disturb player circles. */
+    public void refreshWarning(GobWarning.WarnTarget tgt) {
+	if(warning == null || warning.target() != tgt)
+	    return;
+	GobWarning fresh = new GobWarning(this, false);
+	if(fresh.target() == null) {
+	    /* categorize() came up empty (e.g. equipment still loading, or
+	     * the in-combat hide kicked in); drop the attrib instead of
+	     * storing a targetless husk that updateWarnings() would never
+	     * rebuild. */
+	    warning = null;
+	    delattr(GobWarning.class);
+	} else {
+	    warning = fresh;
+	    setattr(fresh);
 	}
     }
     
