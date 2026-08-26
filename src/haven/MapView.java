@@ -1431,7 +1431,6 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	    float dt = (float)(now - lastTime);
 	    if(dt <= 0) return(filtered);
 	    lastTime = now;
-	    if(dt > 0.1f) dt = 0.1f;
 
 	    // Teleport detection: if the player jumped a huge distance (e.g. zoning
 	    // indoors, fast-travel), don't try to spring across it — that overshoots
@@ -1444,18 +1443,23 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 
 	    float leash = Utils.clip(CFG.CAMERA_SMOOTH_STRENGTH.get(), 0, 50);
 
-	    // Critically-damped spring integration (semi-implicit). Produces
+	    // Closed-form critically-damped spring step. Exact for any dt, so
+	    // a huge frame delta (tabbed-out client, lag spike) converges onto
+	    // the target instead of blowing up the way the old semi-implicit
+	    // Euler step did once the slider allowed high omega. Produces
 	    // ease-in-out: accelerates from rest, decelerates into the target,
-	    // no overshoot, no exponential tail.
+	    // no overshoot.
 	    float omega = 4000f / Utils.clip(CFG.CAMERA_CATCHUP_MS.get(), 50, 2000);
+	    float ex = (float)Math.exp(-omega * dt);
 	    float dx = filtered.x - raw.x;
 	    float dy = filtered.y - raw.y;
-	    float ax = -2f * omega * vx - omega * omega * dx;
-	    float ay = -2f * omega * vy - omega * omega * dy;
-	    vx += ax * dt;
-	    vy += ay * dt;
-	    float fx = filtered.x + vx * dt;
-	    float fy = filtered.y + vy * dt;
+	    float cx = vx + omega * dx, cy = vy + omega * dy;
+	    float px = (dx + cx * dt) * ex;
+	    float py = (dy + cy * dt) * ex;
+	    vx = (cx - omega * (dx + cx * dt)) * ex;
+	    vy = (cy - omega * (dy + cy * dt)) * ex;
+	    float fx = raw.x + px;
+	    float fy = raw.y + py;
 
 	    // Clamp offset to leash radius. Pinning at the boundary kills any
 	    // outward velocity component so the camera tracks at player speed.
