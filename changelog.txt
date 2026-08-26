@@ -6,6 +6,9 @@ $size[14]{$u{update on 26.08.2026:}
 * Fixed the camera flying off wildly when tabbing back into the client after being away while moving.
 * Merged the latest upstream client updates from loftar: a keyboard-mapping overhaul (more accurate physical key handling on Windows, Linux and macOS), the new quest data format with pending-condition counts, and window-creation stability improvements.
 * Minesweeper cave dust tracking works again - a server-side resource update had silently disabled it.
+* Shift-click on an item inside a cupboard or other container moves it to your inventory again, instead of hopping to another open container. Shift-click out of your inventory still targets the topmost open container.
+* Ctrl+O now closes the options window when it is open, instead of jumping to the Colors panel. Panel hotkeys (plain letter keys) work as before.
+* Fixed a rare crash when many object-info labels (barrel contents, tree growth and the like) updated at the same moment.
 `
 $size[14]{$u{update on 25.08.2026:}
 * The high-performance GPU fix from the last update now covers the Steam version too: on Windows the Steam launcher registers the client for the fast GPU (the per-app profile in Settings -> System -> Display -> Graphics). As before, a choice you made yourself in the Settings UI is never overridden.
