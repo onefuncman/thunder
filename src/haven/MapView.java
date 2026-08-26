@@ -507,7 +507,8 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	
 	public void drag(Coord c) {
 	    c = inversion(c, dragorig);
-	    angl = anglorig + ((float)(c.x - dragorig.x) / 100.0f);
+	    float sens = CFG.ORTHO_CAM_SENSITIVITY.get() / 100.0f;
+	    angl = anglorig + ((float)(c.x - dragorig.x) * sens / 100.0f);
 	    angl = angl % ((float)Math.PI * 2.0f);
 	}
 	
@@ -595,7 +596,8 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	
 	public void drag(Coord c) {
 	    c = inversion(c, dragorig);
-	    tangl = anglorig + ((float)(c.x - dragorig.x) / 100.0f);
+	    float sens = CFG.ORTHO_CAM_SENSITIVITY.get() / 100.0f;
+	    tangl = anglorig + ((float)(c.x - dragorig.x) * sens / 100.0f);
 	}
 	
 	public void release() {

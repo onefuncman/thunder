@@ -1029,13 +1029,22 @@ public class OptWnd extends WindowX {
 	}, x, y).settip("Only affects the free camera. The ortho cameras have their own built-in smoothing.");
 
 	y += STEP;
-	camera.add(new Label("Rotation sensitivity (%)"), x, y).settip("How fast mouse-drag rotates the free camera. 100% is the standard speed.");
+	camera.add(new Label("Free camera rotation sensitivity (%)"), x, y).settip("How fast mouse-drag rotates the free camera. 100% is the standard speed.");
 	y += UI.scale(15);
 	camera.add(new HSlider(UI.scale(200), 10, 100, CFG.FREE_CAM_SENSITIVITY.get()) {
 	    public void changed() {
 		CFG.FREE_CAM_SENSITIVITY.set(val);
 	    }
 	}, x, y).settip("How fast mouse-drag rotates the free camera. 100% is the standard speed.");
+
+	y += STEP;
+	camera.add(new Label("Ortho camera rotation sensitivity (%)"), x, y).settip("How fast mouse-drag rotates the ortho cameras. 100% is the standard speed.");
+	y += UI.scale(15);
+	camera.add(new HSlider(UI.scale(200), 10, 100, CFG.ORTHO_CAM_SENSITIVITY.get()) {
+	    public void changed() {
+		CFG.ORTHO_CAM_SENSITIVITY.set(val);
+	    }
+	}, x, y).settip("How fast mouse-drag rotates the ortho cameras. 100% is the standard speed.");
 
 	y += BIG_STEP;
 	my = Math.max(my, y);
