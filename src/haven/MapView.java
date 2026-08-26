@@ -440,10 +440,11 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	
 	public void drag(Coord c) {
 	    c = inversion(c, dragorig);
-	    telev = elevorig - ((float)(c.y - dragorig.y) / 100.0f);
+	    float sens = CFG.FREE_CAM_SENSITIVITY.get() / 100.0f;
+	    telev = elevorig - ((float)(c.y - dragorig.y) * sens / 100.0f);
 	    if(telev < 0.0f) telev = 0.0f;
 	    if(telev > (Math.PI / 2.0)) telev = (float)Math.PI / 2.0f;
-	    tangl = anglorig + ((float)(c.x - dragorig.x) / 100.0f);
+	    tangl = anglorig + ((float)(c.x - dragorig.x) * sens / 100.0f);
 	}
 
 	public boolean wheel(MouseWheelEvent ev) {
