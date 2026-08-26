@@ -1544,12 +1544,18 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
     }
 
     private void updateWarnings() {
-	if(!GobWarning.needsWarning(this)) {
+	GobWarning cur = warning;
+	switch(GobWarning.updateAction(GobWarning.categorize(this), (cur == null) ? null : cur.target())) {
+	case DROP:
 	    warning = null;
 	    delattr(GobWarning.class);
-	} else if(warning == null) {
+	    break;
+	case CREATE:
 	    warning = new GobWarning(this);
 	    setattr(warning);
+	    break;
+	case KEEP:
+	    break;
 	}
     }
 
@@ -1558,14 +1564,14 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
      * warnings for the given target, so e.g. the animal toggle cannot
      * disturb player circles. */
     public void refreshWarning(GobWarning.WarnTarget tgt) {
-	if(warning == null || warning.target() != tgt)
+	GobWarning cur = warning;
+	if(!GobWarning.refreshApplies((cur == null) ? null : cur.target(), tgt))
 	    return;
 	GobWarning fresh = new GobWarning(this, false);
 	if(fresh.target() == null) {
 	    /* categorize() came up empty (e.g. equipment still loading, or
 	     * the in-combat hide kicked in); drop the attrib instead of
-	     * storing a targetless husk that updateWarnings() would never
-	     * rebuild. */
+	     * storing a targetless husk. */
 	    warning = null;
 	    delattr(GobWarning.class);
 	} else {

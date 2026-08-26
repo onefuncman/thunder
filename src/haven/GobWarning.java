@@ -40,35 +40,71 @@ public class GobWarning extends GAttrib implements RenderTree.Node {
 	if(radius != null && WarnCFG.get(tgt, highlight)) {slot.add(radius);}
     }
     
-    public static boolean needsWarning(Gob gob) {
-	return categorize(gob) != null;
-    }
-
     public WarnTarget target() {
 	return tgt;
     }
 
-    /* One-key toggle for both animal warn methods: if either is on, turn both
-     * off, otherwise both on. Refreshes gobs already on screen so highlight
-     * circles appear/disappear immediately. */
-    public static void toggleAnimalWarnings(GameUI gui) {
-	boolean on = !(WarnCFG.get(animal, highlight) || WarnCFG.get(animal, message));
-	WarnCFG.set(animal, highlight, on);
-	WarnCFG.set(animal, message, on);
-	OCache oc = gui.ui.sess.glob.oc;
+    /* The warning state machine, kept as pure functions so the unit tests
+     * cover the real decision code rather than a copy of it. */
+
+    /* Whether a refresh request for `requested` applies to a gob whose
+     * current warning has target `current`. A request for one target must
+     * never disturb another's warning (the animal toggle vs player circles
+     * regression). */
+    static boolean refreshApplies(WarnTarget current, WarnTarget requested) {
+	return (current != null) && (current == requested);
+    }
+
+    enum UpdateAction {DROP, CREATE, KEEP}
+
+    /* What updateWarnings should do given the gob's freshly categorized
+     * target and the target of its current warning attrib (null for no
+     * attrib -- or for a targetless husk, which must be rebuilt, never
+     * kept). A changed target also rebuilds so the radius and colors can't
+     * go stale. */
+    static UpdateAction updateAction(WarnTarget fresh, WarnTarget current) {
+	if(fresh == null)
+	    return UpdateAction.DROP;
+	if(current == null || current != fresh)
+	    return UpdateAction.CREATE;
+	return UpdateAction.KEEP;
+    }
+
+    /* One key press turns both warn methods for a target off if either is
+     * on, otherwise both on. */
+    static boolean toggledState(boolean highlightOn, boolean messageOn) {
+	return !(highlightOn || messageOn);
+    }
+
+    /* Rebuild the warning attribs of every gob currently warned for tgt so
+     * changed settings apply immediately, without re-firing messages. */
+    static void refreshAll(UI ui, WarnTarget tgt) {
+	if(ui == null || ui.sess == null)
+	    return;
+	OCache oc = ui.sess.glob.oc;
 	List<Gob> gobs = new java.util.ArrayList<>();
 	synchronized(oc) {
 	    for(Gob gob : oc) {gobs.add(gob);}
 	}
 	for(Gob gob : gobs) {
 	    try {
-		gob.refreshWarning(animal);
+		gob.refreshWarning(tgt);
 	    } catch(Loading ignored) {}
 	}
+    }
+
+    /* One-key toggle for both animal warn methods: if either is on, turn both
+     * off, otherwise both on. Refreshes gobs already on screen so highlight
+     * circles appear/disappear immediately. */
+    public static void toggleAnimalWarnings(GameUI gui) {
+	boolean on = toggledState(WarnCFG.get(animal, highlight), WarnCFG.get(animal, message));
+	WarnCFG.set(animal, highlight, on);
+	WarnCFG.set(animal, message, on);
+	refreshAll(gui.ui, animal);
 	gui.ui.message(String.format("Animal highlight & warnings turned %s", on ? "ON" : "OFF"), GameUI.MsgType.INFO);
     }
     
-    private static WarnTarget categorize(Gob gob) {
+    static WarnTarget categorize(Gob gob) {
 	if(gob.is(GobTag.FOE) && !gob.anyOf(GobTag.DEAD, GobTag.KO)) {
 	    Mannequin m = mannequinCheck(gob);
 	    if(m == Mannequin.YES) {return null;}
@@ -232,6 +268,14 @@ public class GobWarning extends GAttrib implements RenderTree.Node {
 	    instance = null;
 	}
 	
+	/* Store the changed setting and re-apply it to gobs already on
+	 * screen; without the refresh a checkbox change only took effect
+	 * for gobs entering view afterwards. */
+	private void set(WarnTarget tgt, WarnMethod method, boolean val) {
+	    WarnCFG.set(tgt, method, val);
+	    refreshAll(ui, tgt);
+	}
+
 	public WarnCFGWnd() {
 	    super(Coord.z, "Warn settings");
 	    justclose = true;
@@ -240,42 +284,42 @@ public class GobWarning extends GAttrib implements RenderTree.Node {
 	    //TODO: Make this pretty
 	    CheckBox box = add(new CheckBox("Highlight players", false), 0, y);
 	    box.a = WarnCFG.get(player, highlight);
-	    box.changed(val -> WarnCFG.set(player, highlight, val));
+	    box.changed(val -> set(player, highlight, val));
 	    y += 25;
-	    
+
 	    box = add(new CheckBox("Warn about players", false), 0, y);
 	    box.a = WarnCFG.get(player, message);
-	    box.changed(val -> WarnCFG.set(player, message, val));
+	    box.changed(val -> set(player, message, val));
 	    y += 35;
-	    
+
 	    box = add(new CheckBox("Highlight animals", false), 0, y);
 	    box.a = WarnCFG.get(WarnTarget.animal, highlight);
-	    box.changed(val -> WarnCFG.set(animal, highlight, val));
+	    box.changed(val -> set(animal, highlight, val));
 	    y += 25;
-	    
+
 	    box = add(new CheckBox("Warn about animals", false), 0, y);
 	    box.a = WarnCFG.get(WarnTarget.animal, message);
-	    box.changed(val -> WarnCFG.set(animal, message, val));
+	    box.changed(val -> set(animal, message, val));
 	    y += 35;
-	    
+
 	    box = add(new CheckBox("Highlight gems", false), 0, y);
 	    box.a = WarnCFG.get(WarnTarget.gem, highlight);
-	    box.changed(val -> WarnCFG.set(gem, highlight, val));
+	    box.changed(val -> set(gem, highlight, val));
 	    y += 25;
-	    
+
 	    box = add(new CheckBox("Warn about gems", false), 0, y);
 	    box.a = WarnCFG.get(gem, message);
-	    box.changed(val -> WarnCFG.set(gem, message, val));
+	    box.changed(val -> set(gem, message, val));
 	    y += 35;
-	    
+
 	    box = add(new CheckBox("Highlight midges", false), 0, y);
 	    box.a = WarnCFG.get(WarnTarget.midges, highlight);
-	    box.changed(val -> WarnCFG.set(midges, highlight, val));
+	    box.changed(val -> set(midges, highlight, val));
 	    y += 25;
-	    
+
 	    box = add(new CheckBox("Warn about midges", false), 0, y);
 	    box.a = WarnCFG.get(midges, message);
-	    box.changed(val -> WarnCFG.set(midges, message, val));
+	    box.changed(val -> set(midges, message, val));
 	    
 	    pack();
 	    Coord asz = ca().sz();
