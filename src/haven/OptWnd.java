@@ -100,14 +100,17 @@ public class OptWnd extends WindowX {
 	}
 
 	public boolean keydown(KeyDownEvent ev) {
-	    if((this.key != -1) && (ev.c == this.key)) {
+	    /* Plain keypresses only: a modified combo (e.g. ctrl+O, which
+	     * toggles the options window) must reach the global handler
+	     * instead of being eaten as a panel hotkey. */
+	    if((this.key != -1) && (ev.c == this.key) && (ev.mods == 0)) {
 		click();
 		return (true);
 	    }
 	    return (super.keydown(ev));
 	}
     }
-    
+
     private static class AButton extends Button {
 	public final Action act;
 	public final int key;
@@ -123,7 +126,7 @@ public class OptWnd extends WindowX {
 	}
 	
 	public boolean keydown(KeyDownEvent ev) {
-	    if((this.key != -1) && (ev.c == this.key)) {
+	    if((this.key != -1) && (ev.c == this.key) && (ev.mods == 0)) {
 		click();
 		return (true);
 	    }
