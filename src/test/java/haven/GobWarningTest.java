@@ -86,6 +86,60 @@ public class GobWarningTest {
 	assertEquals(KEEP, GobWarning.updateAction(gem, gem));
     }
 
+    /* diagnose: the dev.warn per-gob diagnosis over captured state. */
+
+    private static org.json.JSONObject entry(String[] tags, String isMe, String mannequin, String categorize, String attrib) {
+	org.json.JSONObject j = new org.json.JSONObject();
+	j.put("tags", new org.json.JSONArray(java.util.Arrays.asList(tags)));
+	j.put("isMe", isMe);
+	j.put("mannequin", mannequin);
+	j.put("categorize", categorize);
+	j.put("warning_attrib", attrib);
+	return j;
+    }
+
+    @Test
+    void diagnoseHealthyFoePlayer() {
+	assertEquals("OK: warned as player",
+		     GobWarningDebug.diagnose(entry(new String[]{"PLAYER", "FOE"}, "false", "NO", "player", "player")));
+    }
+
+    @Test
+    void diagnoseFlagsUnresolvedIsMe() {
+	assertTrue(GobWarningDebug.diagnose(entry(new String[]{"PLAYER"}, "unresolved", "NO", "null", "absent"))
+		   .startsWith("BLOCKED: isMe unresolved"));
+    }
+
+    @Test
+    void diagnoseFlagsMissingFoeFriendTag() {
+	assertTrue(GobWarningDebug.diagnose(entry(new String[]{"PLAYER"}, "false", "NO", "null", "absent"))
+		   .startsWith("BLOCKED: player has neither"));
+    }
+
+    @Test
+    void diagnoseFlagsPendingEquipment() {
+	assertTrue(GobWarningDebug.diagnose(entry(new String[]{"PLAYER", "FOE"}, "false", "PENDING", "null", "absent"))
+		   .startsWith("WAITING: equipment still loading"));
+    }
+
+    @Test
+    void diagnoseFlagsMissingAttribAsBug() {
+	assertTrue(GobWarningDebug.diagnose(entry(new String[]{"PLAYER", "FOE"}, "false", "NO", "player", "absent"))
+		   .startsWith("BUG: categorized player but no warning attrib"));
+    }
+
+    @Test
+    void diagnoseFlagsHuskAsBug() {
+	assertTrue(GobWarningDebug.diagnose(entry(new String[]{"PLAYER", "FOE"}, "false", "NO", "player", "null"))
+		   .startsWith("BUG: husk"));
+    }
+
+    @Test
+    void diagnoseFriendIsByDesign() {
+	assertTrue(GobWarningDebug.diagnose(entry(new String[]{"PLAYER", "FRIEND"}, "false", "NO", "null", "absent"))
+		   .contains("not a foe by design"));
+    }
+
     /* toggledState: both on, both off semantics of the one-key toggle. */
 
     @Test

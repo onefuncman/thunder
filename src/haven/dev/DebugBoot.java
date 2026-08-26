@@ -19,6 +19,7 @@ public final class DebugBoot {
 	done = true;
 	touch("thunder.MilkingAssistDebug");
 	touch("thunder.TileQualityDebug");
+	touch("haven.GobWarningDebug");
     }
 
     private static void touch(String fqcn) {

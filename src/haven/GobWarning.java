@@ -44,6 +44,15 @@ public class GobWarning extends GAttrib implements RenderTree.Node {
 	return tgt;
     }
 
+    /* Debug hooks for GobWarningDebug (dev.warn.*). */
+    static String mannequinState(Gob gob) {
+	return mannequinCheck(gob).name();
+    }
+
+    static boolean cfg(WarnTarget target, WarnMethod method) {
+	return WarnCFG.get(target, method);
+    }
+
     /* The warning state machine, kept as pure functions so the unit tests
      * cover the real decision code rather than a copy of it. */
 

@@ -1544,6 +1544,7 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
     }
 
     private void updateWarnings() {
+	GobWarningDebug.noteGlob(glob);
 	GobWarning cur = warning;
 	switch(GobWarning.updateAction(GobWarning.categorize(this), (cur == null) ? null : cur.target())) {
 	case DROP:
