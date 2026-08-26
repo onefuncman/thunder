@@ -1,3 +1,12 @@
+$size[14]{$u{update on 26.08.2026:}
+* The "Toggle animal warnings" shortcut no longer disturbs player, gem or midge circles - it now touches animal warnings only. A rare case where a gob could permanently lose its warning circle after a toggle is also fixed.
+* Checkbox changes in the Warn settings window (highlight/warn for players, animals, gems, midges) now apply immediately to everything on screen, instead of only to things entering view afterwards.
+* Camera rotation sensitivity sliders in Options -> Camera: separate 10-100% sliders for the free camera and the ortho cameras, scaling how fast mouse-drag rotates. 100% is the standard speed.
+* New "Catch-up speed (ms)" slider in Options -> Camera: how long the camera takes to settle on your character after movement stops. Notches on the track mark two reference feels - 215 ms (snappy, matches Hurricane's free camera) and 667 ms (the old behavior, still the default). Unchecking "Smooth camera" remains the full off-switch, and now also stops the follow camera's built-in glide.
+* Fixed the camera flying off wildly when tabbing back into the client after being away while moving.
+* Merged the latest upstream client updates from loftar: a keyboard-mapping overhaul (more accurate physical key handling on Windows, Linux and macOS), the new quest data format with pending-condition counts, and window-creation stability improvements.
+* Minesweeper cave dust tracking works again - a server-side resource update had silently disabled it.
+`
 $size[14]{$u{update on 25.08.2026:}
 * The high-performance GPU fix from the last update now covers the Steam version too: on Windows the Steam launcher registers the client for the fast GPU (the per-app profile in Settings -> System -> Display -> Graphics). As before, a choice you made yourself in the Settings UI is never overridden.
 `
