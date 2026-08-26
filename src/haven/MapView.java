@@ -246,9 +246,16 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 		float a = cc.xyangle(curc);
 		float nx = cc.x + ((float)Math.cos(a) * fr), ny = cc.y + ((float)Math.sin(a) * fr);
 		Coord3f tgtc = new Coord3f(nx, ny, cc.z);
-		curc = curc.add(tgtc.sub(curc).mul((float)(1.0 - Math.pow(500, -dt))));
-		if(curc.dist(tgtc) < 0.01)
+		/* The built-in glide answers to the same "Smooth camera" option
+		 * as the jitter filter, so unchecking it leaves no camera
+		 * trailing after the character has stopped. */
+		if(CFG.CAMERA_SMOOTH_JITTER.get()) {
+		    curc = curc.add(tgtc.sub(curc).mul((float)(1.0 - Math.pow(500, -dt))));
+		    if(curc.dist(tgtc) < 0.01)
+			curc = tgtc;
+		} else {
 		    curc = tgtc;
+		}
 		tangl = curc.xyangle(cambase);
 	    }
 	    
