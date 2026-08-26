@@ -25,7 +25,9 @@ public class GeneralGobInfo extends GobInfo {
     private static final Color Q_COL = new Color(235, 252, 255, 255);
     private static final Color BARREL_COL = new Color(252, 235, 255, 255);
     private static final Color BG = new Color(0, 0, 0, 84);
-    private static final Map<Pair<Color, String>, Text.Line> TEXT_CACHE = new HashMap<>();
+    /* Hit from OCache.ctick's parallel stream, so it must be concurrent:
+     * a plain HashMap raced between containsKey and get, returning null. */
+    private static final Map<Pair<Color, String>, Text.Line> TEXT_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
     public static final int MARGIN = UI.scale(3);
     public static final int PAD = 0;
     private static final Pattern GOB_Q = Pattern.compile("Quality: (\\d+)");
@@ -447,14 +449,8 @@ public class GeneralGobInfo extends GobInfo {
     }
     
     private static Text.Line text(String text, Color col) {
-	Pair<Color, String> key = new Pair<>(col, text);
-	if(TEXT_CACHE.containsKey(key)) {
-	    return TEXT_CACHE.get(key);
-	} else {
-	    Text.Line line = Text.std.renderstroked(text, col, Color.black);
-	    TEXT_CACHE.put(key, line);
-	    return line;
-	}
+	return TEXT_CACHE.computeIfAbsent(new Pair<>(col, text),
+					  key -> Text.std.renderstroked(text, col, Color.black));
     }
     
     private static Tex combine(BufferedImage... parts) {
