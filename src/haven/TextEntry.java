@@ -112,28 +112,48 @@ public class TextEntry extends Widget implements ReadLine.Owner {
     }
 
     public void draw(GOut g) {
+	boolean clean = CFG.THEME.get().usesFloatingHud();
 	Text.Line tcache = this.tcache;
 	if(tcache == null)
-	    this.tcache = tcache = fnd.render(dtext(), (dshow && dirty) ? dirtycol : defcol);
+	    this.tcache = tcache = fnd.render(dtext(), clean ? new Color(220, 223, 224) :
+		((dshow && dirty) ? dirtycol : defcol));
 	int point = buf.point(), mark = buf.mark();
-	g.image(mext, Coord.z, sz);
+	int textoff = clean ? UI.scale(5) : toffx;
+	int margin = clean ? UI.scale(10) : wmarg;
+	if(clean) {
+	    g.chcolor(new Color(10, 12, 13, 220));
+	    g.frect(Coord.z, sz);
+	    g.chcolor();
+	} else {
+	    g.image(mext, Coord.z, sz);
+	}
 	if(mark >= 0) {
 	    int px = tcache.advance(point) - sx, mx = tcache.advance(mark) - sx;
 	    g.chcolor(selcol);
-	    g.frect2(Coord.of(Math.min(px, mx) + toffx, (sz.y - tcache.sz().y) / 2),
-		     Coord.of(Math.max(px, mx) + toffx, (sz.y + tcache.sz().y) / 2));
+	    g.frect2(Coord.of(Math.min(px, mx) + textoff, (sz.y - tcache.sz().y) / 2),
+		     Coord.of(Math.max(px, mx) + textoff, (sz.y + tcache.sz().y) / 2));
 	    g.chcolor();
 	}
-	g.image(tcache.tex(), Coord.of(toffx - sx, (sz.y - tcache.sz().y) / 2));
-	g.image(lcap, Coord.z);
-	g.image(rcap, Coord.of(sz.x - rcap.sz().x, 0));
+	g.image(tcache.tex(), Coord.of(textoff - sx, (sz.y - tcache.sz().y) / 2));
+	if(!clean) {
+	    g.image(lcap, Coord.z);
+	    g.image(rcap, Coord.of(sz.x - rcap.sz().x, 0));
+	}
 	if(hasfocus) {
 	    int cx = tcache.advance(point);
 	    if(cx < sx) {sx = cx;}
-	    if(cx > sx + (sz.x - wmarg)) {sx = cx - (sz.x - wmarg);}
+	    if(cx > sx + (sz.x - margin)) {sx = cx - (sz.x - margin);}
 	    int lx = cx - sx;
-	    if(((Utils.rtime() - Math.max(focusstart, buf.mtime())) % 1.0) < 0.5)
-		g.image(caret, coff.add(toffx + lx, (sz.y - tcache.img.getHeight()) / 2));
+	    if(((Utils.rtime() - Math.max(focusstart, buf.mtime())) % 1.0) < 0.5) {
+		if(clean) {
+		    g.chcolor(new Color(205, 208, 210));
+		    g.frect(Coord.of(textoff + lx, (sz.y - tcache.img.getHeight()) / 2),
+			Coord.of(UI.scale(1), tcache.img.getHeight()));
+		    g.chcolor();
+		} else {
+		    g.image(caret, coff.add(toffx + lx, (sz.y - tcache.img.getHeight()) / 2));
+		}
+	    }
 	}
     }
 

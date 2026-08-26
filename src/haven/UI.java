@@ -52,7 +52,7 @@ import haven.render.Render;
 public class UI {
     public static int MOD_SHIFT = KeyMatch.S, MOD_CTRL = KeyMatch.C, MOD_META = KeyMatch.M, MOD_SUPER = KeyMatch.SUPER;
     public static int MOD_CTRL_ALT = MOD_CTRL | MOD_META;
-    enum KeyMod {
+    public enum KeyMod {
 	SHIFT(MOD_SHIFT), CTRL(MOD_CTRL), ALT(MOD_META);
 
 	public final int mod;

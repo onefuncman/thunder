@@ -555,7 +555,13 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
 	for(int y = 0; y < gsz.y; y++) {
 	    for(int x = 0; x < gsz.x; x++) {
 		Coord p = bgsz.mul(new Coord(x, y));
-		g.image(bg, p);
+		if(CFG.THEME.get().usesFloatingHud()) {
+		    g.chcolor(new Color(20, 23, 24, 150));
+		    g.frect(p, bgsz);
+		    g.chcolor();
+		} else {
+		    g.image(bg, p);
+		}
 		PagButton btn = layout[x][y];
 		if(btn != null) {
 		    GSprite spr;
