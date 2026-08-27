@@ -324,7 +324,7 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	this.chrid = chrid;
 	this.plid = plid;
 	this.genus = genus;
-	this.ardHud = CFG.THEME.get().usesFloatingHud();
+	this.ardHud = CFG.FLOATING_HUD.get();
 	if(ardHud)
 	    beltwdg.hide();
 	if(MappingClient.initialized()) {

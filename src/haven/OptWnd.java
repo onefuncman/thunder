@@ -1486,14 +1486,26 @@ public class OptWnd extends WindowX {
 		Theme previous = CFG.THEME.get();
 		if(!item.equals(previous)) {
 		    CFG.THEME.set(item, true);
-		    if((ui != null) && (ui.gui != null) && (previous.usesFloatingHud() != item.usesFloatingHud()))
-			ui.gui.msg("HUD layout changes apply after re-login.", GameUI.MsgType.INFO);
+		    if((ui != null) && (ui.gui != null))
+			ui.gui.msg("Theme changes apply after re-login.", GameUI.MsgType.INFO);
 		}
 	    }
 	}, tx, y).change(CFG.THEME.get());
     
 	y += STEP;
-	panel.add(new Label("Ard uses floating HUD windows. Theme changes require re-login."), x, y);
+	panel.add(new Label("Theme and floating HUD changes require re-login."), x, y);
+
+	y += STEP;
+	panel.add(new CFGBox("Floating HUD", CFG.FLOATING_HUD,
+		"Chat, minimap, and HUD bars as draggable windows. Works with Pretty, Small, or Ard. Requires re-login.") {
+	    @Override
+	    public void set(boolean a) {
+		boolean prev = cfg.get();
+		super.set(a);
+		if((prev != a) && (ui != null) && (ui.gui != null))
+		    ui.gui.msg("Floating HUD changes apply after re-login.", GameUI.MsgType.INFO);
+	    }
+	}, x, y);
 
 	y += STEP;
 	panel.add(new CFGBox("Always show UI on start", CFG.DISABLE_UI_HIDING), x, y);
@@ -1568,20 +1580,20 @@ public class OptWnd extends WindowX {
 	panel.add(new CFGBox("Show queued path on minimap", CFG.MMAP_SHOW_PATH), x, y);
 	
 	y += STEP;
-	panel.add(new CFGBox("Vanilla chat layout (Pretty/Small only)", CFG.VANILLA_CHAT,
-		"Ard always uses its floating chat window; change themes and re-login to use this option.") {
+	panel.add(new CFGBox("Vanilla chat layout (docked HUD only)", CFG.VANILLA_CHAT,
+		"Only used when Floating HUD is off. Turn Floating HUD off and re-login to use this option.") {
 	    @Override
 	    public boolean mousedown(MouseDownEvent ev) {
-		return CFG.THEME.get().usesFloatingHud() || super.mousedown(ev);
+		return CFG.FLOATING_HUD.get() || super.mousedown(ev);
 	    }
 	}, new Coord(x, y));
 	
 	y += STEP;
-	panel.add(new CFGBox("Always show docked minimap (Pretty/Small only)", CFG.SHOW_MINIMAP_ON_START,
-		"Ard remembers the floating Minimap window visibility instead.") {
+	panel.add(new CFGBox("Always show docked minimap (docked HUD only)", CFG.SHOW_MINIMAP_ON_START,
+		"Only used when Floating HUD is off. The floating Minimap window remembers its own visibility.") {
 	    @Override
 	    public boolean mousedown(MouseDownEvent ev) {
-		return CFG.THEME.get().usesFloatingHud() || super.mousedown(ev);
+		return CFG.FLOATING_HUD.get() || super.mousedown(ev);
 	    }
 	}, new Coord(x, y));
     

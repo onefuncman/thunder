@@ -11,6 +11,7 @@ public enum Theme {
         this.deco = deco;
     }
 
+    /** Ard widget chrome (buttons, window controls). HUD layout is CFG.FLOATING_HUD. */
     public boolean usesFloatingHud() {
 	return this == Ard;
     }
