@@ -51,6 +51,8 @@ import javax.swing.JFileChooser;
 import static java.awt.event.KeyEvent.*;
 
 public abstract class AWTToolkit implements Toolkit {
+    private static final boolean clientframe = Boolean.getBoolean("haven.awt.clientframe");
+
     public static void initawt1() {
 	try {
 	    System.setProperty("sun.java2d.uiScale.enabled", "false");
@@ -452,6 +454,8 @@ public abstract class AWTToolkit implements Toolkit {
 
 	public AWTWindow() {
 	    frame = new java.awt.Frame();
+	    if(clientframe)
+		frame.setUndecorated(true);
 	}
 
 	protected abstract Component panel();
@@ -636,7 +640,7 @@ public abstract class AWTToolkit implements Toolkit {
 		synchronized(this) {
 		    mousemv = this.mousemv;
 		    this.mousemv = null;
-		    batch = new ArrayList<>(events);
+		batch = new ArrayList<>(events);
 		    events.clear();
 		}
 		if(mousemv != null) {
@@ -762,7 +766,7 @@ public abstract class AWTToolkit implements Toolkit {
 		dev.setFullScreenWindow(null);
 		frame.setVisible(false);
 		frame.dispose();
-		frame.setUndecorated(false);
+		frame.setUndecorated(clientframe);
 		frame.setVisible(true);
 		if(sizing != null)
 		    sizing(sizing);
@@ -932,10 +936,15 @@ public abstract class AWTToolkit implements Toolkit {
 
     public Cursor.Caps cursorcaps() {
 	java.awt.Toolkit tk = java.awt.Toolkit.getDefaultToolkit();
-	if(tk.getMaximumCursorColors() < 256)
-	    return(null);
 	java.awt.Dimension cd = tk.getBestCursorSize(512, 512);
-	return(new Cursor.Caps((int)Math.min(cd.getWidth(), cd.getHeight()), 0));
+	int max = (int)Math.min(cd.getWidth(), cd.getHeight());
+	if(max <= 0)
+	    return(null);
+	/* X11 AWT still reports getMaximumCursorColors() == 2 (legacy XOR
+	 * cursors) even when ARGB Xcursor/XWayland pointers work. Refusing
+	 * hardware cursors on that check draws the pointer in the GL
+	 * framebuffer, which is vsync-lagged and feels non-native. */
+	return(new Cursor.Caps(max, 0));
     }
 
     public AWTCursor makecursor(BufferedImage img, Coord hs) {

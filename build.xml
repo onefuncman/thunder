@@ -285,6 +285,11 @@
     <chmod file="bin/hafen.jar" perm="a+x" />
   </target>
 
+  <target name="niri-bin" depends="bin">
+    <copy file="bin/hafen.jar" tofile="bin/hafen-niri.jar" overwrite="true" />
+    <chmod file="bin/hafen-niri.jar" perm="a+x" />
+  </target>
+
   <target name="play" depends="jar, extlib/jogl, extlib/lwjgl-gl, extlib/steamworks, res-jar, resources">
     <mkdir dir="play" />
     <copy todir="play">

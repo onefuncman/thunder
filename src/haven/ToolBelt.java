@@ -17,6 +17,8 @@ public class ToolBelt extends DraggableWidget implements DTarget, DropTarget {
     public static final int[] FKEYS = {KeyEvent.VK_F1, KeyEvent.VK_F2, KeyEvent.VK_F3, KeyEvent.VK_F4,
 	KeyEvent.VK_F5, KeyEvent.VK_F6, KeyEvent.VK_F7, KeyEvent.VK_F8,
 	KeyEvent.VK_F9, KeyEvent.VK_F10, KeyEvent.VK_F11, KeyEvent.VK_F12};
+    public static final int[] NKEYS = {KeyEvent.VK_1, KeyEvent.VK_2, KeyEvent.VK_3, KeyEvent.VK_4,
+	KeyEvent.VK_5, KeyEvent.VK_6, KeyEvent.VK_7, KeyEvent.VK_8, KeyEvent.VK_9, KeyEvent.VK_0};
     private final int[] beltkeys;
     private final int group;
     private final int start;
@@ -143,9 +145,10 @@ public class ToolBelt extends DraggableWidget implements DTarget, DropTarget {
     
     @Override
     public void draw(GOut g) {
+	boolean clean = CFG.THEME.get().usesFloatingHud();
 	if(over) {
 	    if(!locked) {
-		g.chcolor(BG_COLOR);
+		g.chcolor(clean ? new Color(18, 21, 22, 190) : BG_COLOR);
 		g.frect(Coord.z, sz);
 		g.chcolor();
 	    }
@@ -154,7 +157,13 @@ public class ToolBelt extends DraggableWidget implements DTarget, DropTarget {
 	for (int i = 0; i < size; i++) {
 	    Coord c = beltc(i);
 	    int slot = slot(i);
-	    g.image(invsq, c);
+	    if(clean) {
+		g.chcolor(new Color(20, 23, 24, 150));
+		g.frect(c, INVSZ);
+		g.chcolor();
+	    } else {
+		g.image(invsq, c);
+	    }
 	    try {
 		GameUI.BeltSlot item = belt(slot);
 		if(item != null) {
@@ -171,7 +180,8 @@ public class ToolBelt extends DraggableWidget implements DTarget, DropTarget {
     
     @Override
     public boolean globtype(GlobKeyEvent ev) {
-	//do we need to skip if CTRL (and only it) is held, like we do for normal tool belt?
+	if(ev.mods == KeyMatch.C && !Fightsess.beltPassthrough(ui, ev))
+	    return false;
 	if(!visible || beltkeys == null) { return false;}
 	for (int i = 0; i < beltkeys.length; i++) {
 	    if(ev.code == beltkeys[i]) {

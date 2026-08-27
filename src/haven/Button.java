@@ -144,6 +144,20 @@ public class Button extends SIWidget {
 
     public void draw(BufferedImage img) {
 	Graphics g = img.getGraphics();
+	if((cont == null) || (sz.x <= 0) || (sz.y <= 0)) {
+	    g.dispose();
+	    return;
+	}
+	if(CFG.THEME.get().usesFloatingHud()) {
+	    g.setColor(a ? new Color(48, 52, 54, 225) : new Color(27, 30, 32, 210));
+	    g.fillRect(0, 0, sz.x, sz.y);
+	    Coord tc = sz.sub(Utils.imgsz(cont)).div(2);
+	    if(a)
+		tc = tc.add(UI.scale(1), UI.scale(1));
+	    g.drawImage(cont, tc.x, tc.y, null);
+	    g.dispose();
+	    return;
+	}
 	int yo = lg?((hl - hs) / 2):0;
 
 	g.drawImage(a?dt:ut, UI.scale(4), yo + UI.scale(4), sz.x - UI.scale(8), hs - UI.scale(8), null);
