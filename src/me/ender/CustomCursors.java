@@ -15,6 +15,9 @@ public class CustomCursors {
     public static final Resource.Named PICK = new Resource.Named(INSPECT.name, INSPECT.ver) {
 	public Resource get() {return INSPECT.get();}
     };
+    public static final Resource.Named MEASURE = new Resource.Named(INSPECT.name, INSPECT.ver) {
+	public Resource get() {return INSPECT.get();}
+    };
     private static Consumer<Gob> pickCallback;
     private static boolean pickConsumeEmpty;
     private static boolean pickShowTooltip;
@@ -43,6 +46,19 @@ public class CustomCursors {
 	    
 	    ui.gui.mapfile.track(gob);
 	    stopTracking(map);
+	    return true;
+	} else if(isMeasuring(map)) {
+	    if(ui.gui == null)
+		return true;
+	    TileMeasure tm = ui.gui.tileMeasure;
+	    int modflags = ui.modflags();
+	    if(modflags == UI.MOD_SHIFT) {
+		tm.clear();
+	    } else if(modflags == UI.MOD_CTRL) {
+		tm.undo();
+	    } else if(modflags == 0) {
+		tm.mark(mc.floor(tilesz));
+	    }
 	    return true;
 	} else if(isSweeping(map)) {
 	    int modflags = ui.modflags();
@@ -78,6 +94,9 @@ public class CustomCursors {
 	    } else if(isSweeping(map)) {
 		stopSweeping(map);
 		return true;
+	    } else if(isMeasuring(map)) {
+		stopMeasuring(map);
+		return true;
 	    } else if(isPicking(map)) {
 		stopPicking(map);
 		return true;
@@ -88,6 +107,25 @@ public class CustomCursors {
     }
     
     public static void inspect(MapView map, Coord c) {
+	if(map.cursor == MEASURE) {
+	    map.new Hittest(c) {
+		@Override
+		protected void hit(Coord pc, Coord2d mc, ClickData inf) {
+		    if(map.ui.gui == null)
+			return;
+		    TileMeasure tm = map.ui.gui.tileMeasure;
+		    tm.setHover(mc.floor(tilesz));
+		    map.ttip(tm.hoverTip());
+		}
+		@Override
+		protected void nohit(Coord pc) {
+		    if(map.ui.gui != null)
+			map.ui.gui.tileMeasure.setHover(null);
+		    map.ttip(null);
+		}
+	    }.run();
+	    return;
+	}
 	if(map.cursor == PICK && !pickShowTooltip) return;
 	boolean isMining = map.cursor == null && isMining(map.ui);
 	if(map.cursor == INSPECT || map.cursor == TRACK || (map.cursor == PICK && pickShowTooltip) || isMining) {
@@ -141,6 +179,7 @@ public class CustomCursors {
 	stopInspecting(map);
 	stopTracking(map);
 	stopSweeping(map);
+	stopMeasuring(map);
 	stopPicking(map);
     }
     
@@ -228,6 +267,44 @@ public class CustomCursors {
 	    map.cursor = null;
 	    map.ttip(null);
 	}
+    }
+
+    //TILE MEASURE
+    private static boolean measuring;
+
+    public static boolean isMeasuring() {
+	return measuring;
+    }
+
+    public static boolean isMeasuring(MapView map) {
+	return map != null && map.cursor == MEASURE;
+    }
+
+    public static void toggleMeasureMode(MapView map) {
+	if(isMeasuring(map)) {
+	    stopMeasuring(map);
+	} else {
+	    startMeasuring(map);
+	}
+    }
+
+    private static void startMeasuring(MapView map) {
+	stopCustomModes(map);
+	if(map.cursor == null) {
+	    map.cursor = MEASURE;
+	    measuring = true;
+	    map.ttip(null);
+	}
+    }
+
+    private static void stopMeasuring(MapView map) {
+	if(map.cursor == MEASURE) {
+	    map.cursor = null;
+	    map.ttip(null);
+	}
+	measuring = false;
+	if(map != null && map.ui != null && map.ui.gui != null)
+	    map.ui.gui.tileMeasure.setHover(null);
     }
 
     //GOB PICKING

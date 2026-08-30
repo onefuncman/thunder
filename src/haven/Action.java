@@ -37,6 +37,7 @@ public enum Action {
     }, "Toggle tile centering"),
     TOGGLE_INSPECT(gui -> CustomCursors.toggleInspectMode(gui.map), "Toggle inspect mode"),
     TRACK_OBJECT(gui -> CustomCursors.toggleTrackingMode(gui.map), "Track object"),
+    TOGGLE_MEASURE(gui -> CustomCursors.toggleMeasureMode(gui.map), "Measure tiles", "Click tiles to measure distances. Overlay stays until you clear it (Shift-click this action, or Shift-click the map while measuring)."),
     BOT_PICK_ALL_HERBS(Actions::pickup, "Auto-pick stuff", "Will automatically pickup all herbs/mussels/clay/frogs/grasshoppers etc. in radius that can be changed in Options->General."),
     BOT_MOUNT_HORSE(Actions::mountClosestHorse, "Mount nearest domestic horse", "Whistle at a closest domestic horse and mount it once it is close enough. If it is very close - mount without whistling."),
     BOT_OPEN_GATE(Actions::interactNearest, "Interact with closest ...", "Right-clicks the closest enabled object in 3 tile radius: fence gates, doorways, cellar doors, mineholes/ladders, milestones. Configure the list in Options->General."),
