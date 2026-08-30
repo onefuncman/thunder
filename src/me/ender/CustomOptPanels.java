@@ -115,10 +115,37 @@ public class CustomOptPanels {
 	panel.add(new CFGBox("Use new combat UI", CFG.ALT_COMBAT_UI), x, y);
 	
 	y += STEP;
-	panel.add(new CFGBox("Allow dragging combat UI", CFG.DRAG_COMBAT_UI, "Drag by cooldown circle"), x, y);
+	panel.add(new CFGBox("Allow dragging combat UI", CFG.DRAG_COMBAT_UI, "Drag cooldown circle or action bar"), x, y);
 	y += STEP;
 	panel.add(new Button(UI.scale(150), "Reset combat UI position", false), x + H_STEP, y)
 	    .action(() -> Fightsess.resetOffset(wnd.ui));
+	y += STEP;
+	
+	y += STEP;
+	panel.add(new Label("Hold in combat to use hotbar 1–5:"), x, y);
+	y += STEP;
+	panel.add(new Dropbox<UI.KeyMod>(UI.scale(100), 5, UI.scale(16)) {
+	    @Override
+	    protected UI.KeyMod listitem(int i) {
+		return UI.KeyMod.values()[i];
+	    }
+
+	    @Override
+	    protected int listitems() {
+		return UI.KeyMod.values().length;
+	    }
+
+	    @Override
+	    protected void drawitem(GOut g, UI.KeyMod item, int i) {
+		g.atext(item.name(), UI.scale(3, 8), 0, 0.5);
+	    }
+
+	    @Override
+	    public void change(UI.KeyMod item) {
+		super.change(item);
+		if(!item.equals(CFG.COMBAT_BELT_MOD.get())) CFG.COMBAT_BELT_MOD.set(item, true);
+	    }
+	}, x + H_STEP, y).change(CFG.COMBAT_BELT_MOD.get());
 	y += STEP;
 	
 	y += STEP;

@@ -102,6 +102,13 @@ public class Window extends Widget {
     private boolean closed = false;
     private String title;
     protected Text.Furnace rcf = cf;
+    private boolean locked = false;
+    private boolean minimized = false;
+    private boolean autoHide = false;
+    private boolean frameHidden = false;
+    private Coord restoredSize;
+    private Coord minimumContentSize;
+    private WindowControl lockbtn, minbtn, hidebtn;
 
     @RName("wnd")
     public static class $_ implements Factory {
@@ -115,10 +122,13 @@ public class Window extends Widget {
     
     public Window(Coord sz, String cap, boolean lg, Deco deco, boolean defdeco) {
 	super(sz);
+	minimumContentSize = sz;
 	chcap(cap);
 	this.large = lg;
 	setfocusctl(true);
 	chdeco(defdeco ? makedeco() : deco);
+	if((cap != null) && (this.deco instanceof DecoX))
+	    initWindowControls();
     }
 
     public Window(Coord sz, String cap, boolean lg, Deco deco) {
@@ -134,7 +144,7 @@ public class Window extends Widget {
     }
 
     protected Deco makedeco() {
-	return(new DefaultDeco(this.large));
+	return(new DecoX(this.large));
     }
 
     protected void added() {
@@ -155,12 +165,25 @@ public class Window extends Widget {
 	return visible();
     }
 
+    protected boolean persistSavedSize() {
+	return (deco instanceof DefaultDeco) && ((DefaultDeco) deco).dragsize;
+    }
+
     protected void initCfg() {
+	if(cfg != null) {
+	    locked = cfg.getValue("locked", false);
+	    autoHide = cfg.getValue("auto-hide", false);
+	    if((cfg.sz != null) && persistSavedSize())
+		resize2(clampUserSize(cfg.sz));
+	}
 	if(cfg != null && cfg.c != null) {
 	    if(!skipInitPos) {c = xlate(cfg.c, false);}
 	} else {
 	    updateCfg();
 	}
+	clampToParent();
+	if((cfg != null) && cfg.getValue("minimized", false))
+	    setMinimized(true, false);
     }
 
     protected void updateCfg(){
@@ -174,6 +197,11 @@ public class Window extends Widget {
 	    cfg = new WidgetCfg();
 	}
 	cfg.c = xlate(c, true);
+	if(!minimized)
+	    cfg.sz = persistSavedSize() ? csz() : null;
+	cfg.setValue("locked", locked);
+	cfg.setValue("minimized", minimized);
+	cfg.setValue("auto-hide", autoHide);
     }
 
     protected void storeCfg() {
@@ -225,6 +253,162 @@ public class Window extends Widget {
 	    this.doff = this.doff.sub(coff);
     }
 
+    private void initWindowControls() {
+	lockbtn = addtwdg(new WindowControl(0, () -> locked, this::toggleLock));
+	lockbtn.settip("Lock window");
+	minbtn = addtwdg(new WindowControl(1, () -> minimized, this::toggleMinimize));
+	minbtn.settip("Minimize window");
+	hidebtn = addtwdg(new WindowControl(2, () -> autoHide, this::toggleAutoHide));
+	hidebtn.settip("Auto-hide window frame");
+    }
+
+    public boolean locked() {
+	return locked;
+    }
+
+    public boolean minimized() {
+	return minimized;
+    }
+
+    public boolean frameHidden() {
+	return frameHidden && autoHide;
+    }
+
+    public void toggleLock() {
+	locked = !locked;
+	updateCfg();
+    }
+
+    public void toggleMinimize() {
+	setMinimized(!minimized, true);
+    }
+
+    private void setMinimized(boolean val, boolean save) {
+	if(minimized == val)
+	    return;
+	if(val) {
+	    restoredSize = csz();
+	    minimized = true;
+	    resizeFrameOnly(Coord.of(Math.max(restoredSize.x, UI.scale(140)), 0));
+	} else {
+	    minimized = false;
+	    resize2((restoredSize == null) ? minimumContentSize : restoredSize);
+	}
+	if(save)
+	    updateCfg();
+    }
+
+    public void toggleAutoHide() {
+	autoHide = !autoHide;
+	frameHidden = false;
+	updateCfg();
+    }
+
+    private void resizeFrameOnly(Coord csz) {
+	if(deco != null) {
+	    deco.iresize(csz);
+	    deco.c = deco.contarea().ul.inv();
+	    this.sz = deco.sz;
+	} else {
+	    this.sz = csz;
+	}
+    }
+
+    public Coord clampUserSize(Coord requested) {
+	Coord min = (minimumContentSize == null) ? UI.scale(100, 60) : minimumContentSize;
+	return Coord.of(Math.max(requested.x, Math.max(UI.scale(100), min.x)),
+	    Math.max(requested.y, Math.max(UI.scale(60), min.y)));
+    }
+
+    public void finishUserResize() {
+	updateCfg();
+    }
+
+    private void clampToParent() {
+	if(parent == null)
+	    return;
+	if((parent.sz.x <= 0) || (parent.sz.y <= 0))
+	    return;
+	int visible = UI.scale(40);
+	c.x = Math.max(-sz.x + visible, Math.min(c.x, parent.sz.x - visible));
+	c.y = Math.max(0, Math.min(c.y, Math.max(0, parent.sz.y - visible)));
+    }
+
+    public void applySavedPos() {
+	if((cfg == null) || (cfg.c == null) || skipInitPos)
+	    return;
+	c = xlate(cfg.c, false);
+	clampToParent();
+    }
+
+    @Override
+    public boolean mousehover(MouseHoverEvent ev, boolean hovering) {
+	if(autoHide && !minimized)
+	    frameHidden = !hovering;
+	return super.mousehover(ev, hovering);
+    }
+
+    private static class WindowControl extends Widget {
+	private final int icon;
+	private final BooleanSupplier active;
+	private final Runnable action;
+	private boolean hover;
+
+	private WindowControl(int icon, BooleanSupplier active, Runnable action) {
+	    super(UI.scale(14, 14));
+	    this.icon = icon;
+	    this.active = active;
+	    this.action = action;
+	}
+
+	@Override
+	public void draw(GOut g) {
+	    boolean ard = CFG.THEME.get().usesArdHud();
+	    if(ard) {
+		Tex img = ArdHud.ctrl(icon, hover, active.getAsBoolean());
+		if(!sz.equals(img.sz()))
+		    resize(img.sz());
+		g.chcolor(ArdHud.WNDCOL);
+		g.image(img, Coord.z);
+		g.chcolor();
+		return;
+	    }
+	    Coord want = UI.scale(14, 14);
+	    if(!sz.equals(want))
+		resize(want);
+	    g.chcolor(active.getAsBoolean() ? new Color(102, 82, 39, 230) :
+		(hover ? new Color(70, 72, 73, 230) : new Color(28, 30, 31, 220)));
+	    g.frect(Coord.z, sz);
+	    g.chcolor(hover ? new Color(232, 210, 148) : new Color(164, 165, 160));
+	    int s = UI.scale(2);
+	    if(icon == 0) {
+		g.frect(Coord.of(s * 2, s * 3), Coord.of(sz.x - (s * 4), sz.y - (s * 4)));
+		g.frect(Coord.of(s * 3, s), Coord.of(sz.x - (s * 6), s * 3));
+	    } else if(icon == 1) {
+		g.frect(Coord.of(s * 2, sz.y - (s * 3)), Coord.of(sz.x - (s * 4), s));
+	    } else {
+		g.frect(Coord.of(s, s * 3), Coord.of(sz.x - (s * 2), s));
+		g.frect(Coord.of(s * 2, s * 2), Coord.of(sz.x - (s * 4), s));
+		g.frect(Coord.of(s * 3, s), Coord.of(sz.x - (s * 6), s));
+	    }
+	    g.chcolor();
+	}
+
+	@Override
+	public boolean mousedown(MouseDownEvent ev) {
+	    if(ev.b != 1)
+		return false;
+	    action.run();
+	    return true;
+	}
+
+	@Override
+	public boolean mousehover(MouseHoverEvent ev, boolean hovering) {
+	    hover = hovering;
+	    return true;
+	}
+    }
+
     public static abstract class Deco extends Widget {
 	public Deco() {
 	    z(-100);
@@ -242,7 +426,7 @@ public class Window extends Widget {
 		Window wnd = (Window)parent;
 		wnd.parent.setfocus(wnd);
 		wnd.raise();
-		if(ev.b == 1)
+		if((ev.b == 1) && !wnd.locked())
 		    wnd.drag(ev.c);
 		return(true);
 	    }
@@ -378,7 +562,8 @@ public class Window extends Widget {
 	private UI.Grab szdrag;
 	private Coord szdragc;
 	public boolean mousedown(MouseDownEvent ev) {
-	    if(dragsize) {
+	    Window wnd = (Window)parent;
+	    if(dragsize && !wnd.locked() && !wnd.minimized()) {
 		Coord c = ev.c, cc = c.sub(ca.ul);
 		if((ev.b == 1) && hitSizer(c)) {
 		    szdrag = ui.grabmouse(this);
@@ -395,7 +580,7 @@ public class Window extends Widget {
 
 	public void mousemove(MouseMoveEvent ev) {
 	    if(szdrag != null)
-		((Window)parent).resize(ev.c.add(szdragc));
+		((Window)parent).resize(((Window)parent).clampUserSize(ev.c.add(szdragc)));
 	    super.mousemove(ev);
 	}
 
@@ -403,6 +588,7 @@ public class Window extends Widget {
 	    if((ev.b == 1) && (szdrag != null)) {
 		szdrag.remove();
 		szdrag = null;
+		((Window)parent).finishUserResize();
 		return(true);
 	    }
 	    return(super.mouseup(ev));

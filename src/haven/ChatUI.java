@@ -62,12 +62,22 @@ public class ChatUI extends Widget {
     private QuickLine qline = null;
     private final LinkedList<Notification> notifs = new LinkedList<Notification>();
     private UI.Grab qgrab;
+    private final boolean windowed;
 
     public ChatUI() {
-	super(Coord.of(0, UI.scale(Math.max(minh, Utils.getprefi("chatsize", minh)))));
+	this(false);
+    }
+
+    public ChatUI(boolean windowed) {
+	super(Coord.of(windowed ? UI.scale(600) : 0, UI.scale(Math.max(minh, Utils.getprefi("chatsize", minh)))));
+	this.windowed = windowed;
 	chansel = add(new Selector(new Coord(selw, sz.y - marg.y)), marg);
 	setfocusctl(true);
 	setcanfocus(true);
+    }
+
+    public boolean windowed() {
+	return windowed;
     }
 
     protected void added() {
@@ -1274,7 +1284,7 @@ public class ChatUI extends Widget {
 
 	public class DarkChannel {
 	    public final Channel chan;
-	    public Text rname;
+	    public Text rname, cleanName;
 	    public Tex ricon;
 	    private int urgency = 0;
 	    private Resource.Image icon;
@@ -1296,6 +1306,20 @@ public class ChatUI extends Widget {
 		    rname = namedeco(name, img, uc[urgency = urg]);
 		}
 		return(rname);
+	    }
+
+	    public Text cleanName() {
+		String name = chan.name();
+		int urg = chan.urgency;
+		if((cleanName == null) || !cleanName.text.equals(name) || (urgency != urg)) {
+		    int u = Math.max(0, Math.min(urg, urgcols.length - 1));
+		    Color color = (u == 0) ? new Color(190, 193, 195) : urgcols[u];
+		    if(color == null)
+			color = new Color(190, 193, 195);
+		    cleanName = tf.render(name, color);
+		    urgency = urg;
+		}
+		return cleanName;
 	    }
 
 	    public Tex ricon() {
@@ -1343,13 +1367,21 @@ public class ChatUI extends Widget {
 		    if(y >= sz.y)
 			break;
 		    DarkChannel ch = chls.get(i);
-		    if(ch.chan == sel)
-			g.image(chanseld, Coord.of(0, y));
-		    Tex name = ch.rname().tex(), icon = null;
+		    boolean clean = windowed;
+		    if(ch.chan == sel) {
+			if(clean) {
+			    g.chcolor(new Color(35, 38, 40, 220));
+			    g.frect(Coord.of(0, y), Coord.of(sz.x, offset));
+			    g.chcolor();
+			} else {
+			    g.image(chanseld, Coord.of(0, y));
+			}
+		    }
+		    Tex name = (clean ? ch.cleanName() : ch.rname()).tex(), icon = null;
 		    try {
 			icon = ch.ricon();
 		    } catch(Loading l) {}
-		    int my = y + (chanseld.sz().y / 2) - UI.scale(1);
+		    int my = y + (clean ? (offset / 2) : (chanseld.sz().y / 2) - UI.scale(1));
 		    if(icon == null) {
 			g.aimage(name, Coord.of(sz.x / 2, my), 0.5, 0.5);
 		    } else {
@@ -1358,7 +1390,8 @@ public class ChatUI extends Widget {
 			g.aimage(icon, Coord.of(x, my), 0.0, 0.5); x += icon.sz().x;
 			g.aimage(name, Coord.of(x, my), 0.0, 0.5);
 		    }
-		    g.image(chandiv, Coord.of(0, y + chanseld.sz().y));
+		    if(!clean)
+			g.image(chandiv, Coord.of(0, y + chanseld.sz().y));
 		}
 	    }
 	}
@@ -1553,6 +1586,10 @@ public class ChatUI extends Widget {
     private static final Tex bmf = Resource.loadtex("gfx/hud/chat-mid");
     private static final Tex bcbd = Resource.loadtex("gfx/hud/chat-close-g");
     public void draw(GOut g) {
+	if(windowed) {
+	    super.draw(g);
+	    return;
+	}
 	g.rimage(Window.bg, marg, sz.sub(marg.x * 2, marg.y));
 	super.draw(g);
 	g.image(bulc, new Coord(0, 0));
@@ -1594,7 +1631,7 @@ public class ChatUI extends Widget {
 
     public void resize(Coord sz) {
 	super.resize(sz);
-	if(visible)
+	if(visible && !windowed)
 	    this.c = base.add(0, -this.sz.y);
 	chansel.resize(new Coord(selw, this.sz.y - marg.y));
 	if(sel != null)
@@ -1602,12 +1639,22 @@ public class ChatUI extends Widget {
     }
 
     public void presize() {
+	if(windowed)
+	    return;
 	if(sz.y > parent.sz.y - UI.scale(100))
 	    hresize(Math.max(UI.scale(minh), parent.sz.y - UI.scale(100)));
     }
 
     public boolean targetshow = false;
     public void sshow(boolean show) {
+	if(windowed) {
+	    if(show)
+		show();
+	    else
+		hide();
+	    targetshow = show;
+	    return;
+	}
 	clearanims(Spring.class);
 	new Spring(show ? -sz.y : 0);
 	targetshow = show;
@@ -1623,6 +1670,11 @@ public class ChatUI extends Widget {
     }
 
     public void move(Coord base) {
+	if(windowed) {
+	    super.move(base);
+	    this.base = base;
+	    return;
+	}
 	this.c = (this.base = base).add(0, visible ? -sz.y : 0);
     }
 
@@ -1677,6 +1729,8 @@ public class ChatUI extends Widget {
     private Coord doff;
     private static final int minh = 111;
     public boolean mousedown(MouseDownEvent ev) {
+	if(windowed)
+	    return(super.mousedown(ev));
 	int bmfx = (sz.x - bmf.sz().x) / 2;
 	Coord c= ev.c;
 	if((ev.b == 1) && (c.y < bmf.sz().y) && (c.x >= bmfx) && (c.x <= (bmfx + bmf.sz().x))) {
