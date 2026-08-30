@@ -44,7 +44,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 public class UpdaterMain {
-    private static final String OWNER = "onefuncman";
+    private static final String OWNER = "SolomonIbnDavid";
     private static final String REPO = "thunder";
     private static final String ASSET = "Thunder-cross-platform.zip";
     private static final String ZIP_ROOT = "Thunder/";

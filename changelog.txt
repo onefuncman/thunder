@@ -1,3 +1,9 @@
+$size[14]{$u{update on 30.08.2026:}
+* Ard HUD now uses the real sloth chrome pack (thin dark frames, native-height buttons, iron Inv/Gear/Char/Kin/Opts icons) instead of homemade dark rectangles.
+* Floating HUD stays its own option, so Pretty and Small can undock chat and minimap without taking Ard chrome.
+* Only chat, minimap, and map remember a saved size; other windows pack to their contents.
+* Standalone updater on this fork follows SolomonIbnDavid/thunder releases.
+`
 $size[14]{$u{update on 25.08.2026:}
 * The high-performance GPU fix from the last update now covers the Steam version too: on Windows the Steam launcher registers the client for the fast GPU (the per-app profile in Settings -> System -> Display -> Graphics). As before, a choice you made yourself in the Settings UI is never overridden.
 `
