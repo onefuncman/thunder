@@ -26,8 +26,6 @@
 
 package haven;
 
-import java.awt.Color;
-
 public class CheckBox extends ACheckBox {
     public static final Tex lbox = Resource.loadtex("gfx/hud/chkbox");
     public static final Tex lmark = Resource.loadtex("gfx/hud/chkmark");
@@ -70,15 +68,10 @@ public class CheckBox extends ACheckBox {
     public void draw(GOut g) {
 	if(lbl != null)
 	    g.image(lbl.tex(), loff.add(box.sz().x, (sz.y - lbl.sz().y) / 2));
-	if(CFG.THEME.get().usesFloatingHud()) {
-	    Coord bs = UI.scale(12, 12);
-	    Coord bc = Coord.of(0, (sz.y - bs.y) / 2);
-	    g.chcolor(new Color(27, 30, 32, 220));
-	    g.frect(bc, bs);
-	    if(state()) {
-		g.chcolor(new Color(180, 184, 186));
-		g.frect(bc.add(UI.scale(3), UI.scale(3)), bs.sub(UI.scale(6), UI.scale(6)));
-	    }
+	if(CFG.THEME.get().usesArdHud()) {
+	    Tex box = ArdHud.chkbox(this.box == lbox, state());
+	    g.chcolor(ArdHud.BTNCOL);
+	    g.image(box, Coord.z.add(0, (sz.y - box.sz().y) / 2));
 	    g.chcolor();
 	} else {
 	    g.image(box, Coord.z.add(0, (sz.y - box.sz().y) / 2));

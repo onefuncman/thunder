@@ -507,29 +507,45 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	button.show(visible);
     }
 
+    private ICheckBox ardMenuBtn(String name, KeyBinding key, String tip) {
+	ICheckBox button = new ICheckBox("custom/hud/ardclient/menu/" + name, "", "-d", "-h", "-dh");
+	button.invisibleKeys = true;
+	button.setgkey(key);
+	button.allowGlobalKeysWhenHidden(true);
+	button.settip(tip);
+	return button;
+    }
+
     private Widget makeArdMenuToolbar(int width) {
-	Widget toolbar = new Widget();
-	String[] labels = {"Inv", "Gear", "Char", "Kin", "Opts"};
-	String[] tips = {"Inventory", "Equipment", "Character Sheet", "Kith & Kin", "Options"};
-	Runnable[] actions = {
-	    () -> togglewnd(invwnd),
-	    () -> togglewnd(equwnd),
-	    () -> togglewnd(chrwdg),
-	    () -> togglewnd(zerg),
-	    () -> togglewnd(opts)
-	};
-	int n = labels.length;
-	int gap = UI.scale(2);
-	int btnw = Math.max(UI.scale(24), (width - (gap * (n - 1))) / n);
-	int extra = Math.max(0, width - ((btnw * n) + (gap * (n - 1))));
-	int x = 0;
-	for(int i = 0; i < n; i++) {
-	    int w = btnw + ((i == n - 1) ? extra : 0);
-	    Button button = toolbar.add(new Button(w, labels[i], false, actions[i]), x, 0);
-	    button.tooltip = tips[i];
-	    x += w + gap;
+	ICheckBox inv = ardMenuBtn("rbtn-inv", kb_inv, "Inventory");
+	inv.state(() -> wndstate(invwnd)).click(() -> togglewnd(invwnd));
+	ICheckBox equ = ardMenuBtn("rbtn-equ", kb_equ, "Equipment");
+	equ.state(() -> wndstate(equwnd)).click(() -> togglewnd(equwnd));
+	ICheckBox chr = ardMenuBtn("rbtn-chr", kb_chr, "Character Sheet");
+	chr.state(() -> wndstate(chrwdg)).click(() -> togglewnd(chrwdg));
+	ICheckBox bud = ardMenuBtn("rbtn-bud", kb_bud, "Kith & Kin");
+	bud.state(() -> wndstate(zerg)).click(() -> togglewnd(zerg));
+	ICheckBox opt = ardMenuBtn("rbtn-opt", kb_opt, "Options");
+	opt.state(() -> wndstate(opts)).click(() -> togglewnd(opts));
+	ICheckBox[] buttons = {inv, equ, chr, bud, opt};
+	int total = 0, h = 0;
+	for(ICheckBox button : buttons) {
+	    total += button.sz.x;
+	    h = Math.max(h, button.sz.y);
 	}
-	toolbar.pack();
+	int extra = Math.max(0, width - total);
+	int gaps = buttons.length - 1;
+	int gap = (gaps > 0) ? extra / gaps : 0;
+	int rem = (gaps > 0) ? extra % gaps : 0;
+	Widget toolbar = new Widget(new Coord(Math.max(width, total), h));
+	int x = 0;
+	for(int i = 0; i < buttons.length; i++) {
+	    ICheckBox button = buttons[i];
+	    toolbar.add(button, new Coord(x, (h - button.sz.y) / 2));
+	    x += button.sz.x;
+	    if(i < gaps)
+		x += gap + ((i < rem) ? 1 : 0);
+	}
 	return toolbar;
     }
 
@@ -1591,10 +1607,11 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	} else if(place == "menu") {
 	    menu = (MenuGrid)brpanel.add(child, menugridc);
 	    if(usesArdHud()) {
-		int gap = UI.scale(2);
+		int gap = UI.scale(4);
 		Widget toolbar = brpanel.add(makeArdMenuToolbar(menu.sz.x), Coord.z);
 		menu.move(Coord.of(0, toolbar.sz.y + gap));
-		brpanel.add(new Button(menu.sz.x, "Search", false, GameUI.this::toggleActionSearch),
+		int barw = Math.max(menu.sz.x, toolbar.sz.x);
+		brpanel.add(new Button(barw, "Search", false, GameUI.this::toggleActionSearch),
 		    Coord.of(0, menu.c.y + menu.sz.y + gap));
 		brpanel.pack();
 		brpanel.presize();
@@ -2415,9 +2432,9 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
     }
     
     public void resizeLayout(Coord sz) {
+	if((sz.x < 64) || (sz.y < 64))
+	    return;
 	if(ardHud) {
-	    applyHudSavedPos(chatwnd);
-	    applyHudSavedPos(mmapwnd);
 	    clampHudWidget(chatwnd);
 	    clampHudWidget(mmapwnd);
 	    clampHudWidget(questPanel);

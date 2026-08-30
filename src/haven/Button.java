@@ -86,8 +86,14 @@ public class Button extends SIWidget {
 	return(w >= (bl.getWidth() + bm.getWidth() + br.getWidth()));
     }
 
+    private static int heightFor(boolean lg) {
+	if(CFG.THEME.get().usesArdHud())
+	    return ArdHud.textbtn()[0].getHeight();
+	return lg ? hl : hs;
+    }
+
     private Button(int w, boolean lg) {
-	super(new Coord(w, lg?hl:hs));
+	super(new Coord(w, heightFor(lg)));
 	this.w = w;
 	this.lg = lg;
     }
@@ -148,12 +154,20 @@ public class Button extends SIWidget {
 	    g.dispose();
 	    return;
 	}
-	if(CFG.THEME.get().usesFloatingHud()) {
-	    g.setColor(a ? new Color(48, 52, 54, 225) : new Color(27, 30, 32, 210));
-	    g.fillRect(0, 0, sz.x, sz.y);
+	if(CFG.THEME.get().usesArdHud()) {
+	    BufferedImage[] btn = ArdHud.textbtn();
+	    BufferedImage l = a ? btn[3] : btn[0];
+	    BufferedImage m = a ? btn[4] : btn[1];
+	    BufferedImage r = a ? btn[5] : btn[2];
+	    int yo = Math.max(0, (sz.y - l.getHeight()) / 2);
+	    int mw = Math.max(0, sz.x - l.getWidth() - r.getWidth());
+	    g.drawImage(l, 0, yo, null);
+	    g.drawImage(m, l.getWidth(), yo, mw, l.getHeight(), null);
+	    g.drawImage(r, sz.x - r.getWidth(), yo, null);
+	    g.dispose();
+	    ArdHud.tint(img, ArdHud.BTNCOL);
+	    g = img.getGraphics();
 	    Coord tc = sz.sub(Utils.imgsz(cont)).div(2);
-	    if(a)
-		tc = tc.add(UI.scale(1), UI.scale(1));
 	    g.drawImage(cont, tc.x, tc.y, null);
 	    g.dispose();
 	    return;

@@ -24,6 +24,11 @@ public class ChatHudWnd extends Window {
     }
 
     @Override
+    protected Deco makedeco() {
+	return(new DecoX(this.large).dragsize(true));
+    }
+
+    @Override
     public void close() {
 	chat.targetshow = false;
 	Utils.setprefb("chatvis", false);

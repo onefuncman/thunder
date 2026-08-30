@@ -165,11 +165,15 @@ public class Window extends Widget {
 	return visible();
     }
 
+    protected boolean persistSavedSize() {
+	return (deco instanceof DefaultDeco) && ((DefaultDeco) deco).dragsize;
+    }
+
     protected void initCfg() {
 	if(cfg != null) {
 	    locked = cfg.getValue("locked", false);
 	    autoHide = cfg.getValue("auto-hide", false);
-	    if(cfg.sz != null)
+	    if((cfg.sz != null) && persistSavedSize())
 		resize2(clampUserSize(cfg.sz));
 	}
 	if(cfg != null && cfg.c != null) {
@@ -194,7 +198,7 @@ public class Window extends Widget {
 	}
 	cfg.c = xlate(c, true);
 	if(!minimized)
-	    cfg.sz = csz();
+	    cfg.sz = persistSavedSize() ? csz() : null;
 	cfg.setValue("locked", locked);
 	cfg.setValue("minimized", minimized);
 	cfg.setValue("auto-hide", autoHide);
@@ -351,7 +355,7 @@ public class Window extends Widget {
 	private boolean hover;
 
 	private WindowControl(int icon, BooleanSupplier active, Runnable action) {
-	    super(CFG.THEME.get().usesFloatingHud() ? UI.scale(16, 16) : UI.scale(14, 14));
+	    super(UI.scale(14, 14));
 	    this.icon = icon;
 	    this.active = active;
 	    this.action = action;
@@ -359,14 +363,19 @@ public class Window extends Widget {
 
 	@Override
 	public void draw(GOut g) {
-	    boolean clean = CFG.THEME.get().usesFloatingHud();
-	    Coord want = clean ? UI.scale(16, 16) : UI.scale(14, 14);
-	    if(!sz.equals(want))
-		resize(want);
-	    if(clean) {
-		g.image(DecoX.ardCtrl(icon, hover, active.getAsBoolean()), Coord.z);
+	    boolean ard = CFG.THEME.get().usesArdHud();
+	    if(ard) {
+		Tex img = ArdHud.ctrl(icon, hover, active.getAsBoolean());
+		if(!sz.equals(img.sz()))
+		    resize(img.sz());
+		g.chcolor(ArdHud.WNDCOL);
+		g.image(img, Coord.z);
+		g.chcolor();
 		return;
 	    }
+	    Coord want = UI.scale(14, 14);
+	    if(!sz.equals(want))
+		resize(want);
 	    g.chcolor(active.getAsBoolean() ? new Color(102, 82, 39, 230) :
 		(hover ? new Color(70, 72, 73, 230) : new Color(28, 30, 31, 220)));
 	    g.frect(Coord.z, sz);

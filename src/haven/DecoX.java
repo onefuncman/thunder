@@ -15,7 +15,7 @@ public class DecoX extends Window.DefaultDeco {
     
     public DecoX(boolean large) {
 	super(large);
-	dragsize(true);
+	dragsize(false);
     }
     
     @Override
@@ -283,85 +283,102 @@ public class DecoX extends Window.DefaultDeco {
     }
 
     private static class Ard implements DecoTheme {
-	private static final int border = UI.scale(1);
-	private static final int pad = UI.scale(6);
-	private static final int titleh = UI.scale(22);
-	private static final Color body = new Color(8, 9, 10, 238);
-	private static final Color panel = new Color(17, 19, 21, 245);
-	private static final Text.Forge cf = new Text.Foundry(Text.sans.deriveFont(Font.BOLD), UI.scale(13),
-	    new Color(225, 227, 228)).aa(true);
-	private static final Text.Forge ncf = new Text.Foundry(Text.sans.deriveFont(Font.BOLD), UI.scale(13),
-	    new Color(135, 138, 140)).aa(true);
-	private static final BufferedImage[] cleanClose = {
-	    ardCtrlImg(3, ARD_IDLE_BG, ARD_IDLE_FG),
-	    ardCtrlImg(3, ARD_HOVER_BG, ARD_HOVER_FG),
-	    ardCtrlImg(3, ARD_DOWN_BG, ARD_DOWN_FG)
-	};
-	private boolean cfocus;
+	private static final Coord dlmrgn = UI.scale(23, 14);
+	private static final Coord dsmrgn = UI.scale(3, 3);
+	private static final Text.Forge cf = new PUtils.BlurFurn(
+	    new PUtils.TexFurn(new Text.Foundry(Text.sans, UI.scale(15)).aa(true), Window.ctex),
+	    1, 1, Color.BLACK);
 
 	@Override
 	public void apply(Window wnd, DecoX decoX) {
-	    decoX.cbtn.recthit = true;
-	    decoX.cbtn.images(cleanClose[0], cleanClose[2], cleanClose[1]);
+	    ArdHud.ensure();
+	    decoX.cbtn.recthit = false;
+	    decoX.cbtn.images(ArdHud.close[0], ArdHud.close[1], ArdHud.close[2]);
 	    DecoTheme.super.apply(wnd, decoX);
 	}
 
 	@Override
 	public void iresize(Coord isz, DecoX decoX) {
-	    Coord csz = Coord.of(Math.max(0, isz.x), Math.max(0, isz.y));
-	    Coord wsz = Coord.of(csz.x + (pad * 2) + (border * 2),
-		csz.y + titleh + (pad * 2) + (border * 2));
+	    ArdHud.ensure();
+	    Coord mrgn = decoX.lg ? dlmrgn : dsmrgn;
+	    Coord asz = Coord.of(Math.max(0, isz.x), Math.max(0, isz.y));
+	    Coord csz = asz.add(mrgn.mul(2));
+	    Coord tlc = UI.scale(ArdHud.tlc);
+	    Coord brc = UI.scale(ArdHud.brc);
+	    Coord wsz = csz.add(tlc).add(brc);
 	    decoX.resize(wsz);
 	    decoX.cptl = Coord.z;
-	    decoX.ca = Area.sized(Coord.z, wsz);
-	    decoX.aa = Area.sized(Coord.of(border + pad, border + titleh + pad), csz);
-	    decoX.cbtn.c = Coord.of(wsz.x - border - decoX.cbtn.sz.x - UI.scale(3),
-		border + ((titleh - decoX.cbtn.sz.y) / 2));
-	    decoX.cpsz = Coord.of(wsz.x, titleh + border);
+	    decoX.ca = Area.sized(tlc, csz);
+	    decoX.aa = Area.sized(tlc.add(mrgn), asz);
+	    decoX.cpsz = Coord.of(wsz.x, ArdHud.cl.sz().y);
+	    decoX.cbtn.c = Coord.of(wsz.x - decoX.cbtn.sz.x - UI.scale(ArdHud.btnc).x,
+		UI.scale(ArdHud.btnc).y);
 	}
 
 	@Override
 	public void drawbg(GOut g, DecoX decoX) {
-	    g.chcolor(body);
-	    g.frect(Coord.z, decoX.sz);
-	    g.chcolor(panel);
-	    g.frect(decoX.aa.ul.sub(pad, pad), decoX.aa.sz().add(pad * 2, pad * 2));
+	    ArdHud.ensure();
+	    g.chcolor(ArdHud.FILL);
+	    g.frect(decoX.ca.ul, decoX.ca.sz());
 	    g.chcolor();
 	}
 
 	@Override
 	public void drawframe(GOut g, DecoX decoX) {
+	    ArdHud.ensure();
 	    Window wnd = decoX.wnd();
-	    boolean focused = wnd.hasfocus;
+	    Coord sz = decoX.sz;
+	    g.chcolor(ArdHud.WNDCOL);
+	    g.image(ArdHud.cl, Coord.z);
+	    g.image(ArdHud.bl, new Coord(0, sz.y - ArdHud.bl.sz().y));
+	    g.image(ArdHud.br, sz.sub(ArdHud.br.sz()));
+	    g.image(ArdHud.cr, new Coord(sz.x - ArdHud.cr.sz().x, 0));
+	    g.rimagev(ArdHud.lm, new Coord(0, ArdHud.cl.sz().y), sz.y - ArdHud.bl.sz().y - ArdHud.cl.sz().y);
+	    g.rimagev(ArdHud.rm, new Coord(sz.x - ArdHud.rm.sz().x, ArdHud.cr.sz().y), sz.y - ArdHud.br.sz().y - ArdHud.cr.sz().y);
+	    g.rimageh(ArdHud.bm, new Coord(ArdHud.bl.sz().x, sz.y - ArdHud.bm.sz().y), sz.x - ArdHud.br.sz().x - ArdHud.bl.sz().x);
+	    g.rimageh(ArdHud.cm, new Coord(ArdHud.cl.sz().x, 0), sz.x - ArdHud.cl.sz().x - ArdHud.cr.sz().x);
+	    g.chcolor();
+
 	    Text cap = decoX.cap;
-	    if((cap == null) || (!Objects.equals(cap.text, wnd.cap)) || (cfocus != focused)) {
+	    if((cap == null) || (!Objects.equals(cap.text, wnd.cap))) {
 		if(cap != null)
 		    cap.dispose();
-		cap = (wnd.cap == null) ? null : (focused ? cf : ncf).render(wnd.cap);
+		cap = (wnd.cap == null) ? null : cf.render(wnd.cap);
 		decoX.cap = cap;
-		cfocus = focused;
 	    }
-
 	    if(cap != null)
-		g.aimage(cap.tex(), Coord.of(border + UI.scale(7), border + (titleh / 2)), 0, 0.5);
-	    if(decoX.dragsize && !wnd.minimized()) {
-		g.chcolor(focused ? new Color(150, 153, 155) : new Color(85, 88, 90));
-		int d = UI.scale(3);
-		for(int i = 1; i <= 3; i++)
-		    g.frect(Coord.of(decoX.sz.x - border - (i * d), decoX.sz.y - border - d),
-			Coord.of(d - 1, d - 1));
-	    }
-	    g.chcolor();
+		g.image(cap.tex(), UI.scale(ArdHud.capc));
+	    if(decoX.dragsize && !wnd.minimized())
+		g.image(Window.sizer, decoX.ca.br.sub(Window.sizer.sz()));
 	}
 
 	@Override
 	public boolean checkhit(Coord c, DecoX decoX) {
-	    return c.isect(Coord.z, decoX.sz);
+	    ArdHud.ensure();
+	    if(c.isect(decoX.ca.ul, decoX.ca.sz()))
+		return true;
+	    TexI cl = ArdHud.cl, cr = ArdHud.cr, cm = ArdHud.cm;
+	    Coord cpc = c.sub(cl.sz().x, 0);
+	    Coord cprc = c.sub(decoX.sz.x - cr.sz().x, 0);
+	    if(c.isect(Coord.z, cl.sz()) && sample(cl.back, c.x, c.y) >= 128)
+		return true;
+	    if(c.isect(new Coord(decoX.sz.x - cr.sz().x, 0), cr.sz()) && sample(cr.back, cprc.x, cprc.y) >= 128)
+		return true;
+	    return c.isect(new Coord(cl.sz().x, 0), new Coord(decoX.sz.x - cr.sz().x - cl.sz().x, cm.sz().y))
+		&& sample(cm.back, cpc.x, cpc.y) >= 128;
 	}
 
 	@Override
 	public boolean hitSizer(Coord c, DecoX decoX) {
-	    return c.x >= decoX.sz.x - UI.scale(18) && c.y >= decoX.sz.y - UI.scale(18);
+	    return (c.x < decoX.ca.br.x) && (c.y < decoX.ca.br.y)
+		&& (c.y >= decoX.ca.br.y - UI.scale(25) + (decoX.ca.br.x - c.x));
+	}
+
+	private static int sample(BufferedImage img, int x, int y) {
+	    x = Utils.floormod(x, img.getWidth());
+	    if((y < 0) || (y >= img.getHeight()) || (img.getRaster().getNumBands() < 4))
+		return 255;
+	    return img.getRaster().getSample(x, y, 3);
 	}
     }
     
@@ -399,60 +416,4 @@ public class DecoX extends Window.DefaultDeco {
 	}
     }
 
-    private static final Color ARD_IDLE_BG = new Color(28, 30, 31, 220);
-    private static final Color ARD_HOVER_BG = new Color(70, 72, 73, 230);
-    private static final Color ARD_DOWN_BG = new Color(72, 76, 78, 230);
-    private static final Color ARD_IDLE_FG = new Color(164, 165, 160);
-    private static final Color ARD_HOVER_FG = new Color(225, 227, 228);
-    private static final Color ARD_DOWN_FG = new Color(205, 208, 210);
-    private static final Tex[][] ardCtrl = new Tex[3][3];
-
-    static Tex ardCtrl(int icon, boolean hover, boolean active) {
-	int st = active ? 2 : hover ? 1 : 0;
-	Tex t = ardCtrl[icon][st];
-	if(t == null) {
-	    Color bg = (st == 2) ? ARD_DOWN_BG : (st == 1) ? ARD_HOVER_BG : ARD_IDLE_BG;
-	    Color fg = (st == 2) ? ARD_DOWN_FG : (st == 1) ? ARD_HOVER_FG : ARD_IDLE_FG;
-	    ardCtrl[icon][st] = t = new TexI(ardCtrlImg(icon, bg, fg));
-	}
-	return(t);
-    }
-
-    private static BufferedImage ardCtrlImg(int glyph, Color bg, Color fg) {
-	int s = UI.scale(16);
-	BufferedImage img = TexI.mkbuf(Coord.of(s, s));
-	Graphics2D g = img.createGraphics();
-	g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-	g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
-	g.setColor(bg);
-	g.fillRect(0, 0, s, s);
-	g.setColor(fg);
-	float sw = Math.max(1.25f, UI.scale(1.25f));
-	g.setStroke(new BasicStroke(sw, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-	int m = UI.scale(4);
-	if(glyph == 0) {
-	    int bodyX = UI.scale(4);
-	    int bodyY = UI.scale(7);
-	    int bodyW = s - (bodyX * 2);
-	    int bodyH = s - bodyY - UI.scale(3);
-	    g.draw(new java.awt.geom.RoundRectangle2D.Float(bodyX, bodyY, bodyW, bodyH, UI.scale(2), UI.scale(2)));
-	    int shW = UI.scale(6);
-	    int shX = (s - shW) / 2;
-	    g.draw(new java.awt.geom.Arc2D.Float(shX, m, shW, UI.scale(8), 0, 180, java.awt.geom.Arc2D.OPEN));
-	} else if(glyph == 1) {
-	    int y = s / 2;
-	    g.drawLine(m, y, s - m - 1, y);
-	} else if(glyph == 2) {
-	    java.awt.geom.Path2D.Float p = new java.awt.geom.Path2D.Float();
-	    p.moveTo(m, s * 0.38f);
-	    p.lineTo(s / 2f, s * 0.62f);
-	    p.lineTo(s - m, s * 0.38f);
-	    g.draw(p);
-	} else {
-	    g.drawLine(m, m, s - m - 1, s - m - 1);
-	    g.drawLine(s - m - 1, m, m, s - m - 1);
-	}
-	g.dispose();
-	return(img);
-    }
 }

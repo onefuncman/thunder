@@ -59,6 +59,11 @@ public class MinimapHudWnd extends Window {
     }
 
     @Override
+    protected Deco makedeco() {
+	return(new DecoX(this.large).dragsize(true));
+    }
+
+    @Override
     public void close() {
 	Utils.setprefb("wndvis-minimap", false);
 	hide();

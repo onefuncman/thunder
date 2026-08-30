@@ -112,21 +112,24 @@ public class TextEntry extends Widget implements ReadLine.Owner {
     }
 
     public void draw(GOut g) {
-	boolean clean = CFG.THEME.get().usesFloatingHud();
+	boolean ard = CFG.THEME.get().usesArdHud();
+	Tex al = ard ? ArdHud.textedit(0) : lcap;
+	Tex am = ard ? ArdHud.textedit(1) : mext;
+	Tex ar = ard ? ArdHud.textedit(2) : rcap;
+	int capw = al.sz().x;
+	int textoff = capw;
+	int margin = capw + ar.sz().x + UI.scale(1);
 	Text.Line tcache = this.tcache;
 	if(tcache == null)
-	    this.tcache = tcache = fnd.render(dtext(), clean ? new Color(220, 223, 224) :
-		((dshow && dirty) ? dirtycol : defcol));
+	    this.tcache = tcache = fnd.render(dtext(), (dshow && dirty) ? dirtycol : defcol);
 	int point = buf.point(), mark = buf.mark();
-	int textoff = clean ? UI.scale(5) : toffx;
-	int margin = clean ? UI.scale(10) : wmarg;
-	if(clean) {
-	    g.chcolor(new Color(10, 12, 13, 220));
-	    g.frect(Coord.z, sz);
+	if(ard)
+	    g.chcolor(ArdHud.TXBCOL);
+	g.image(am, Coord.of(capw, 0), Coord.of(sz.x - capw - ar.sz().x, am.sz().y));
+	g.image(al, Coord.z);
+	g.image(ar, Coord.of(sz.x - ar.sz().x, 0));
+	if(ard)
 	    g.chcolor();
-	} else {
-	    g.image(mext, Coord.z, sz);
-	}
 	if(mark >= 0) {
 	    int px = tcache.advance(point) - sx, mx = tcache.advance(mark) - sx;
 	    g.chcolor(selcol);
@@ -135,30 +138,18 @@ public class TextEntry extends Widget implements ReadLine.Owner {
 	    g.chcolor();
 	}
 	g.image(tcache.tex(), Coord.of(textoff - sx, (sz.y - tcache.sz().y) / 2));
-	if(!clean) {
-	    g.image(lcap, Coord.z);
-	    g.image(rcap, Coord.of(sz.x - rcap.sz().x, 0));
-	}
 	if(hasfocus) {
 	    int cx = tcache.advance(point);
 	    if(cx < sx) {sx = cx;}
 	    if(cx > sx + (sz.x - margin)) {sx = cx - (sz.x - margin);}
 	    int lx = cx - sx;
-	    if(((Utils.rtime() - Math.max(focusstart, buf.mtime())) % 1.0) < 0.5) {
-		if(clean) {
-		    g.chcolor(new Color(205, 208, 210));
-		    g.frect(Coord.of(textoff + lx, (sz.y - tcache.img.getHeight()) / 2),
-			Coord.of(UI.scale(1), tcache.img.getHeight()));
-		    g.chcolor();
-		} else {
-		    g.image(caret, coff.add(toffx + lx, (sz.y - tcache.img.getHeight()) / 2));
-		}
-	    }
+	    if(((Utils.rtime() - Math.max(focusstart, buf.mtime())) % 1.0) < 0.5)
+		g.image(caret, coff.add(textoff + lx, (sz.y - tcache.img.getHeight()) / 2));
 	}
     }
 
     public TextEntry(int w, String deftext) {
-	super(new Coord(w, mext.sz().y));
+	super(new Coord(w, CFG.THEME.get().usesArdHud() ? ArdHud.textedit(1).sz().y : mext.sz().y));
 	rsettext(deftext);
 	setcanfocus(true);
     }
