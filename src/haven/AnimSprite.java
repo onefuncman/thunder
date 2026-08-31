@@ -28,7 +28,6 @@ package haven;
 
 import java.util.*;
 import haven.render.*;
-import me.ender.minimap.Minesweeper;
 
 public class AnimSprite extends Sprite {
     private final RenderTree.Node[] parts;
@@ -53,9 +52,6 @@ public class AnimSprite extends Sprite {
 	for(MeshAnim.Res ar : res.layers(MeshAnim.Res.class)) {
 	    if((ar.id < 0) || (((1 << ar.id) & mask) != 0))
 		anims.add(ar.make());
-	}
-	if("gfx/terobjs/mineout".equals(res.name)) {
-	    Minesweeper.markMinedOutTile(owner);
 	}
 	this.anims = anims.toArray(new MeshAnim.Animation[0]);
 	Collection<RenderTree.Node> rl = new LinkedList<>();
