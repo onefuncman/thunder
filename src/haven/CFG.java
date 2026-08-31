@@ -46,6 +46,7 @@ public class CFG<T> {
     public static final CFG<Boolean> SHOW_TROUGH_RADIUS = new CFG<>("display.show_trough_radius", false);
     public static final CFG<Boolean> SHOW_MOUNDBED_RADIUS = new CFG<>("display.show_moundbed_radius", false);
     public static final CFG<Boolean> SHOW_MINESWEEPER_OVERLAY = new CFG<>("display.minesweeper_overlay", false);
+    public static final CFG<Boolean> SHOW_MINESWEEPER_COLORS = new CFG<>("display.minesweeper_colors", true);
     public static final CFG<Boolean> SHOW_CONTAINER_FULLNESS = new CFG<>("display.container_status", false);
     public static final CFG<Boolean> SHOW_PROGRESS_COLOR = new CFG<>("display.progress_coloring", true);
     public static final CFG<Boolean> SIMPLE_CROPS = new CFG<>("display.simple_crops", false);

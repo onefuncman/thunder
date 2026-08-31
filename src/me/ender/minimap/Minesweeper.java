@@ -2,6 +2,7 @@ package me.ender.minimap;
 
 import haven.*;
 import haven.render.Homo3D;
+import haven.render.Model;
 import haven.render.Pipe;
 import haven.render.RenderTree;
 import me.ender.ClientUtils;
@@ -33,14 +34,19 @@ public class Minesweeper {
     //if this value is passed, flags component will be ignored
     private static final byte NO_FLAGS		= (byte) 0b1111_0000;
     
-    private static final byte COUNT_MASK	= (byte) 0b0000_1111;
-    private static final byte FLAGS_MASK	= (byte) 0b1111_0000;
+    public static final byte COUNT_MASK		= (byte) 0b0000_1111;
+    public static final byte FLAGS_MASK		= (byte) 0b1111_0000;
     
     
     public static final byte CLEAR_FLAGS	= (byte) 0b0000_0000;
     public static final byte FLAG_SAFE		= (byte) 0b0001_0000;
     public static final byte FLAG_DANGER	= (byte) 0b0010_0000;
     public static final byte FLAG_MAYBE		= (byte) 0b0011_0000;
+    /** Tile was mined while we were present; low nibble is the dust count. */
+    public static final byte FLAG_OPENED	= (byte) 0b0100_0000;
+    /** Dust count is final (cavewarn seen, or timed out with no dust). */
+    public static final byte FLAG_COUNTED	= (byte) 0b1000_0000;
+    private static final int ZERO_CONFIRM_MS	= 800;
     
     //deprecated values, used for parsing old saved data
     private static final byte DEPRECATED_V2_SAFE = (byte) 0xff;
@@ -58,26 +64,32 @@ public class Minesweeper {
     }
     
     public static void markDustSpawn(Sprite.Owner owner, float str) {
-	ClientUtils.owner2ogob(owner).ifPresent(value -> addCountAtGob(value, (byte) (str / 30f)));
+	ClientUtils.owner2ogob(owner).ifPresent(value ->
+	    markPoint(value.rc, (byte) (str / 30f), (byte) (FLAG_OPENED | FLAG_COUNTED), value.context(GameUI.class)));
     }
     
-    public static void markMinedOutTile(Sprite.Owner owner) {
-	//disabling this for now, as it will mark all tunnel tiles as safe 
-	//if(owner instanceof Gob) {markAtGob((Gob) owner, SAFE);}
+    public static void markMinedOutTile(Gob gob) {
+	if(gob == null) {return;}
+	GameUI gui = gob.context(GameUI.class);
+	if(gui == null) {return;}
+	Coord2d rc = gob.rc;
+	markPoint(rc, NO_COUNT, FLAG_OPENED, gui);
+	new HackThread(() -> {
+	    try {
+		Thread.sleep(ZERO_CONFIRM_MS);
+	    } catch (InterruptedException e) {
+		return;
+	    }
+	    markPoint(rc, NO_COUNT, (byte) (FLAG_OPENED | FLAG_COUNTED), gui);
+	}, "minesweeper-zero").start();
     }
     
     public static void markFlagAtPoint(Coord2d rc, byte flags, GameUI gui) {
 	markPoint(rc, NO_COUNT, flags, gui);
     }
     
-    private static void addCountAtGob(Gob gob, byte count) {
-	GameUI gui = gob.context(GameUI.class);
-	if(gui == null) {return;}
-	
-	markPoint(gob.rc, count, NO_FLAGS, gui);
-    }
-    
     private static void markPoint(Coord2d rc, byte count, byte flags, GameUI gui) {
+	if(gui == null) {return;}
 	Coord gc = rc.floor(MCache.tilesz);
 	MCache.Grid grid = gui.ui.sess.glob.map.getgridt(gc);
 	if(grid == null) {return;}
@@ -85,22 +97,41 @@ public class Minesweeper {
 	Coord tc = gc.sub(grid.gc.mul(MCache.cmaps));
 	long id = grid.id;
 	
+	if(gui.minesweeper == null) {return;}
 	gui.minesweeper.addValue(id, tc, count, flags);
     }
     
     public static boolean paginaAction(OwnerContext ctx, MenuGrid.Interaction iact) {
-	boolean was = CFG.SHOW_MINESWEEPER_OVERLAY.get();
+	UI ui = ctx.context(UI.class);
+	if(ui == null || ui.gui == null)
+	    return false;
 	if(iact != null && iact.modflags == UI.MOD_SHIFT) {
-	    MapView map = ctx.context(UI.class).gui.map;
-	    CustomCursors.toggleSweeperMode(map);
-	    if(!was && CustomCursors.isSweeping(map)) {
+	    boolean was = CFG.SHOW_MINESWEEPER_OVERLAY.get();
+	    CustomCursors.toggleSweeperMode(ui.gui.map);
+	    if(!was && CustomCursors.isSweeping(ui.gui.map)) {
 		CFG.SHOW_MINESWEEPER_OVERLAY.set(true);
 		return true;
 	    }
 	    return false;
 	}
-	CFG.SHOW_MINESWEEPER_OVERLAY.set(!was);
+	if(iact != null && iact.modflags == UI.MOD_CTRL) {
+	    boolean on = !CFG.SHOW_MINESWEEPER_COLORS.get();
+	    CFG.SHOW_MINESWEEPER_COLORS.set(on);
+	    if(on)
+		CFG.SHOW_MINESWEEPER_OVERLAY.set(true);
+	    ui.gui.msg(on ? "Minesweeper colors on" : "Minesweeper colors off", GameUI.MsgType.INFO);
+	    return true;
+	}
+	CFG.SHOW_MINESWEEPER_OVERLAY.set(!CFG.SHOW_MINESWEEPER_OVERLAY.get());
 	return true;
+    }
+
+    /** Turn the overlay and color fills on so imported/shared data is visible. */
+    public static void showSharedOverlay(UI ui) {
+	CFG.SHOW_MINESWEEPER_OVERLAY.set(true);
+	CFG.SHOW_MINESWEEPER_COLORS.set(true);
+	if(ui != null && ui.gui != null && ui.gui.map != null)
+	    ui.gui.map.refreshMinesweeper();
     }
     
     private void addValue(long id, Coord tc, byte count, byte flags) {
@@ -115,7 +146,17 @@ public class Minesweeper {
 		gridIds.add(id);
 		storeIndex();
 	    }
-	    setValue(values, index(tc), count, flags);
+	    int idx = index(tc);
+	    byte prev = values[idx];
+	    boolean retract = MinesweeperSolver.isOpened(prev)
+		&& (MinesweeperSolver.countOf(prev) == 0)
+		&& (count != NO_COUNT)
+		&& ((count & COUNT_MASK) > 0)
+		&& ((count & COUNT_MASK) <= 8);
+	    setValue(values, idx, count, flags);
+	    if(retract)
+		MinesweeperSolver.retractSafeNeighbors(values, MCache.cmaps.x, MCache.cmaps.y, tc.x, tc.y);
+	    MinesweeperSolver.deduce(values, MCache.cmaps.x, MCache.cmaps.y);
 	    storeGrid(id, values);
 	}
     }
@@ -130,9 +171,14 @@ public class Minesweeper {
 		if(count == 0) {count = NO_COUNT;}
 		setValue(curValues, i, count, (byte) (newValue & FLAGS_MASK));
 	    }
+	    MinesweeperSolver.deduce(curValues, MCache.cmaps.x, MCache.cmaps.y);
 	    storeGrid(grid, curValues);
+	    cuts.remove(grid);
 	} else {
+	    MinesweeperSolver.deduce(newValues, MCache.cmaps.x, MCache.cmaps.y);
 	    gridIds.add(grid);
+	    values.put(grid, newValues);
+	    cuts.remove(grid);
 	    storeIndex();
 	    storeGrid(grid, newValues);
 	}
@@ -148,7 +194,62 @@ public class Minesweeper {
     }
     
     private static int index(Coord tc) {
-	return tc.x + tc.y * MCache.cmaps.x;
+	return index(tc.x, tc.y);
+    }
+    
+    private static int index(int x, int y) {
+	return x + y * MCache.cmaps.x;
+    }
+
+    private byte[] getOrCreateGrid(long id) {
+	if(loadGrid(id))
+	    return values.get(id);
+	byte[] g = new byte[TILES];
+	values.put(id, g);
+	gridIds.add(id);
+	storeIndex();
+	return g;
+    }
+
+    /**
+     * Write relative cells at {@code origin} (grid-local tile). Optionally
+     * run deduction afterwards. Returns how many cells landed in-bounds.
+     */
+    public int stamp(long id, Coord origin, MinesweeperScenarios.Cell[] cells, boolean runDeduce) {
+	synchronized(lock) {
+	    byte[] g = getOrCreateGrid(id);
+	    int n = MinesweeperScenarios.paint(g, MCache.cmaps.x, MCache.cmaps.y, origin.x, origin.y, cells);
+	    if(runDeduce)
+		MinesweeperSolver.deduce(g, MCache.cmaps.x, MCache.cmaps.y);
+	    storeGrid(id, g);
+	    return n;
+	}
+    }
+
+    public int clearAround(long id, Coord origin, int radius) {
+	synchronized(lock) {
+	    if(!loadGrid(id))
+		return 0;
+	    byte[] g = values.get(id);
+	    if(g == null)
+		return 0;
+	    int n = 0;
+	    int w = MCache.cmaps.x, h = MCache.cmaps.y;
+	    for(int dy = -radius; dy <= radius; dy++) {
+		for(int dx = -radius; dx <= radius; dx++) {
+		    int x = origin.x + dx, y = origin.y + dy;
+		    if((x < 0) || (y < 0) || (x >= w) || (y >= h))
+			continue;
+		    int idx = index(x, y);
+		    if(g[idx] != 0) {
+			g[idx] = 0;
+			n++;
+		    }
+		}
+	    }
+	    storeGrid(id, g);
+	    return n;
+	}
     }
     
     public static RenderTree.Node getcut(UI ui, Coord cc) {
@@ -176,7 +277,7 @@ public class Minesweeper {
 	    if(nodes[index] == null) {
 		byte[] v = values.get(grid.id);
 		if(v == null) {return NIL;}
-		nodes[index] = new SweeperNode(v, cc);
+		nodes[index] = new SweeperNode(v, cc, grid);
 	    }
 	}
 	return nodes[index];
@@ -357,6 +458,7 @@ public class Minesweeper {
 		MapFileUtils.load(mapFile, (data) -> {
 		    byte[] src = doLoadGrid(data, id);
 		    if(src == null) {return false;}
+		    MinesweeperSolver.deduce(src, MCache.cmaps.x, MCache.cmaps.y);
 		    zout.addint64(id);
 		    zout.addbytes(src);
 		    return true;
@@ -387,6 +489,7 @@ public class Minesweeper {
 		    complete = doImport(new BufferedInputStream(Channels.newInputStream(fp)), ui);
 		} finally {
 		    if(complete) {
+			showSharedOverlay(ui);
 			ui.gui.msg("Finished importing minesweeper data", GameUI.MsgType.INFO);
 		    } else {
 			ui.gui.msg("Error while importing minesweeper data", GameUI.MsgType.ERROR);
@@ -427,6 +530,10 @@ public class Minesweeper {
 	private static final Color SAFE_COL = new Color(32, 220, 80);
 	private static final Color DANGER_COL = new Color(240, 32, 100);
 	private static final Color MAYBE_COL = new Color(193, 87, 251);
+	private static final Color SAFE_FILL = new Color(32, 220, 80, 70);
+	private static final Color DANGER_FILL = new Color(240, 32, 100, 70);
+	private static final Color MAYBE_FILL = new Color(193, 87, 251, 70);
+	private static final Color UNKNOWN_FILL = new Color(255, 140, 32, 80);
 	private static final Color[] COLORS = new Color[]{
 	    new Color(150, 200, 245),
 	    new Color(142, 225, 207),
@@ -438,13 +545,20 @@ public class Minesweeper {
 	    new Color(235, 20, 16),
 	};
 	private static final Map<Byte, Tex> CACHE = new HashMap<>();
+	private static final float[] FAN = new float[8];
+	private static final Coord3f C0 = new Coord3f(0, 0, 1);
+	private static final Coord3f C1 = new Coord3f(0, 0, 1);
+	private static final Coord3f C2 = new Coord3f(0, 0, 1);
+	private static final Coord3f C3 = new Coord3f(0, 0, 1);
 	
 	private final byte[] values;
 	private final Coord cc;
+	private final MCache.Grid grid;
 	
-	public SweeperNode(byte[] values, Coord cc) {
+	public SweeperNode(byte[] values, Coord cc, MCache.Grid grid) {
 	    this.values = values;
 	    this.cc = cc;
+	    this.grid = grid;
 	}
 	
 	private static Tex getTex(byte val) {
@@ -460,8 +574,10 @@ public class Minesweeper {
 	    return tex;
 	}
 	
-	private static BufferedImage flagImg(byte flags) {
-	    flags = (byte) (flags & FLAGS_MASK);
+	private static BufferedImage flagImg(byte val) {
+	    if(MinesweeperSolver.isOpened(val))
+		return null;
+	    byte flags = (byte) (val & FLAGS_MASK);
 	    Color color;
 	    String text;
 	    if(flags == FLAG_SAFE) {
@@ -479,14 +595,52 @@ public class Minesweeper {
 	    return Text.renderstroked(text, color, Color.BLACK, TEXT_FND).img;
 	}
 	
-	private static BufferedImage countImg(byte count) {
-	    count = (byte) (count & COUNT_MASK);
-	    if(count == 0) {return null;}
-	    
+	private static BufferedImage countImg(byte val) {
+	    int count = val & COUNT_MASK;
+	    if(count == 0) {
+		if(!MinesweeperSolver.isOpened(val))
+		    return null;
+		return Text.renderstroked("0", COLORS[0], Color.BLACK, TEXT_FND).img;
+	    }
+	    if(count > 8)
+		return null;
 	    Color color = COLORS[Utils.clip(count - 1, 0, COLORS.length - 1)];
-	    String text = String.valueOf(count);
-	    
-	    return Text.renderstroked(text, color, Color.BLACK, TEXT_FND).img;
+	    return Text.renderstroked(String.valueOf(count), color, Color.BLACK, TEXT_FND).img;
+	}
+	
+	private static Color fillColor(byte val) {
+	    if(MinesweeperSolver.isOpened(val)) {
+		if(MinesweeperSolver.countOf(val) == 0)
+		    return SAFE_FILL;
+		return null;
+	    }
+	    byte flags = (byte) (val & FLAGS_MASK);
+	    if(flags == FLAG_SAFE)
+		return SAFE_FILL;
+	    if(flags == FLAG_DANGER)
+		return DANGER_FILL;
+	    if(flags == FLAG_MAYBE)
+		return MAYBE_FILL;
+	    return null;
+	}
+	
+	private boolean isCaveWall(int tx, int ty) {
+	    if(grid == null)
+		return false;
+	    try {
+		return grid.tiler(grid.tiles[tx + ty * MCache.cmaps.x]) instanceof haven.resutil.CaveTile;
+	    } catch (Loading e) {
+		return false;
+	    }
+	}
+	
+	private Color overlayFill(int tx, int ty, byte val) {
+	    Color fill = fillColor(val);
+	    if(fill != null)
+		return fill;
+	    if(MinesweeperSolver.isUnknownFrontier(values, MCache.cmaps.x, MCache.cmaps.y, tx, ty) && isCaveWall(tx, ty))
+		return UNKNOWN_FILL;
+	    return null;
 	}
 	
 	public Coord3f origin(Coord tc) {
@@ -494,21 +648,62 @@ public class Minesweeper {
 	    return new Coord3f((float) mc.x, (float) -mc.y, 1f);
 	}
 	
+	private static boolean projectFan(GOut g, Pipe state, Area view, Coord o) {
+	    float tsx = (float) MCache.tilesz.x;
+	    float tsy = (float) MCache.tilesz.y;
+	    float pad = 0.12f;
+	    float x0 = (o.x + pad) * tsx;
+	    float y0 = (o.y + pad) * tsy;
+	    float x1 = (o.x + 1 - pad) * tsx;
+	    float y1 = (o.y + 1 - pad) * tsy;
+	    C0.x = x0; C0.y = -y0;
+	    C1.x = x1; C1.y = -y0;
+	    C2.x = x1; C2.y = -y1;
+	    C3.x = x0; C3.y = -y1;
+	    Coord p0 = Homo3D.obj2sc(C0, state, view);
+	    Coord p1 = Homo3D.obj2sc(C1, state, view);
+	    Coord p2 = Homo3D.obj2sc(C2, state, view);
+	    Coord p3 = Homo3D.obj2sc(C3, state, view);
+	    if((p0 == null) || (p1 == null) || (p2 == null) || (p3 == null))
+		return false; /* caller falls back to a center rect */
+	    float tx = g.tx.x, ty = g.tx.y;
+	    FAN[0] = p0.x + tx; FAN[1] = p0.y + ty;
+	    FAN[2] = p1.x + tx; FAN[3] = p1.y + ty;
+	    FAN[4] = p2.x + tx; FAN[5] = p2.y + ty;
+	    FAN[6] = p3.x + tx; FAN[7] = p3.y + ty;
+	    return true;
+	}
+	
 	@Override
 	public void draw(GOut g, Pipe state) {
-	    Coord ul = cc.mul(MCache.cutsz);
+	    Area view = Area.sized(g.sz());
+	    Coord sz = g.sz();
+	    int ulx = cc.x * MCache.cutsz.x;
+	    int uly = cc.y * MCache.cutsz.y;
 	    Coord o = new Coord();
 	    for (o.x = 0; o.x < MCache.cutsz.x; o.x++) {
 		for (o.y = 0; o.y < MCache.cutsz.y; o.y++) {
-		    
-		    Tex tex = getTex(values[index(ul.add(o))]);
-		    if(tex == null) {continue;}
-		    
-		    Coord sc = Homo3D.obj2sc(origin(o), state, Area.sized(g.sz()));
-		    if(sc == null) {continue;}
-		    if(!sc.isect(Coord.z, g.sz())) {continue;}
-		    
-		    g.aimage(tex, sc, 0.5f, 0.5f);
+		    int tx = ulx + o.x, ty = uly + o.y;
+		    byte val = values[index(tx, ty)];
+		    Color fill = CFG.SHOW_MINESWEEPER_COLORS.get() ? overlayFill(tx, ty, val) : null;
+		    if((val == 0) && (fill == null))
+			continue;
+		    Coord sc = Homo3D.obj2sc(origin(o), state, view);
+		    if((sc == null) || !sc.isect(Coord.z, sz))
+			continue;
+		    if(fill != null) {
+			g.chcolor(fill);
+			if(projectFan(g, state, view, o)) {
+			    g.drawp(Model.Mode.TRIANGLE_FAN, FAN);
+			} else {
+			    Coord r = Coord.of(12, 8);
+			    g.frect(sc.sub(r), r.mul(2));
+			}
+			g.chcolor();
+		    }
+		    Tex tex = getTex(val);
+		    if(tex != null)
+			g.aimage(tex, sc, 0.5f, 0.5f);
 		}
 	    }
 	}
