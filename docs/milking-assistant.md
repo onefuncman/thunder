@@ -42,6 +42,19 @@ persisted via `PREF_MILK_ASSIST = "croster/milking-assist"`).
      If full, the name stays so the user knows to come back for more.
 5. If no sfx arrives by the adaptive deadline, pending silently expires.
 
+**Loading sfx must be stashed, not dropped.** `onSfx` runs synchronously at
+uimsg time, and the sfx often arrives together with its first-time
+`RMSG_RESID` binding (fresh session, first milk, relog) -- `resid.get()`
+throws `Loading` at that instant. The message is one-shot, so `onSfx`
+stashes the still-loading resid on the pending (`Pending.loadingSfx`) and
+`driveTimers` re-checks it each item tick until it loads (deadline extended
+to at least +5s on stash). Dropping it instead caused the original
+intermittent "deselect sometimes doesn't fire" bug: compare
+`capture-expired-20260426-163026-292.jsonl` (sfx + RESID at +0.373s, inside
+TTL, yet expired) with `capture-resolved-20260426-163048-731.jsonl` (22s
+later, resource cached, no RESID line, resolved). Regression-tested by
+`thunder.MilkingAssistSfxLoadingTest`.
+
 **Why sfx and not chres on inventory items?** Empirically:
 - Milk pouring into a nearby barrel produces zero chres on inventory items
   (barrels are world gobs; their content isn't streamed to the client).

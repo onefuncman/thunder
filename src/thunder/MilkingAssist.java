@@ -62,6 +62,8 @@ public class MilkingAssist {
     private static final long MOVEMENT_PROBE_MS = 500;
     /** Within this distance, no walk is needed; skip the movement probe. */
     private static final double ADJACENT_RANGE_UNITS = 2 * TILE_UNITS;
+    /** Minimum time granted to finish loading an sfx that arrived in-window. */
+    private static final long SFX_LOAD_GRACE_MS = 5000;
     /** A position delta below this is considered "still standing." */
     private static final double STILL_EPSILON_UNITS = 0.1;
 
@@ -71,12 +73,18 @@ public class MilkingAssist {
     public static class Pending {
 	final UID cattleId;
 	final long armMs;
-	final long deadline;
+	long deadline;
 	final long movementProbeAt;
 	final long playerGobId;
 	final Coord2d playerRcAtArm;
 	final double distanceUnits;
 	boolean movementSeen;
+	/* An sfx that arrived in-window but whose resource was still loading
+	 * (typical when the uimsg lands together with its first RMSG_RESID
+	 * binding). The message is one-shot, so it is stashed here and
+	 * re-checked from driveTimers until it loads. */
+	Indir<Resource> loadingSfx;
+	UI loadingSfxUi;
 
 	Pending(UID id, long playerGobId, Coord2d playerRcAtArm, double distanceUnits) {
 	    this.cattleId = id;
@@ -143,7 +151,14 @@ public class MilkingAssist {
 	}
 	String name;
 	try { name = resid.get().name; }
-	catch(Loading l) { return; }
+	catch(Loading l) {
+	    if(p.loadingSfx == null) {
+		p.loadingSfx = resid;
+		p.loadingSfxUi = ui;
+		p.deadline = Math.max(p.deadline, System.currentTimeMillis() + SFX_LOAD_GRACE_MS);
+	    }
+	    return;
+	}
 	catch(RuntimeException re) { return; }
 	if(name == null || !isMilkSfx(name)) return;
 	INSTANCE.resolveBySfx(ui, name);
@@ -160,6 +175,23 @@ public class MilkingAssist {
 	    observer.clearPending();
 	    cap.endIfActive("expired", endMeta(p.cattleId, null));
 	    return;
+	}
+	if(p.loadingSfx != null) {
+	    String name;
+	    try { name = p.loadingSfx.get().name; }
+	    catch(Loading l) { return; }
+	    catch(RuntimeException re) {
+		p.loadingSfx = null;
+		p.loadingSfxUi = null;
+		return;
+	    }
+	    UI sfxUi = p.loadingSfxUi;
+	    p.loadingSfx = null;
+	    p.loadingSfxUi = null;
+	    if(name != null && isMilkSfx(name)) {
+		resolveBySfx(sfxUi, name);
+		return;
+	    }
 	}
 	if(p.movementSeen) return;
 	if(now < p.movementProbeAt) return;
