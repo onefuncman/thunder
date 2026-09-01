@@ -38,5 +38,16 @@
   "gfx/terobjs/coffer": {
     empty: [1, 2],
     full: [65, 66]
+  },
+  "gfx/terobjs/stockpile-metal": {
+    // Only presence in this file matters for GobTag.CONTAINER tagging (see
+    // GobTag.java's ContainerInfo.get(name).ifPresent(...) -- just being present
+    // grants the tag unconditionally). Empty/full pose indices are genuinely
+    // unknown for this resource (discovered live via zone-content logging, not
+    // guessed) -- left blank rather than guessed a third time this project has
+    // been burned by guessing; empty sets just mean the FULL/EMPTY sub-tags never
+    // get added for it, which MiningBot's own logic doesn't depend on anyway.
+    empty: [],
+    full: []
   }
 }

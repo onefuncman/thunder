@@ -375,6 +375,18 @@ public class UI {
 		execute(next);
 	}
 
+	/* Thunder: current count of uimsg/wdgmsg Commands submitted but not yet
+	 * finished -- every incoming server message and every widget action shares
+	 * this same queue and thread pool (see execute(), which runs each Command
+	 * via loader.defer(...)), and commands targeting the same widget id are
+	 * strictly ordered via the dep/bar mechanism above. A bot driving actions
+	 * back-to-back with no natural pacing can build up a real backlog here;
+	 * lets a caller wait for it to actually clear instead of guessing a fixed
+	 * pause duration. */
+	public synchronized int inflight() {
+	    return inflight;
+	}
+
 	public void drain() {
 	    boolean irq = false;
 	    synchronized(this) {

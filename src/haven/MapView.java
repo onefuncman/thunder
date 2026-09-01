@@ -59,7 +59,17 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
     private Collection<Delayed> delayed = new LinkedList<Delayed>();
     private Collection<Delayed> delayed2 = new LinkedList<Delayed>();
     public Camera camera = restorecam();
-    private Loader.Future<Plob> placing = null;
+    // Thunder: written from whatever thread runs the "place"/"unplace" uimsg
+    // Command (a Loader worker thread, per UI.CommandQueue.execute -> loader.defer),
+    // read from the render/tick thread and, since MiningBot started polling it,
+    // from a bot's own background thread too. Without volatile the JMM makes no
+    // promise a write here ever becomes visible to those other threads -- a
+    // plain field can legally sit stale in a hot loop until some unrelated
+    // synchronization event happens to publish it, which matches everything
+    // observed: bot-side placement stalls of inconsistent length, and both a
+    // user's left-click and the bot's own failure-handling path appearing to
+    // "unstick" a ghost that was actually already resolved.
+    private volatile Loader.Future<Plob> placing = null;
     private Grabber grab;
     private Selector selection;
     private Coord3f camoff = new Coord3f(Coord3f.o);
@@ -2144,8 +2154,22 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	}
 	
 	void place() {
-	    if(ui.mc.isect(rootpos(), sz))
-		new Adjust(ui.mc.sub(rootpos()), 0).run();
+	    if(ui.mc.isect(rootpos(), sz)) {
+		// This is a cosmetic initial snap-to-cursor -- a real placement flow
+		// re-adjusts continuously via mousemove, and a bot flow re-warps to
+		// its own target via warpAndCommitPlacement, so it's never load-bearing.
+		// But Adjust.run() does a full GPU click-picking render pass over the
+		// visible scene, which needs *every* visible gob's resources ready --
+		// discovered live: with fresh mining rubble on the ground nearby, this
+		// threw Loading for that rubble's texture, and the whole Plob future
+		// got stuck waiting on an entirely unrelated resource as a result.
+		// Skipping the snap on Loading (rather than letting it propagate and
+		// stall this Future) costs nothing but the cosmetic pre-position.
+		try {
+		    new Adjust(ui.mc.sub(rootpos()), 0).run();
+		} catch(Loading l) {
+		}
+	    }
 	    this.slot = basic.add(this.placed);
 	}
 	
@@ -3063,10 +3087,225 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
     public void grab(Grabber grab) {
 	this.grab = grab;
     }
-    
+
     public void release(Grabber grab) {
 	if(this.grab == grab)
 	    this.grab = null;
+    }
+
+    /* Thunder: minimal bot-facing accessors for MiningBot. A bot fires the
+     * matching action-menu button (which asks the server to arm the
+     * Selector/Plob via a "sel"/"place" uimsg), polls these until the arm
+     * lands, then sends the same commit wdgmsg the real UI sends from
+     * Selector.mmouseup / mousedown -- no need to touch the private
+     * selection/placing fields or drive their mouse-follow behavior. */
+    public boolean hasActiveSelector() {
+	return selection != null;
+    }
+
+    /* Matches Selector.mmousedown's mc.div(MCache.tilesz2) conversion. */
+    public Coord worldToSelTile(Coord2d wc) {
+	return wc.round().div(MCache.tilesz2);
+    }
+
+    public void commitAreaSelection(Coord startTile, Coord endTile, int modflags) {
+	wdgmsg("sel", startTile, endTile, modflags);
+    }
+
+    public boolean hasActivePlacement() {
+	Loader.Future<Plob> p = this.placing;
+	return (p != null) && p.done();
+    }
+
+    /**
+     * Full stack trace of whatever Loading the current placement's Future last
+     * caught, so a stall's actual call path shows up directly instead of being
+     * inferred from a resource name. Two theories about where this originates
+     * (Plob.place's cosmetic cursor-hit-test; StdPlace.adjust's snap-to-nearby-
+     * gob logic) were tried as fixes and neither changed the observed behavior --
+     * time to read the real call stack instead of guessing a third.
+     */
+    public String placingLoadTrace() {
+	Loader.Future<Plob> p = this.placing;
+	if((p == null) || p.done()) {return null;}
+	Loading l = p.lastload();
+	if(l == null) {return null;}
+	java.io.StringWriter sw = new java.io.StringWriter();
+	l.printStackTrace(new java.io.PrintWriter(sw));
+	return sw.toString();
+    }
+
+    /**
+     * When the current stall is a Defer.NotDoneException (a stuck TexL prepare,
+     * per the discovery trace), the OWNING Defer instance's own queue/busy/pool
+     * counts and this Future's own scheduling state -- Defer instances are
+     * partitioned per the ThreadGroup of whichever thread first deferred a task
+     * into them, so this is the only way to see whether that *specific*
+     * instance still has live workers, as opposed to Glob.loader (a completely
+     * different pool) reading idle. Returns null for any other kind of stall.
+     */
+    public String placingBlockerPoolStats() {
+	Loader.Future<Plob> p = this.placing;
+	if((p == null) || p.done()) {return null;}
+	Loading l = p.lastload();
+	if(!(l instanceof Defer.NotDoneException)) {return null;}
+	return ((Defer.NotDoneException) l).future.poolStats();
+    }
+
+    /**
+     * Forces an extra worker into whatever Defer instance the current stall is
+     * blocked on -- see Defer.Future.ensureExtraWorker for why this is needed:
+     * a bot's own long-running task can permanently occupy that instance's one
+     * worker thread, and its own spawn heuristic never grows the pool for a
+     * single item landing on an already-fully-occupied (but non-empty) pool.
+     * No-op for any stall that isn't a Defer.NotDoneException.
+     */
+    public void ensurePlacementBlockerWorker() {
+	Loader.Future<Plob> p = this.placing;
+	if((p == null) || p.done()) {return;}
+	Loading l = p.lastload();
+	if(l instanceof Defer.NotDoneException) {
+	    ((Defer.NotDoneException) l).future.ensureExtraWorker();
+	}
+    }
+
+    /**
+     * Boosts the priority of whatever sub-resource load the current placement is
+     * blocked on (Defer/Resource.Pool's queues are priority-ordered, per
+     * PrioQueue.peek picking the highest-priority entry). Loader.Future.run only
+     * ever boosts a caught Loading to priority 1 by default -- comfortably below
+     * the priority 5 ordinary active rendering requests at (TexL.prepare's
+     * this.decode.get() -> get(5)), so a low-priority dependency queued behind a
+     * continuous stream of everyday rendering work (exactly what mining
+     * generates -- new terrain/clutter constantly coming into view) can be
+     * starved indefinitely. Boosting explicitly to 10 here mirrors the same
+     * codebase's own existing precedent for "need this now" (Loading.waitforint).
+     * Safe to call every poll tick; boostprio is a monotonic max, never lowers.
+     */
+    public void boostPlacementPriority(int prio) {
+	Loader.Future<Plob> p = this.placing;
+	if((p != null) && !p.done()) {
+	    Loading l = p.lastload();
+	    if(l != null) {l.boostprio(prio);}
+	}
+    }
+
+    /**
+     * Client-side-only teardown of the current placement ghost, mirroring the
+     * uimsg("unplace") handler's own cleanup exactly (Loader.Future.cancel(),
+     * falling back to removing the resolved Plob from the scene) but without
+     * waiting for the server to send that message. Safe to call whether the
+     * future is still loading, done, or already null. Used by MiningBot to
+     * avoid leaving a stale placement future around after giving up on a
+     * placement attempt, instead of just dropping the reference.
+     */
+    public void cancelPlacement() {
+	Loader.Future<Plob> placing = this.placing;
+	if(placing != null) {
+	    if(!placing.cancel()) {
+		Plob ob = placing.get();
+		synchronized(ob) {
+		    ob.slot.remove();
+		    ob.removed();
+		}
+	    }
+	    this.placing = null;
+	}
+    }
+
+    /* Thunder: diagnostic-only, not used by any commit logic -- describes the raw
+     * placing state so a caller can log its progression over time instead of just
+     * a single before/after boolean. */
+    public String placingDebugState() {
+	Loader.Future<Plob> p = this.placing;
+	if(p == null) return "null";
+	if(!p.done()) {
+	    // curload is whatever sub-resource load most recently threw Loading and
+	    // is still being waited on -- naming it turns "stuck for 60s+" into "stuck
+	    // waiting on resource X", which is the difference between a real lead and
+	    // a guess.
+	    Loading l = p.lastload();
+	    return "loading waitingOn=" + (l != null ? l.toString() : "?");
+	}
+	Plob plob = p.get();
+	Resource res = null;
+	try { res = plob.getres(); } catch(Loading ignored) {}
+	return "done res=" + (res != null ? res.name : "?") + " lastmc=" + plob.lastmc + " rc=" + plob.rc;
+    }
+
+    /**
+     * Legacy direct-coordinate commit -- kept for reference but no longer used by
+     * MiningBot. Discovery evidence (a captured wire trace) showed the server
+     * silently rejects this: it responds to the "place" wdgmsg with an immediate
+     * "unplace", no error toast at all, because the coordinate sent here doesn't
+     * match the ghost's own tracked rc (which real mouse-driven placement keeps in
+     * sync via Adjust, but a bot never touches). Use warpAndCommitPlacement instead.
+     */
+    public void commitPlacement(Coord2d worldPos, double angleRadians, int button, int modflags) {
+	wdgmsg("place", worldPos.floor(OCache.posres), (int) Math.round(angleRadians * 32768 / Math.PI), button, modflags);
+    }
+
+    /**
+     * Drives the ghost's own placement-adjust logic (the same StdPlace.adjust a
+     * real mousemove triggers) to move it to worldPos, then commits using the
+     * ghost's own resulting rc/a -- exactly mirroring mousedown's real commit
+     * (wdgmsg("place", placing.rc.floor(posres), angleFixed, button, modflags))
+     * instead of sending an externally-computed coordinate the ghost itself
+     * disagrees with. Returns false if there's no active, loaded placement to warp.
+     */
+    private static java.io.PrintWriter realPlacementLog;
+
+    /* Thunder: a real (manual, mouse-driven) placement commit's computed values,
+     * in the same shape as lastWarpCommitDebug, appended to a standing file --
+     * not tied to any MiningBot run -- so a bot-vs-manual commit at the same
+     * spot can be diffed directly instead of guessed at. */
+    private static synchronized void logRealPlacement(String line) {
+	try {
+	    if(realPlacementLog == null) {
+		java.nio.file.Path dir = Debug.somedir("minebot-logs");
+		dir.toFile().mkdirs();
+		realPlacementLog = new java.io.PrintWriter(new java.io.FileWriter(dir.resolve("real-placements.log").toFile(), true), true);
+	    }
+	    realPlacementLog.println(line);
+	    realPlacementLog.flush();
+	} catch(Exception e) {
+	}
+    }
+
+    private String lastWarpCommitDebug;
+
+    /** Thunder: what the last warpAndCommitPlacement call actually computed and sent --
+     * exposed so a caller (MiningBot) can route it through its own file logging instead
+     * of only Debug.log (the in-game console, no scrollback access). */
+    public String lastWarpCommitDebug() {
+	return lastWarpCommitDebug;
+    }
+
+    public boolean warpAndCommitPlacement(Coord2d worldPos, int button, int modflags) {
+	Loader.Future<Plob> p = this.placing;
+	if((p == null) || !p.done()) {return false;}
+	Plob plob = p.get();
+	// StdPlace.adjust computes the snap angle from plob.rc *before* this call's
+	// move -- fine for real mouse usage (many small Adjust calls a frame apart,
+	// so rc is already essentially at the target by the time any one call runs)
+	// but wrong for a single one-shot call from wherever the Plob's constructor
+	// initially placed it (nowhere near the real target). First call gets rc to
+	// the target (angle result irrelevant, discarded); second call then computes
+	// the angle from a position that's actually correct.
+	plob.adjust.adjust(plob, worldPos.floor(posres), worldPos, 0);
+	plob.adjust.adjust(plob, worldPos.floor(posres), worldPos, 0);
+	plob.lastmc = worldPos.floor(posres);
+	Coord player = player() != null ? player().rc.floor(posres) : null;
+	lastWarpCommitDebug = String.format(
+	    "target=%s -> plob.rc=%s(floor=%s) plob.a=%s(fixed=%d) button=%d modflags=%d res=%s playerTile=%s distToTarget=%s",
+	    worldPos, plob.rc, plob.rc.floor(posres), plob.a, (int) Math.round(plob.a * 32768 / Math.PI), button, modflags,
+	    plob.getres() != null ? plob.getres().name : "?", player,
+	    player != null ? player.dist(plob.rc.floor(posres)) : "?");
+	Debug.log.printf("[minebot-discovery] BOT warp+commit %s%n", lastWarpCommitDebug);
+	Debug.log.flush();
+	wdgmsg("place", plob.rc.floor(posres), (int) Math.round(plob.a * 32768 / Math.PI), button, modflags);
+	ui.gui.pathQueue.start(plob.rc);
+	return true;
     }
     
     private UI.Grab camdrag = null;
@@ -3082,6 +3321,17 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	} else if((placing_l != null) && placing_l.done()) {
 	    Plob placing = placing_l.get();
 	    if(placing.lastmc != null) {
+		Gob pl = player();
+		Coord plfloor = placing.rc.floor(posres);
+		Coord player = pl != null ? pl.rc.floor(posres) : null;
+		String line = String.format(
+		    "[minebot-discovery] REAL place commit rc=%s(floor=%s) angle=%s(fixed=%d) button=%d modflags=%d res=%s playerTile=%s distToTarget=%s",
+		    placing.rc, plfloor, placing.a, (int) Math.round(placing.a * 32768 / Math.PI), ev.b, ui.modflags(),
+		    placing.getres() != null ? placing.getres().name : "?", player,
+		    player != null ? player.dist(plfloor) : "?");
+		Debug.log.println(line);
+		Debug.log.flush();
+		logRealPlacement(line);
 		wdgmsg("place", placing.rc.floor(posres), (int) Math.round(placing.a * 32768 / Math.PI), ev.b, ui.modflags());
 		ui.gui.pathQueue.start(placing.rc);
 	    }

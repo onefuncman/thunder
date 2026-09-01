@@ -216,6 +216,15 @@ public class CFG<T> {
     public static final CFG<Integer> AUTO_DRINK_THRESHOLD = new CFG<>("automation.autodrink.threshold", 74);
     public static final CFG<Integer> AUTO_DRINK_DELAY = new CFG<>("automation.autodrink.delay", 250);
     public static final CFG<Integer> AUTO_DRINK_FORCED_INTERVAL = new CFG<>("automation.autodrink.forced_interval", 15000);
+    public static final CFG<Boolean> AUTO_EAT_ENABLED = new CFG<>("automation.autoeat.enabled", true);
+    public static final CFG<Integer> AUTO_EAT_THRESHOLD = new CFG<>("automation.autoeat.threshold", 74);
+    public static final CFG<Integer> AUTO_EAT_DELAY = new CFG<>("automation.autoeat.delay", 250);
+    public static final CFG<Integer> AUTO_EAT_FORCED_INTERVAL = new CFG<>("automation.autoeat.forced_interval", 15000);
+    public static final CFG<Integer> MINEBOT_FLEE_RADIUS = new CFG<>("automation.minebot.flee_radius", 150);
+    public static final CFG<Integer> MINEBOT_SUPPORT_RADIUS = new CFG<>("automation.minebot.support_radius", 9);
+    public static final CFG<Integer> MINEBOT_STONE_MIN = new CFG<>("automation.minebot.stone_min", 30);
+    public static final CFG<Integer> MINEBOT_EAT_UNTIL_PERCENT = new CFG<>("automation.minebot.eat_until_percent", 95);
+    public static final CFG<Integer> MINEBOT_BARS_TARGET = new CFG<>("automation.minebot.bars_target", 10);
     public static final CFG<Boolean> ENABLE_PURGE_BUTTON_IN_KIN_LIST = new CFG<>("ui.enable_purge_button_kin_list", false);
     public static final CFG<Boolean> SHOW_FEP_NUMBERS_ON_FOOD = new CFG<>("ui.show_fep_numbers_on_food", true);
     public static final CFG<Boolean> EXTEND_ZOOM_ON_ORTHO = new CFG<>("cam.extend_zoom_on_ortho", false);

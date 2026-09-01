@@ -595,6 +595,7 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
         super.bound();
 	BuffToggles.init(this);
 	AutoDrink.getInstance().init(this);
+	haven.bot.AutoEat.getInstance().init(this);
     }
 
     protected void added() {
@@ -2596,6 +2597,32 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 			break;
 		    }
 		    default: throw new Exception("Unknown macro command: " + args[1]);
+		    }
+		}
+	    });
+	cmdmap.put("minebot", new Console.Command() {
+		public void run(Console cons, String[] args) throws Exception {
+		    if(args.length < 2) {thunder.mining.MiningBotSetupWnd.toggle(GameUI.this); return;}
+		    switch(args[1]) {
+		    case "show": thunder.mining.MiningBotSetupWnd.toggle(GameUI.this); break;
+		    case "start": {
+			if(args.length < 3) throw new Exception("Usage: minebot start <n|s|e|w> [radius] [stoneMin] [eatUntil%] [segmentCap] [barsTarget]");
+			auto.MiningBot.Direction dir;
+			try {
+			    dir = auto.MiningBot.Direction.parse(args[2]);
+			} catch(IllegalArgumentException e) {
+			    throw new Exception(e.getMessage());
+			}
+			int radius = (args.length >= 4) ? Integer.parseInt(args[3]) : CFG.MINEBOT_SUPPORT_RADIUS.get();
+			int stoneMin = (args.length >= 5) ? Integer.parseInt(args[4]) : CFG.MINEBOT_STONE_MIN.get();
+			int eatUntil = (args.length >= 6) ? Integer.parseInt(args[5]) : CFG.MINEBOT_EAT_UNTIL_PERCENT.get();
+			int segmentCap = (args.length >= 7) ? Integer.parseInt(args[6]) : 0;
+			int barsTarget = (args.length >= 8) ? Integer.parseInt(args[7]) : CFG.MINEBOT_BARS_TARGET.get();
+			auto.MiningBot.start(GameUI.this, dir, radius, stoneMin, eatUntil, segmentCap, barsTarget);
+			break;
+		    }
+		    case "stop": auto.MiningBot.stop(); break;
+		    default: throw new Exception("Unknown minebot command: " + args[1]);
 		    }
 		}
 	    });

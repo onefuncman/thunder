@@ -206,6 +206,15 @@ public interface KamiOptPanels {
 		y += STEP;
 		y = addSlider(CFG.AUTO_DRINK_DELAY, 0, 1000, "Auto drink prevention window: %d ms", "Auto drink will not be triggered repeatedly during this period. Adjust according to your latency.", panel, x, y, STEP);
 
+		y += STEP;
+		panel.add(new CFGBox("Enable autoeat", CFG.AUTO_EAT_ENABLED, "Eat available food automatically when reaching certain hunger level.", true), x, y);
+
+		y += STEP;
+		y = addSlider(CFG.AUTO_EAT_THRESHOLD, 0, 100, "Auto eat threshold: %d%%", "Start eating when energy drops below this value.", panel, x, y, STEP);
+
+		y += STEP;
+		y = addSlider(CFG.AUTO_EAT_DELAY, 0, 1000, "Auto eat prevention window: %d ms", "Auto eat will not be triggered repeatedly during this period. Adjust according to your latency.", panel, x, y, STEP);
+
 		my = Math.max(my, y);
 
 		panel.add(wnd.new PButton(UI.scale(200), "Back", 27, wnd.main), new Coord(0, my + UI.scale(35)));

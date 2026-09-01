@@ -231,6 +231,40 @@ public class Defer extends ThreadGroup {
 		    this.prio = prio;
 	    }
 	}
+
+	/* Thunder: the owning Defer instance's own queue/busy/pool counts, plus this
+	 * Future's own scheduling state -- Defer instances are partitioned per the
+	 * ThreadGroup of whichever thread first called defer() (see getgroup()), so
+	 * a Future stuck in one, orphaned instance is invisible to every other
+	 * Defer.stats() call in the client. This is the only way to see whether the
+	 * SPECIFIC instance a stuck Future belongs to actually has live workers. */
+	public String poolStats() {
+	    synchronized(this) {
+		return(Defer.this.stats() + " futureState=" + state + " prio=" + prio + " running=" + (running != null));
+	    }
+	}
+
+	/* Thunder: force an extra worker into this Future's OWNING Defer instance
+	 * (up to maxthreads), bypassing defer()'s own spawn heuristic. That
+	 * heuristic (see Defer.defer) only grows the pool when the queue was
+	 * ALREADY non-empty before the newly-added item -- a single item landing
+	 * on a pool that's fully occupied by one long-running task never triggers
+	 * it, so that item is starved for as long as the long-running task runs.
+	 * Root-caused live: auto.Bot runs an entire bot task (e.g. MiningBot's
+	 * whole multi-minute run) as ONE Defer.Future, permanently occupying this
+	 * instance's one worker thread for its whole lifetime (Worker.run only
+	 * returns to queue.poll() once the CURRENT task's run() fully finishes) --
+	 * starving anything else deferred through the same instance, such as
+	 * TexL's texture finalization the bot's own placement then blocks on. */
+	public void ensureExtraWorker() {
+	    synchronized(queue) {
+		if(pool.size() < maxthreads) {
+		    Thread n = new Worker();
+		    n.start();
+		    pool.add(n);
+		}
+	    }
+	}
     }
 
     private static final AtomicInteger threadno = new AtomicInteger(0);
