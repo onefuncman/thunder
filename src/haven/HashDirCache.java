@@ -144,6 +144,7 @@ public class HashDirCache implements ResCache {
     }
 
     private static final Map<Path, int[]> monitors = new HashMap<>();
+    private static final Object storemon = new Object();
     private static boolean monwarned = false;
     private CacheFile lookup(String name, boolean creat) throws IOException {
 	long h = namehash(idhash, name);
@@ -296,23 +297,41 @@ public class HashDirCache implements ResCache {
 
 		public void close() throws IOException {
 		    st.close();
+		    /* Serialize the publish step against other stores, both
+		     * in-process and cross-process (a second client sharing
+		     * this cache). Two unserialized replaces of the same
+		     * entry interleave on Windows — the peer recreates the
+		     * name between our delete and move — dropping saves or
+		     * destroying the previous entry outright. */
 		    Utils.ioretry(() -> {
-			    if(Config.windows) {
-				/* Apparently, even though NIO opens files with
-				 * FILE_SHARE_DELETE on Win32, Windows *still* doesn't allow
-				 * atomic overwrites of in-use files even though deletion actually
-				 * is supported, so try to trade atomicity for... non-failure? */
-				try {
-				    Files.delete(path);
-				} catch(NoSuchFileException e) {
-				} catch(IOException e) {
-				    new Warning(e, "weird deletion failure on " + path).issue();
+			    synchronized(storemon) {
+				try(LockedFile lk = LockedFile.lock(pj(base, "store.lock"))) {
+				    try {
+					/* ATOMIC_MOVE replaces an existing target on POSIX, and
+					 * on Windows since NTFS/JDKs gained POSIX rename
+					 * semantics. Prefer it unconditionally: if the new
+					 * contents cannot be moved into place, the old entry
+					 * survives instead of being deleted up front. */
+					return(Files.move(tmp, path, StandardCopyOption.ATOMIC_MOVE));
+				    } catch(AtomicMoveNotSupportedException | AccessDeniedException | FileAlreadyExistsException e) {
+					if(Config.windows) {
+					    /* Legacy fallback: without POSIX rename semantics,
+					     * Windows refuses to move onto an existing name, so
+					     * delete it first and retry. */
+					    try {
+						Files.delete(path);
+					    } catch(NoSuchFileException e2) {
+					    } catch(IOException e2) {
+						e.addSuppressed(e2);
+					    }
+					    try {
+						return(Files.move(tmp, path, StandardCopyOption.ATOMIC_MOVE));
+					    } catch(AtomicMoveNotSupportedException | AccessDeniedException | FileAlreadyExistsException e2) {
+					    }
+					}
+					return(Files.move(tmp, path, StandardCopyOption.REPLACE_EXISTING));
+				    }
 				}
-			    }
-			    try {
-				return(Files.move(tmp, path, StandardCopyOption.ATOMIC_MOVE));
-			    } catch(AtomicMoveNotSupportedException | AccessDeniedException | FileAlreadyExistsException e) {
-				return(Files.move(tmp, path, StandardCopyOption.REPLACE_EXISTING));
 			    }
 			});
 		    cleaner.closed = true;
@@ -326,6 +345,13 @@ public class HashDirCache implements ResCache {
 	    if(cf == null)
 		throw(new FileNotFoundException(name));
 	    FileChannel fp = cf.acquire();
+	    if(fp.size() <= fp.position()) {
+		/* A concurrent store() has created and headered this entry
+		 * but not yet moved its contents into place; report a miss
+		 * rather than handing out an empty stream. */
+		fp.close();
+		throw(new FileNotFoundException(name + " (concurrently being created)"));
+	    }
 	    return(Channels.newInputStream(fp));
 	}
     }
