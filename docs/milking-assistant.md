@@ -23,9 +23,25 @@ persisted via `PREF_MILK_ASSIST = "croster/milking-assist"`).
 1. Player right-clicks a cattle gob -> `MilkingAssist.armPending` captures
    the cattle UID, snapshots the player gob's id and rc, and computes
    distance to the cow.
-2. Adaptive TTL: `1000 ms + ~150 ms per tile` (run speed ~7 tiles/s),
-   capped at 15 s. A nearby cow has a short window; a far cow gets the
-   full walk budget.
+2. Adaptive TTL: `1000 ms base + 2000 ms action budget + ~150 ms per tile`
+   (run speed ~7 tiles/s), capped at 15 s. The action budget exists
+   because the milking itself takes ~1.0-1.5 s between arrival and the
+   sfx (capture-expired-20260426-144457: click +0.000s, sfx +1.034s).
+   The original walk-only budget (1 s base) put the deadline directly on
+   top of the sfx latency, producing alternating deselect failures on
+   sheep: attempts flipped between the sfx landing just inside and just
+   outside the deadline, and batch-milking "successes" were often the
+   previous animal's late sfx resolving the freshly armed pending
+   (capture-resolved-20260901-204752: resolved at +0.463s, under half
+   the real latency -- a misattributed leftover). Regression-tested by
+   `thunder.MilkingAssistTtlTest`.
+
+   Known residual: a late sfx from milking N can still resolve pending
+   N+1 if N+1 is armed inside N's sfx tail. That deselects the animal
+   the player just clicked to milk anyway, so the outcome is right and
+   only the timing is early; it goes wrong only if N+1 turns out to be
+   unmilkable. Distinguishing sfx by source animal isn't possible --
+   the uimsg carries no gob reference.
 3. **Movement probe at +500 ms** (driven by `GItem.tick`): if the player
    gob hasn't started moving (`Moving` attr non-null) and hasn't been
    displaced from arm position, AND the cow was farther than ~2 tiles

@@ -54,8 +54,13 @@ public class MilkingAssist {
     private static final double RUN_SPEED_TPS = 7.0;
     /** Per-tile travel-time budget added to TTL. */
     private static final long PER_TILE_MS = (long)(1000.0 / RUN_SPEED_TPS);
-    /** Base + buffer added to the adaptive TTL (action processing + sfx). */
+    /** Base + buffer added to the adaptive TTL (server processing + sfx delivery). */
     private static final long BASE_TTL_MS = 1000;
+    /** The milking action itself, arrival to sfx. Observed on the wire at
+     * ~1.0s+ even for adjacent animals (capture-expired-20260426-144457:
+     * click +0.000s, sfx +1.034s); budgeted with headroom so the deadline
+     * doesn't race the sfx. */
+    private static final long ACTION_BUDGET_MS = 2000;
     /** Maximum TTL cap, regardless of distance. */
     private static final long MAX_TTL_MS = 15000;
     /** How long after arm to expect the server to have started a walk. */
@@ -90,7 +95,7 @@ public class MilkingAssist {
 	    this.cattleId = id;
 	    this.armMs = System.currentTimeMillis();
 	    this.distanceUnits = distanceUnits;
-	    long ttl = BASE_TTL_MS + (long)((distanceUnits / TILE_UNITS) * PER_TILE_MS);
+	    long ttl = BASE_TTL_MS + ACTION_BUDGET_MS + (long)((distanceUnits / TILE_UNITS) * PER_TILE_MS);
 	    this.deadline = armMs + Math.min(MAX_TTL_MS, ttl);
 	    this.movementProbeAt = armMs + MOVEMENT_PROBE_MS;
 	    this.playerGobId = playerGobId;
