@@ -52,6 +52,7 @@ public final class MilkingAssistDebug implements Feature {
 	    JSONObject pend = new JSONObject();
 	    pend.put("cattle_id_bits",   p.cattleId.bits);
 	    pend.put("cattle_id_hex",    p.cattleId.toString());
+	    pend.put("phase",            p.phase.name());
 	    pend.put("deadline_ms",      p.deadline);
 	    pend.put("ttl_remaining_ms", p.deadline - now);
 	    body.put("pending", pend);

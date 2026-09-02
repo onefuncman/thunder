@@ -12,24 +12,30 @@ import org.json.JSONObject;
 /**
  * Auto-deselects a cattle in the roster after it is milked.
  *
- * Detection is sfx-driven, with a server-movement probe to short-circuit
- * the silent no-milk case (server simply doesn't queue the walk).
+ * Detection is sfx-driven, with the action lifecycle tracked through the
+ * player gob's movement attrs instead of distance-estimated timeouts.
  *
- * Pipeline:
- *   1. Right-click a cattle gob -> {@link #armPending} captures the cattle
- *      UID and snapshots the player gob's position + the distance to the cow.
- *   2. Adaptive TTL = 1000ms base + ~150ms per tile of distance, capped at
- *      15s. Covers slow walks; the sfx usually arrives much sooner.
- *   3. Movement probe at +500ms (driven by {@code GItem.tick}): if the player
- *      hasn't started moving AND the cow is more than ~2 tiles away, the
- *      server rejected the click outright -- end early as
- *      {@code rejected_no_movement}.
- *   4. Server processes the action; on success, {@code RootWidget.uimsg("sfx")}
- *      dispatches the milking sound (resource {@code sfx/fx/water}).
- *      {@link #onSfx} resolves: clears the roster mark and (unless any
- *      milk container in main inventory is at capacity) un-memorizes so
- *      the floating name disappears.
- *   5. Pending expires at the adaptive deadline if no sfx arrives.
+ * Phases (driven by {@code GItem.tick} via {@link #driveTimers}):
+ *   ACCEPT   - armed by the right-click. A non-adjacent target must see the
+ *              server start the approach walk (ideally OD_HOMING carrying
+ *              our target's gob id) within {@link #ACCEPT_WINDOW_MS}, else
+ *              the click was rejected ({@code rejected_no_movement}).
+ *              Adjacent targets skip straight to ACTING.
+ *   EN_ROUTE - the walk is tracked, not estimated: alive while the player's
+ *              {@link Moving} attr persists (a chase of a wandering animal
+ *              takes as long as it takes; {@link EN_ROUTE_SANITY_MS} caps
+ *              pathological stalls). A homing that switches to another gob
+ *              cancels the pending ({@code cancelled_retargeted}).
+ *   ACTING   - the walk ended; the milk sfx ({@code sfx/fx/water} via
+ *              {@code RootWidget.uimsg("sfx")}) must arrive within
+ *              {@link #ACTION_WINDOW_MS}. {@link #onSfx} resolves: clears
+ *              the roster mark and (unless any milk container in main
+ *              inventory is at capacity) un-memorizes so the floating name
+ *              disappears. No sfx = expired (no-milk is signal-free).
+ *
+ * An sfx heard before ACTING cannot be ours (the player hasn't arrived), so
+ * it is ignored -- this kills misattribution of the previous animal's late
+ * sfx to a freshly armed pending.
  *
  * Why sfx and not chres on inventory items: empirically, a cattle right-click
  * fires no chres on the bucket if the milk pours into a nearby barrel.
@@ -50,49 +56,65 @@ import org.json.JSONObject;
 public class MilkingAssist {
     /** World units per tile (matches {@link MCache#tilesz}). */
     private static final double TILE_UNITS = 11.0;
-    /** Estimated player run speed, tiles per second. */
-    private static final double RUN_SPEED_TPS = 7.0;
-    /** Per-tile travel-time budget added to TTL. */
-    private static final long PER_TILE_MS = (long)(1000.0 / RUN_SPEED_TPS);
-    /** Base + buffer added to the adaptive TTL (server processing + sfx delivery). */
-    private static final long BASE_TTL_MS = 1000;
-    /** The milking action itself, arrival to sfx. Observed on the wire at
-     * ~1.0s+ even for adjacent animals (capture-expired-20260426-144457:
-     * click +0.000s, sfx +1.034s); budgeted with headroom so the deadline
-     * doesn't race the sfx. */
-    private static final long ACTION_BUDGET_MS = 2000;
-    /** Maximum TTL cap, regardless of distance. */
-    private static final long MAX_TTL_MS = 15000;
-    /** How long after arm to expect the server to have started a walk. */
-    private static final long MOVEMENT_PROBE_MS = 500;
-    /** Within this distance, no walk is needed; skip the movement probe. */
+    /** Within this distance, no walk is needed; the pending starts ACTING. */
     private static final double ADJACENT_RANGE_UNITS = 2 * TILE_UNITS;
+    /** How long after arm the server gets to start the approach walk.
+     * Observed OD_HOMING at +0.084s (capture-expired-20260902-114026);
+     * generous for latency. No walk inside this window on a non-adjacent
+     * target = the click was rejected. */
+    static final long ACCEPT_WINDOW_MS = 1500;
+    /** Sanity cap on the walk itself. The walk is tracked by the player's
+     * Moving/Homing attrs, not estimated -- a chase takes as long as it
+     * takes -- but a pending shouldn't outlive a pathological stall. */
+    static final long EN_ROUTE_SANITY_MS = 60000;
+    /** Post-arrival window for the milk sfx. The action takes ~1.0-1.5s
+     * between arrival and sfx (capture-expired-20260426-144457: click
+     * +0.000s, sfx +1.034s on an adjacent attempt). */
+    static final long ACTION_WINDOW_MS = 3000;
     /** Minimum time granted to finish loading an sfx that arrived in-window. */
     private static final long SFX_LOAD_GRACE_MS = 5000;
-    /** A position delta below this is considered "still standing." */
-    private static final double STILL_EPSILON_UNITS = 0.1;
+    /** An sfx heard while still walking counts as ours if the walk ends
+     * within this window after it -- arrival objdata and the sfx uimsg can
+     * land in the same server batch in either order. */
+    static final long ARRIVAL_RACE_MS = 500;
 
     private static final MilkingAssist INSTANCE = new MilkingAssist();
     public static MilkingAssist get() { return INSTANCE; }
 
+    /**
+     * Action lifecycle, driven by the player gob's movement attrs rather
+     * than distance-estimated timeouts. The server homes the player on the
+     * clicked gob (OD_HOMING carries the target id), so accept, travel, and
+     * arrival are all observable; only the post-arrival window is a timer,
+     * because a no-milk rejection at melee range is signal-free and the sfx
+     * carries no gob reference.
+     */
+    enum Phase { ACCEPT, EN_ROUTE, ACTING }
+
     public static class Pending {
 	final UID cattleId;
 	final long armMs;
+	Phase phase;
+	/** Deadline for the CURRENT phase (also read by MilkingAssistDebug). */
 	long deadline;
-	final long initialDeadline;
-	final long movementProbeAt;
 	final long playerGobId;
 	final Coord2d playerRcAtArm;
 	final long targetGobId;
 	final Coord2d targetRcAtArm;
 	final double distanceUnits;
-	boolean movementSeen;
-	/* An sfx that arrived in-window but whose resource was still loading
-	 * (typical when the uimsg lands together with its first RMSG_RESID
-	 * binding). The message is one-shot, so it is stashed here and
-	 * re-checked from driveTimers until it loads. */
+	/* An sfx that arrived while ACTING but whose resource was still
+	 * loading (typical when the uimsg lands together with its first
+	 * RMSG_RESID binding). The message is one-shot, so it is stashed
+	 * here and re-checked from driveTimers until it loads. */
 	Indir<Resource> loadingSfx;
 	UI loadingSfxUi;
+	/* The last sfx heard before ACTING, kept in case it was the arrival
+	 * race: the walk-clear objdata and the sfx uimsg can arrive in the
+	 * same batch in either order. Consumed on the EN_ROUTE -> ACTING
+	 * transition if it landed within ARRIVAL_RACE_MS of the walk end. */
+	Indir<Resource> preArrivalSfx;
+	UI preArrivalSfxUi;
+	long preArrivalSfxAtMs;
 
 	Pending(UID id, long playerGobId, Coord2d playerRcAtArm, double distanceUnits) {
 	    this(id, playerGobId, playerRcAtArm, distanceUnits, -1, null);
@@ -103,15 +125,27 @@ public class MilkingAssist {
 	    this.cattleId = id;
 	    this.armMs = System.currentTimeMillis();
 	    this.distanceUnits = distanceUnits;
-	    long ttl = BASE_TTL_MS + ACTION_BUDGET_MS + (long)((distanceUnits / TILE_UNITS) * PER_TILE_MS);
-	    this.deadline = armMs + Math.min(MAX_TTL_MS, ttl);
-	    this.initialDeadline = this.deadline;
-	    this.movementProbeAt = armMs + MOVEMENT_PROBE_MS;
 	    this.playerGobId = playerGobId;
 	    this.playerRcAtArm = playerRcAtArm;
 	    this.targetGobId = targetGobId;
 	    this.targetRcAtArm = targetRcAtArm;
-	    this.movementSeen = distanceUnits <= ADJACENT_RANGE_UNITS;
+	    if(distanceUnits <= ADJACENT_RANGE_UNITS) {
+		// No walk needed; the action starts with the click.
+		beginActing(armMs);
+	    } else {
+		this.phase = Phase.ACCEPT;
+		this.deadline = armMs + ACCEPT_WINDOW_MS;
+	    }
+	}
+
+	final void beginEnRoute(long now) {
+	    this.phase = Phase.EN_ROUTE;
+	    this.deadline = now + EN_ROUTE_SANITY_MS;
+	}
+
+	final void beginActing(long now) {
+	    this.phase = Phase.ACTING;
+	    this.deadline = now + ACTION_WINDOW_MS;
 	}
     }
 
@@ -151,15 +185,17 @@ public class MilkingAssist {
 	meta.put("source", source);
 	meta.put("distance_units", distance);
 	meta.put("distance_tiles", distance / TILE_UNITS);
-	meta.put("ttl_ms", pending.deadline - pending.armMs);
-	meta.put("expects_movement", !pending.movementSeen);
+	meta.put("initial_phase", pending.phase.name());
+	meta.put("initial_window_ms", pending.deadline - pending.armMs);
+	meta.put("expects_movement", pending.phase == Phase.ACCEPT);
 	meta.put("player_gob", player.id);
 	meta.put("target_gob", gob.id);
 	if(playerRc != null) meta.put("player_rc", playerRc.toString());
 	if(gob.rc != null) meta.put("target_rc", gob.rc.toString());
 	if(ui.sess != null) INSTANCE.cap.beginIfArmed(ui.sess, meta);
-	INSTANCE.cap.note(String.format("milk: armed uid=%s dist=%.2f tiles ttl=%dms",
-					cid.id, distance / TILE_UNITS, pending.deadline - pending.armMs),
+	INSTANCE.cap.note(String.format("milk: armed uid=%s dist=%.2f tiles phase=%s window=%dms",
+					cid.id, distance / TILE_UNITS, pending.phase,
+					pending.deadline - pending.armMs),
 			  null, gob.id);
     }
 
@@ -167,6 +203,18 @@ public class MilkingAssist {
     public static void onSfx(UI ui, Indir<Resource> resid) {
 	Pending p = INSTANCE.observer.peekPending();
 	if(p == null) return;
+	if(p.phase != Phase.ACTING) {
+	    // Our own milk sfx cannot fire before arrival -- but "arrival"
+	    // is known only through the Moving attr, and the clearing
+	    // objdata can be ordered after the sfx uimsg in the same batch.
+	    // Hold the sfx; the EN_ROUTE -> ACTING transition consumes it
+	    // if the walk ends within ARRIVAL_RACE_MS.
+	    p.preArrivalSfx = resid;
+	    p.preArrivalSfxUi = ui;
+	    p.preArrivalSfxAtMs = System.currentTimeMillis();
+	    INSTANCE.cap.note("milk: sfx during " + p.phase + " -- held for arrival race", null, 0);
+	    return;
+	}
 	if(System.currentTimeMillis() > p.deadline) {
 	    INSTANCE.cap.note("milk: sfx heard past deadline -- expiring pending", "uid=" + p.cattleId, 0);
 	    INSTANCE.observer.clearPending();
@@ -208,8 +256,11 @@ public class MilkingAssist {
 	if(p == null) return;
 	long now = System.currentTimeMillis();
 	if(now > p.deadline) {
+	    String outcome = (p.phase == Phase.ACCEPT) ? "rejected_no_movement" : "expired";
+	    if(p.phase == Phase.ACCEPT)
+		cap.note("milk: no walk started within accept window -- click rejected", null, 0);
 	    observer.clearPending();
-	    cap.endIfActive("expired", expiryMeta(p, (item != null) ? item.ui : null));
+	    cap.endIfActive(outcome, expiryMeta(p, (item != null) ? item.ui : null));
 	    return;
 	}
 	if(p.loadingSfx != null) {
@@ -232,26 +283,64 @@ public class MilkingAssist {
 	    }
 	    cap.note("milk: stashed sfx loaded as non-milk " + name + " -- discarded", null, 0);
 	}
-	if(p.movementSeen) return;
-	if(now < p.movementProbeAt) return;
-	UI ui = item.ui;
+	if(p.phase == Phase.ACTING) return;
+	UI ui = (item != null) ? item.ui : null;
 	if(ui == null || ui.gui == null || ui.gui.map == null) return;
 	Gob player = ui.gui.map.player();
 	if(player == null || player.id != p.playerGobId) return;
 
-	boolean moving = (player.getattr(Moving.class) != null);
-	boolean displaced = (player.rc != null && player.rc.dist(p.playerRcAtArm) > STILL_EPSILON_UNITS);
-	if(moving || displaced) {
-	    p.movementSeen = true;
-	    cap.note(String.format("milk: movement probe passed at +%dms (moving=%b displaced=%b)",
-				   now - p.armMs, moving, displaced), null, 0);
+	Moving moving = player.getattr(Moving.class);
+	if(p.phase == Phase.ACCEPT) {
+	    if(moving instanceof Homing && ((Homing)moving).tgt == p.targetGobId) {
+		cap.note(String.format("milk: homing on target at +%dms -- en route", now - p.armMs),
+			 null, p.targetGobId);
+		p.beginEnRoute(now);
+	    } else if(moving != null) {
+		// A walk started but not a homing on our target: either the
+		// server used a plain move, or the player was mid-walk when
+		// they clicked. Treat as accepted; arrival still gates ACTING.
+		cap.note(String.format("milk: %s at +%dms -- en route (no homing link)",
+				       moving.getClass().getSimpleName(), now - p.armMs), null, 0);
+		p.beginEnRoute(now);
+	    }
 	    return;
 	}
-	// Past probe, distance was non-adjacent, no walk queued, no displacement
-	// -- server rejected the click outright (cow has no milk, etc.).
-	cap.note("milk: movement probe FAILED -- treating click as rejected", null, 0);
-	observer.clearPending();
-	cap.endIfActive("rejected_no_movement", expiryMeta(p, ui));
+	// EN_ROUTE: track the walk itself instead of estimating it.
+	if(moving == null) {
+	    cap.note(String.format("milk: walk ended at +%dms -- acting window %dms",
+				   now - p.armMs, ACTION_WINDOW_MS), null, 0);
+	    enterActing(p, now);
+	    return;
+	}
+	if(moving instanceof Homing && ((Homing)moving).tgt != p.targetGobId) {
+	    cap.note("milk: homing retargeted to gob " + ((Homing)moving).tgt + " -- cancelled",
+		     null, ((Homing)moving).tgt);
+	    observer.clearPending();
+	    cap.endIfActive("cancelled_retargeted", expiryMeta(p, ui));
+	}
+    }
+
+    /**
+     * EN_ROUTE -> ACTING: start the action window and re-evaluate an sfx
+     * heard just before the walk-clear objdata (arrival race). Routing it
+     * through {@link #onSfx} reuses the normal ACTING machinery: a loaded
+     * milk sfx resolves, a still-loading one goes to the retry stash, and
+     * anything else is ignored.
+     */
+    private void enterActing(Pending p, long now) {
+	p.beginActing(now);
+	Indir<Resource> held = p.preArrivalSfx;
+	UI heldUi = p.preArrivalSfxUi;
+	long heldAt = p.preArrivalSfxAtMs;
+	p.preArrivalSfx = null;
+	p.preArrivalSfxUi = null;
+	if(held == null) return;
+	if(now - heldAt > ARRIVAL_RACE_MS) {
+	    cap.note("milk: held sfx preceded walk end by " + (now - heldAt) + "ms -- discarded", null, 0);
+	    return;
+	}
+	cap.note("milk: held sfx within arrival race window -- evaluating", null, 0);
+	onSfx(heldUi, held);
     }
 
     private void resolveBySfx(UI ui, String sfxResname) {
@@ -285,9 +374,8 @@ public class MilkingAssist {
      */
     private JSONObject expiryMeta(Pending p, UI ui) {
 	JSONObject o = endMeta(p.cattleId, null);
-	o.put("movement_seen", p.movementSeen);
+	o.put("phase", p.phase.name());
 	o.put("sfx_stash_pending", p.loadingSfx != null);
-	o.put("deadline_extended_ms", p.deadline - p.initialDeadline);
 	o.put("age_ms", System.currentTimeMillis() - p.armMs);
 	try {
 	    if(ui == null || ui.gui == null || ui.gui.map == null) return o;
@@ -371,5 +459,7 @@ public class MilkingAssist {
 	if(id == null) return;
 	INSTANCE.observer.setPending(new Pending(id, -1, null, 0));
     }
+    static void    debugSetPending(Pending p) { INSTANCE.observer.setPending(p); }
+    static void    debugEnterActing(Pending p, long now) { INSTANCE.enterActing(p, now); }
     static void    debugClearPending()   { INSTANCE.observer.clearPending(); }
 }

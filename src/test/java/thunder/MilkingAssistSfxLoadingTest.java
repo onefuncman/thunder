@@ -73,6 +73,44 @@ public class MilkingAssistSfxLoadingTest {
 	assertEquals(1, sfx.gets, "an already-loaded sfx must be read at uimsg time");
     }
 
+    /*
+     * Sfx heard before arrival: you cannot milk an animal you have not
+     * reached, so a mid-walk sfx is not proof of our milking -- but
+     * "arrival" is only visible as the Moving attr clearing, and that
+     * objdata can be ordered after the sfx uimsg in the same server batch
+     * (own-sfx latencies as low as +0.392s are on record:
+     * capture-resolved-20260426-163048, 22s isolated from any other
+     * milking). So a pre-arrival sfx is HELD, not judged: it counts if the
+     * walk ends within ARRIVAL_RACE_MS of it, and is discarded if the
+     * player demonstrably kept walking past that window.
+     */
+
+    @Test
+    void milkSfxJustBeforeWalkEndCountsViaArrivalRace() {
+	MilkingAssist.Pending p = new MilkingAssist.Pending(UID.of(0x1234L), -1, null, 4.26 * 11.0, 4242, null);
+	p.beginEnRoute(p.armMs);
+	MilkingAssist.debugSetPending(p);
+	SlowIndir sfx = new SlowIndir(sfxRes("sfx/fx/water"), 0);
+	MilkingAssist.onSfx(null, sfx);
+	assertSame(p, MilkingAssist.debugPeekPending(), "held, not resolved, while still walking");
+	assertEquals(0, sfx.gets, "not judged before arrival");
+	MilkingAssist.debugEnterActing(p, System.currentTimeMillis());
+	assertTrue(sfx.gets >= 1, "walk ended inside the race window -- the held sfx must be evaluated");
+    }
+
+    @Test
+    void milkSfxLongBeforeWalkEndIsDiscarded() {
+	MilkingAssist.Pending p = new MilkingAssist.Pending(UID.of(0x1234L), -1, null, 4.26 * 11.0, 4242, null);
+	p.beginEnRoute(p.armMs);
+	MilkingAssist.debugSetPending(p);
+	SlowIndir sfx = new SlowIndir(sfxRes("sfx/fx/water"), 0);
+	MilkingAssist.onSfx(null, sfx);
+	p.preArrivalSfxAtMs -= (MilkingAssist.ARRIVAL_RACE_MS + 1000);   // walk continued well past the sfx
+	MilkingAssist.debugEnterActing(p, System.currentTimeMillis());
+	assertEquals(0, sfx.gets, "an sfx the player walked away from is not ours");
+	assertSame(p, MilkingAssist.debugPeekPending(), "pending continues into ACTING unresolved");
+    }
+
     @Test
     void nonMilkSfxDoesNotDisturbPending() {
 	MilkingAssist.debugSetPending(UID.of(0x1234L));
