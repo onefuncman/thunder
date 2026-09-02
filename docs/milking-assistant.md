@@ -203,6 +203,28 @@ an err/msg" can all be answered by reading the file.
 The capture is auto-armed only -- there's no rolling background mode. If
 you want a particular attempt captured, arm immediately before doing it.
 
+### Feature notes in the capture (2026-09-02)
+
+The wire stream alone couldn't distinguish "sfx never sent" from "sfx
+mishandled" (the 20260902-114026 expired capture: a wandering sheep
+4.3 tiles out, zero server response, no way to tell whether the player
+was still chasing at expiry). Two additions close that gap:
+
+- `FeatureCapture.note(summary)` appends synthetic `type=NOTE` events
+  that interleave chronologically with wire traffic. MilkingAssist notes
+  every decision: arm (uid/distance/ttl), each sfx heard (milk,
+  non-milk, still-loading-stashed, stash-occupied-DROPPED), stash
+  load results, movement-probe verdicts, and resolve-found-no-entry.
+  View with `python tools/proto_explore.py <f> timeline --type NOTE`.
+- `begin_meta` now records `player_gob`/`target_gob` and both `rc`
+  positions; expiry/rejection `end_meta` records `player_moving_at_end`,
+  `player_displaced_tiles`, `target_displaced_tiles`,
+  `dist_remaining_tiles`, `target_gone`, `movement_seen`,
+  `sfx_stash_pending`, and `deadline_extended_ms` -- enough to separate
+  "still walking when the deadline hit" (chase outran the static walk
+  budget) from "arrived, milked, sfx late" from "server ignored the
+  click".
+
 ## Open: detecting "no milk" rejection
 
 When a player right-clicks a cow that has no milk to give, the player

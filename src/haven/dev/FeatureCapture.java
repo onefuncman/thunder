@@ -126,6 +126,30 @@ public final class FeatureCapture {
 	}
     }
 
+    /**
+     * Append a synthetic feature-side event to the capture so the feature's
+     * own decisions (probe verdicts, stash transitions, resolve reasons)
+     * interleave chronologically with the wire traffic in the timeline.
+     * No-op while no capture is active, so call sites can note
+     * unconditionally. Rendered with {@code type=NOTE}; find them with
+     * {@code proto_explore.py <f> timeline --type NOTE}.
+     */
+    public synchronized void note(String summary, String detail, long gobId) {
+	if(!active) return;
+	buf.addLast(new ProtoEvent.Builder()
+		    .timestamp(Utils.rtime())
+		    .dir(ProtoEvent.Direction.OUT)
+		    .category(ProtoEvent.Category.SESSION)
+		    .typeName("NOTE")
+		    .summary(summary)
+		    .detail(detail == null ? "" : detail)
+		    .gobId(gobId)
+		    .build());
+	while(buf.size() > MAX_EVENTS) buf.pollFirst();
+    }
+
+    public void note(String summary) { note(summary, null, 0); }
+
     private Path writeDump(String outcome, long beginMs, double beginRtime,
 			   JSONObject beginMeta, JSONObject endMeta,
 			   ArrayDeque<ProtoEvent> events) throws IOException {

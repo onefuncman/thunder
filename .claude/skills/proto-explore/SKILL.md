@@ -71,7 +71,7 @@ python tools/proto_explore.py <jsonl> timeline --dir out --no-movement
 - `--wid N` -- events for one widget
 - `--dir in|out`
 - `--cat OBJECT|WIDGET|...`
-- `--type RMSG_WDGMSG|OBJDATA|WDGMSG_OUT|...`
+- `--type RMSG_WDGMSG|OBJDATA|WDGMSG_OUT|NOTE|...` (`NOTE` = the feature's own decision trail, interleaved with wire events)
 - `--msg chres|tt|click|...` (widget message name)
 - `--match REGEX` (regex on summary/detail)
 - `--no-movement` (drop OD_MOVE / OD_LIN* noise)

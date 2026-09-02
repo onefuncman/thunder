@@ -79,9 +79,12 @@ public class MilkingAssist {
 	final UID cattleId;
 	final long armMs;
 	long deadline;
+	final long initialDeadline;
 	final long movementProbeAt;
 	final long playerGobId;
 	final Coord2d playerRcAtArm;
+	final long targetGobId;
+	final Coord2d targetRcAtArm;
 	final double distanceUnits;
 	boolean movementSeen;
 	/* An sfx that arrived in-window but whose resource was still loading
@@ -92,14 +95,22 @@ public class MilkingAssist {
 	UI loadingSfxUi;
 
 	Pending(UID id, long playerGobId, Coord2d playerRcAtArm, double distanceUnits) {
+	    this(id, playerGobId, playerRcAtArm, distanceUnits, -1, null);
+	}
+
+	Pending(UID id, long playerGobId, Coord2d playerRcAtArm, double distanceUnits,
+		long targetGobId, Coord2d targetRcAtArm) {
 	    this.cattleId = id;
 	    this.armMs = System.currentTimeMillis();
 	    this.distanceUnits = distanceUnits;
 	    long ttl = BASE_TTL_MS + ACTION_BUDGET_MS + (long)((distanceUnits / TILE_UNITS) * PER_TILE_MS);
 	    this.deadline = armMs + Math.min(MAX_TTL_MS, ttl);
+	    this.initialDeadline = this.deadline;
 	    this.movementProbeAt = armMs + MOVEMENT_PROBE_MS;
 	    this.playerGobId = playerGobId;
 	    this.playerRcAtArm = playerRcAtArm;
+	    this.targetGobId = targetGobId;
+	    this.targetRcAtArm = targetRcAtArm;
 	    this.movementSeen = distanceUnits <= ADJACENT_RANGE_UNITS;
 	}
     }
@@ -130,7 +141,7 @@ public class MilkingAssist {
 	if(player == null) return;
 	Coord2d playerRc = player.rc;
 	double distance = playerRc.dist(gob.rc);
-	Pending pending = new Pending(cid.id, player.id, playerRc, distance);
+	Pending pending = new Pending(cid.id, player.id, playerRc, distance, gob.id, gob.rc);
 
 	INSTANCE.cap.endIfActive("superseded", endMeta(null, null));
 	INSTANCE.observer.setPending(pending);
@@ -142,7 +153,14 @@ public class MilkingAssist {
 	meta.put("distance_tiles", distance / TILE_UNITS);
 	meta.put("ttl_ms", pending.deadline - pending.armMs);
 	meta.put("expects_movement", !pending.movementSeen);
+	meta.put("player_gob", player.id);
+	meta.put("target_gob", gob.id);
+	if(playerRc != null) meta.put("player_rc", playerRc.toString());
+	if(gob.rc != null) meta.put("target_rc", gob.rc.toString());
 	if(ui.sess != null) INSTANCE.cap.beginIfArmed(ui.sess, meta);
+	INSTANCE.cap.note(String.format("milk: armed uid=%s dist=%.2f tiles ttl=%dms",
+					cid.id, distance / TILE_UNITS, pending.deadline - pending.armMs),
+			  null, gob.id);
     }
 
     /** Hook from RootWidget.uimsg("sfx") -- the milking sound is the resolve trigger. */
@@ -150,8 +168,9 @@ public class MilkingAssist {
 	Pending p = INSTANCE.observer.peekPending();
 	if(p == null) return;
 	if(System.currentTimeMillis() > p.deadline) {
+	    INSTANCE.cap.note("milk: sfx heard past deadline -- expiring pending", "uid=" + p.cattleId, 0);
 	    INSTANCE.observer.clearPending();
-	    INSTANCE.cap.endIfActive("expired", endMeta(p.cattleId, null));
+	    INSTANCE.cap.endIfActive("expired", INSTANCE.expiryMeta(p, ui));
 	    return;
 	}
 	String name;
@@ -161,11 +180,23 @@ public class MilkingAssist {
 		p.loadingSfx = resid;
 		p.loadingSfxUi = ui;
 		p.deadline = Math.max(p.deadline, System.currentTimeMillis() + SFX_LOAD_GRACE_MS);
+		INSTANCE.cap.note("milk: sfx still loading -- stashed, deadline now +"
+				  + (p.deadline - p.armMs) + "ms", null, 0);
+	    } else {
+		INSTANCE.cap.note("milk: sfx still loading -- stash occupied, DROPPED", null, 0);
 	    }
 	    return;
 	}
-	catch(RuntimeException re) { return; }
-	if(name == null || !isMilkSfx(name)) return;
+	catch(RuntimeException re) {
+	    INSTANCE.cap.note("milk: sfx resid.get threw " + re.getClass().getSimpleName(), null, 0);
+	    return;
+	}
+	if(name == null || !isMilkSfx(name)) {
+	    INSTANCE.cap.note("milk: sfx ignored (non-milk): " + name, null, 0);
+	    return;
+	}
+	INSTANCE.cap.note("milk: milk sfx " + name + " at +" + (System.currentTimeMillis() - p.armMs)
+			  + "ms -- resolving", null, 0);
 	INSTANCE.resolveBySfx(ui, name);
     }
 
@@ -178,7 +209,7 @@ public class MilkingAssist {
 	long now = System.currentTimeMillis();
 	if(now > p.deadline) {
 	    observer.clearPending();
-	    cap.endIfActive("expired", endMeta(p.cattleId, null));
+	    cap.endIfActive("expired", expiryMeta(p, (item != null) ? item.ui : null));
 	    return;
 	}
 	if(p.loadingSfx != null) {
@@ -186,6 +217,7 @@ public class MilkingAssist {
 	    try { name = p.loadingSfx.get().name; }
 	    catch(Loading l) { return; }
 	    catch(RuntimeException re) {
+		cap.note("milk: stashed sfx load failed: " + re.getClass().getSimpleName(), null, 0);
 		p.loadingSfx = null;
 		p.loadingSfxUi = null;
 		return;
@@ -194,9 +226,11 @@ public class MilkingAssist {
 	    p.loadingSfx = null;
 	    p.loadingSfxUi = null;
 	    if(name != null && isMilkSfx(name)) {
+		cap.note("milk: stashed sfx loaded as " + name + " -- resolving", null, 0);
 		resolveBySfx(sfxUi, name);
 		return;
 	    }
+	    cap.note("milk: stashed sfx loaded as non-milk " + name + " -- discarded", null, 0);
 	}
 	if(p.movementSeen) return;
 	if(now < p.movementProbeAt) return;
@@ -209,12 +243,15 @@ public class MilkingAssist {
 	boolean displaced = (player.rc != null && player.rc.dist(p.playerRcAtArm) > STILL_EPSILON_UNITS);
 	if(moving || displaced) {
 	    p.movementSeen = true;
+	    cap.note(String.format("milk: movement probe passed at +%dms (moving=%b displaced=%b)",
+				   now - p.armMs, moving, displaced), null, 0);
 	    return;
 	}
 	// Past probe, distance was non-adjacent, no walk queued, no displacement
 	// -- server rejected the click outright (cow has no milk, etc.).
+	cap.note("milk: movement probe FAILED -- treating click as rejected", null, 0);
 	observer.clearPending();
-	cap.endIfActive("rejected_no_movement", endMeta(p.cattleId, null));
+	cap.endIfActive("rejected_no_movement", expiryMeta(p, ui));
     }
 
     private void resolveBySfx(UI ui, String sfxResname) {
@@ -236,6 +273,47 @@ public class MilkingAssist {
 	    cap.endIfActive(outcome, endMeta(p.cattleId, sfxResname));
 	    return;
 	}
+	// Fell through every roster without finding the entry: the pending
+	// stays armed (it may still expire) but this was previously invisible.
+	cap.note("milk: resolve found NO roster entry for uid=" + p.cattleId, null, 0);
+    }
+
+    /**
+     * Rich end-of-pending metadata for expiry/rejection outcomes: where the
+     * player and target were, whether the player was still walking, and the
+     * pending's internal state. Every field is best-effort.
+     */
+    private JSONObject expiryMeta(Pending p, UI ui) {
+	JSONObject o = endMeta(p.cattleId, null);
+	o.put("movement_seen", p.movementSeen);
+	o.put("sfx_stash_pending", p.loadingSfx != null);
+	o.put("deadline_extended_ms", p.deadline - p.initialDeadline);
+	o.put("age_ms", System.currentTimeMillis() - p.armMs);
+	try {
+	    if(ui == null || ui.gui == null || ui.gui.map == null) return o;
+	    Gob player = ui.gui.map.player();
+	    if(player != null && player.id == p.playerGobId) {
+		o.put("player_moving_at_end", player.getattr(Moving.class) != null);
+		if(player.rc != null) {
+		    o.put("player_rc_at_end", player.rc.toString());
+		    if(p.playerRcAtArm != null)
+			o.put("player_displaced_tiles", player.rc.dist(p.playerRcAtArm) / TILE_UNITS);
+		}
+	    }
+	    if(p.targetGobId >= 0 && ui.sess != null) {
+		Gob target = ui.sess.glob.oc.getgob(p.targetGobId);
+		if(target == null) {
+		    o.put("target_gone", true);
+		} else if(target.rc != null) {
+		    o.put("target_rc_at_end", target.rc.toString());
+		    if(p.targetRcAtArm != null)
+			o.put("target_displaced_tiles", target.rc.dist(p.targetRcAtArm) / TILE_UNITS);
+		    if(player != null && player.rc != null)
+			o.put("dist_remaining_tiles", player.rc.dist(target.rc) / TILE_UNITS);
+		}
+	    }
+	} catch(RuntimeException ignored) {}
+	return o;
     }
 
     /** True if any milk-content item in the main inventory is at capacity. */
