@@ -18,29 +18,73 @@ persisted via `PREF_MILK_ASSIST = "croster/milking-assist"`).
 - `src/haven/res/ui/croster/CattleRoster.java` — `uimsg "upd"` mark
   preservation.
 
-## Detection pipeline (sfx-driven)
+## Detection pipeline (sfx-driven, phase machine since 2026-09-02)
 
-1. Player right-clicks a cattle gob -> `MilkingAssist.armPending` captures
-   the cattle UID, snapshots the player gob's id and rc, and computes
-   distance to the cow.
-2. Adaptive TTL: `1000 ms + ~150 ms per tile` (run speed ~7 tiles/s),
-   capped at 15 s. A nearby cow has a short window; a far cow gets the
-   full walk budget.
-3. **Movement probe at +500 ms** (driven by `GItem.tick`): if the player
-   gob hasn't started moving (`Moving` attr non-null) and hasn't been
-   displaced from arm position, AND the cow was farther than ~2 tiles
-   away at arm, the server rejected the click outright -- end early as
-   `rejected_no_movement`. (Adjacent cows skip this probe since no walk
-   is needed.)
-4. On success the server fires the milking sfx via `RootWidget.uimsg("sfx")`
-   with resource id resolving to `sfx/fx/water`. `MilkingAssist.onSfx`
-   sees it, confirms the resname is milk-related, and resolves:
-   - `entry.mark.set(false)` -- drops the roster checkbox.
-   - Unless any milk container in main inventory is at capacity (`Level.cur
-     >= Level.max`), `RosterWindow.unmemorize(uid)` removes the UID from
-     `memorized` so `CattleId.draw` stops rendering the floating name.
-     If full, the name stays so the user knows to come back for more.
-5. If no sfx arrives by the adaptive deadline, pending silently expires.
+The pending is a three-phase state machine driven by the player gob's
+movement attrs, not a distance-estimated timeout. Rationale: H&H never
+acks gob clicks, but the server *does* leak the action lifecycle -- it
+homes the player on the clicked gob (`OD_HOMING` carries the target gob
+id, observed at +0.084s in capture-expired-20260902-114026), the walk
+end is visible as the `Moving` attr dropping, and success fires the sfx.
+
+1. **ACCEPT** -- `MilkingAssist.armPending` on right-click captures the
+   cattle UID, player/target gobs and positions. A non-adjacent target
+   must see a walk start within 1.5 s (ideally `Homing` with our target's
+   gob id) or the click was rejected (`rejected_no_movement`). Adjacent
+   targets (<= 2 tiles) skip straight to ACTING.
+2. **EN_ROUTE** -- the walk is *tracked*, not estimated: the pending stays
+   alive while the `Moving` attr persists, however long the chase of a
+   wandering animal takes (60 s sanity cap only). This replaced the
+   `~150 ms/tile` walk budget, which expired mid-chase on the first
+   animal of a batch (capture-expired-20260902-114026: still `OD_HOMING`
+   at +3.565s when the 3.6 s budget hit). A homing that switches to a
+   different gob cancels the pending (`cancelled_retargeted`).
+3. **ACTING** -- the walk ended; the milk sfx must arrive within 3 s.
+   The milking takes ~1.0-1.5 s between arrival and sfx
+   (capture-expired-20260426-144457: click +0.000s, sfx +1.034s).
+   On `sfx/fx/water` via `RootWidget.uimsg("sfx")`, `onSfx` resolves:
+   - Normal case: `entry.mark.set(false)` only -- the glow and the
+     checkmark beside the floating name go, the name itself stays
+     visible.
+   - Any milk container in main inventory at capacity (`Level.cur >=
+     Level.max`): the take was capped, so the animal likely has milk
+     left -- it stays fully selected (outcome
+     `resolved_container_full`).
+   (Until 2026-09-02 this was inverted: the resolve always cleared the
+   mark and used the capacity check to decide whether to *unmemorize*,
+   hiding the floating name. Users read the vanishing name as the animal
+   disappearing, and a capped animal was wrongly deselected. Names are
+   never hidden by the milk path now; done-vs-pending reads from the
+   checkmark and glow.)
+   No sfx by the window's end = expired (a no-milk rejection at melee
+   range is signal-free).
+
+An sfx heard before ACTING is *held*, not judged: you cannot milk an
+animal you have not reached, but "arrival" is only visible as the Moving
+attr clearing, and that objdata can be ordered after the sfx uimsg in
+the same server batch. The held sfx counts if the walk ends within
+500 ms of it (`ARRIVAL_RACE_MS`), and is discarded if the player
+demonstrably kept walking past that window -- which is what bounds the
+theoretical leftover-misattribution mode (a previous animal's late sfx
+landing on a freshly armed pending) without second-guessing genuine fast
+resolves: own-sfx latency is a range, +0.392s to +1.034s on record
+(capture-resolved-20260426-163048, 22 s isolated from any other milking,
+vs capture-expired-20260426-144457). Phase transitions and windows are
+regression-tested by `thunder.MilkingAssistPhaseTest`; the held-sfx race
+by the two arrival-race tests in `MilkingAssistSfxLoadingTest`.
+
+**Loading sfx must be stashed, not dropped.** `onSfx` runs synchronously at
+uimsg time, and the sfx often arrives together with its first-time
+`RMSG_RESID` binding (fresh session, first milk, relog) -- `resid.get()`
+throws `Loading` at that instant. The message is one-shot, so `onSfx`
+stashes the still-loading resid on the pending (`Pending.loadingSfx`) and
+`driveTimers` re-checks it each item tick until it loads (deadline extended
+to at least +5s on stash). Dropping it instead caused the original
+intermittent "deselect sometimes doesn't fire" bug: compare
+`capture-expired-20260426-163026-292.jsonl` (sfx + RESID at +0.373s, inside
+TTL, yet expired) with `capture-resolved-20260426-163048-731.jsonl` (22s
+later, resource cached, no RESID line, resolved). Regression-tested by
+`thunder.MilkingAssistSfxLoadingTest`.
 
 **Why sfx and not chres on inventory items?** Empirically:
 - Milk pouring into a nearby barrel produces zero chres on inventory items
@@ -91,11 +135,13 @@ visible (or `hideWhenClosed` is off). The roster mark only adds a small
 checkbox icon next to the name -- it does not gate name visibility.
 
 Implications:
-- Clearing the mark alone leaves the floating name visible.
-- To hide the name, also remove the UID from `RosterWindow.memorized`.
-- `Refresh Names` rebuilds memorized from `entries.keySet()`, so any cow
-  un-memorized by the milk path will reappear after a refresh -- by
-  design, since the cow is still in the herd.
+- Clearing the mark alone leaves the floating name visible -- which is
+  exactly what the milk resolve does since 2026-09-02 (it used to also
+  unmemorize; users read the vanishing name as the animal disappearing).
+- To hide a name, remove the UID from `RosterWindow.memorized`.
+- `Refresh Names` rebuilds memorized from `entries.keySet()`.
+- The milk path never touches `memorized` anymore; `unmemorize(UID)`
+  remains for other callers.
 
 `rmseq` bumps in `RosterWindow.memorize` / `clearMemorized` /
 `refreshMemorized` are defensive but unnecessary for the name-render
@@ -173,6 +219,28 @@ an err/msg" can all be answered by reading the file.
 
 The capture is auto-armed only -- there's no rolling background mode. If
 you want a particular attempt captured, arm immediately before doing it.
+
+### Feature notes in the capture (2026-09-02)
+
+The wire stream alone couldn't distinguish "sfx never sent" from "sfx
+mishandled" (the 20260902-114026 expired capture: a wandering sheep
+4.3 tiles out, zero server response, no way to tell whether the player
+was still chasing at expiry). Two additions close that gap:
+
+- `FeatureCapture.note(summary)` appends synthetic `type=NOTE` events
+  that interleave chronologically with wire traffic. MilkingAssist notes
+  every decision: arm (uid/distance/ttl), each sfx heard (milk,
+  non-milk, still-loading-stashed, stash-occupied-DROPPED), stash
+  load results, movement-probe verdicts, and resolve-found-no-entry.
+  View with `python tools/proto_explore.py <f> timeline --type NOTE`.
+- `begin_meta` now records `player_gob`/`target_gob` and both `rc`
+  positions; expiry/rejection `end_meta` records `player_moving_at_end`,
+  `player_displaced_tiles`, `target_displaced_tiles`,
+  `dist_remaining_tiles`, `target_gone`, `movement_seen`,
+  `sfx_stash_pending`, and `deadline_extended_ms` -- enough to separate
+  "still walking when the deadline hit" (chase outran the static walk
+  budget) from "arrived, milked, sfx late" from "server ignored the
+  click".
 
 ## Open: detecting "no milk" rejection
 

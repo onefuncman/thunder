@@ -91,7 +91,12 @@ def widget_name(summary: str) -> str | None:
 
 def fmt_event(e: dict, anchor_t: float | None = None) -> str:
     t = e.get("t")
-    if anchor_t is not None and t is not None:
+    rel = e.get("rel")
+    if rel is not None and anchor_t is not None:
+        # Capture files record rel = t - capture_begin at dump time; prefer it
+        # so filtered views stay anchored to capture begin, not the first match.
+        ts = f"+{rel:7.3f}s"
+    elif anchor_t is not None and t is not None:
         ts = f"+{t - anchor_t:7.3f}s"
     else:
         ts = f"t={t}"
@@ -185,12 +190,12 @@ def cmd_widgets(args):
 
 
 def cmd_timeline(args):
-    _, events = load_jsonl(args.file)
-    events = filter_events(events, args)
+    _, all_events = load_jsonl(args.file)
+    events = filter_events(all_events, args)
     if not events:
         print("(no events match filters)")
         return
-    anchor = events[0].get("t") if args.relative else None
+    anchor = all_events[0].get("t") if args.relative else None
     limit = args.limit or len(events)
     for e in events[:limit]:
         print(fmt_event(e, anchor))

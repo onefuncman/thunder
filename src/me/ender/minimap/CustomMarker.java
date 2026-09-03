@@ -5,7 +5,10 @@ import haven.MapFile.Marker;
 
 import java.awt.*;
 import java.awt.image.WritableRaster;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.WeakHashMap;
 
 import static haven.MapWnd.MarkerType.*;
@@ -13,6 +16,7 @@ import static haven.MapWnd.MarkerType.*;
 // Simple custom icons that are a combo of PMarker (color) and SMarker (Custom res)
 public class CustomMarker extends Marker {
     private static final Map<String, Image> cache = new WeakHashMap<>();
+    private static final Set<String> broken = Collections.synchronizedSet(new HashSet<>());
 
     public Color color;
     public final Resource.Spec res;
@@ -62,10 +66,26 @@ public class CustomMarker extends Marker {
 	if(image == null) {
 	    try {
 		image = new Image(spec.loadsaved(), col);
-		cache.put(cacheId, image);
-	    } catch (Loading ignored) {}
+	    } catch (Loading ignored) {
+		return null;
+	    } catch (RuntimeException e) {
+		//marker res can be permanently unavailable (e.g. saved by a client that bundled it locally)
+		if(broken.add(spec.name)) {
+		    MapFile.warn(e, "custom marker res '%s' failed to load, using fallback icon", spec.name);
+		}
+		image = fallback(col);
+	    }
+	    if(image != null) {cache.put(cacheId, image);}
 	}
 	return image;
+    }
+
+    private static Image fallback(Color col) {
+	try {
+	    return new Image(Resource.local().loadwait("gfx/hud/mmap/flag"), col);
+	} catch (RuntimeException e) {
+	    return null;
+	}
     }
     
     public static boolean equals(CustomMarker a, CustomMarker b) {

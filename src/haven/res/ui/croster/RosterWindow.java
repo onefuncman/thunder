@@ -81,7 +81,10 @@ public class RosterWindow extends Window {
     }
 
     private boolean visualsActive() {
-	return(visible || !hideWhenClosed);
+	/* visible() (not the field) so the hide animation counts as closed;
+	 * the field stays true while the fade runs and would re-sync the
+	 * highlights that hide() just cleared. */
+	return(visible() || !hideWhenClosed);
     }
 
     public void tick(double dt) {
