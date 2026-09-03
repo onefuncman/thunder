@@ -43,11 +43,19 @@ end is visible as the `Moving` attr dropping, and success fires the sfx.
    The milking takes ~1.0-1.5 s between arrival and sfx
    (capture-expired-20260426-144457: click +0.000s, sfx +1.034s).
    On `sfx/fx/water` via `RootWidget.uimsg("sfx")`, `onSfx` resolves:
-   - `entry.mark.set(false)` -- drops the roster checkbox.
-   - Unless any milk container in main inventory is at capacity (`Level.cur
-     >= Level.max`), `RosterWindow.unmemorize(uid)` removes the UID from
-     `memorized` so `CattleId.draw` stops rendering the floating name.
-     If full, the name stays so the user knows to come back for more.
+   - Normal case: `entry.mark.set(false)` only -- the glow and the
+     checkmark beside the floating name go, the name itself stays
+     visible.
+   - Any milk container in main inventory at capacity (`Level.cur >=
+     Level.max`): the take was capped, so the animal likely has milk
+     left -- it stays fully selected (outcome
+     `resolved_container_full`).
+   (Until 2026-09-02 this was inverted: the resolve always cleared the
+   mark and used the capacity check to decide whether to *unmemorize*,
+   hiding the floating name. Users read the vanishing name as the animal
+   disappearing, and a capped animal was wrongly deselected. Names are
+   never hidden by the milk path now; done-vs-pending reads from the
+   checkmark and glow.)
    No sfx by the window's end = expired (a no-milk rejection at melee
    range is signal-free).
 
@@ -127,11 +135,13 @@ visible (or `hideWhenClosed` is off). The roster mark only adds a small
 checkbox icon next to the name -- it does not gate name visibility.
 
 Implications:
-- Clearing the mark alone leaves the floating name visible.
-- To hide the name, also remove the UID from `RosterWindow.memorized`.
-- `Refresh Names` rebuilds memorized from `entries.keySet()`, so any cow
-  un-memorized by the milk path will reappear after a refresh -- by
-  design, since the cow is still in the herd.
+- Clearing the mark alone leaves the floating name visible -- which is
+  exactly what the milk resolve does since 2026-09-02 (it used to also
+  unmemorize; users read the vanishing name as the animal disappearing).
+- To hide a name, remove the UID from `RosterWindow.memorized`.
+- `Refresh Names` rebuilds memorized from `entries.keySet()`.
+- The milk path never touches `memorized` anymore; `unmemorize(UID)`
+  remains for other callers.
 
 `rmseq` bumps in `RosterWindow.memorize` / `clearMemorized` /
 `refreshMemorized` are defensive but unnecessary for the name-render

@@ -2,11 +2,11 @@ package thunder;
 
 import haven.*;
 import haven.dev.FeatureCapture;
+import haven.res.ui.tt.level.Level;
 import haven.res.ui.croster.CattleId;
 import haven.res.ui.croster.CattleRoster;
 import haven.res.ui.croster.Entry;
 import haven.res.ui.croster.RosterWindow;
-import haven.res.ui.tt.level.Level;
 import org.json.JSONObject;
 
 /**
@@ -28,10 +28,13 @@ import org.json.JSONObject;
  *              cancels the pending ({@code cancelled_retargeted}).
  *   ACTING   - the walk ended; the milk sfx ({@code sfx/fx/water} via
  *              {@code RootWidget.uimsg("sfx")}) must arrive within
- *              {@link #ACTION_WINDOW_MS}. {@link #onSfx} resolves: clears
- *              the roster mark and (unless any milk container in main
- *              inventory is at capacity) un-memorizes so the floating name
- *              disappears. No sfx = expired (no-milk is signal-free).
+ *              {@link #ACTION_WINDOW_MS}. {@link #onSfx} resolves by
+ *              clearing the roster mark: the glow and name-side checkmark
+ *              go, the floating name itself stays. If a milk container in
+ *              the main inventory is at capacity, the take was capped and
+ *              the animal likely has milk left -- it stays selected
+ *              ({@code resolved_container_full}). No sfx = expired
+ *              (no-milk is signal-free).
  *
  * An sfx heard before ACTING cannot be ours (the player hasn't arrived), so
  * it is ignored -- this kills misattribution of the previous animal's late
@@ -355,10 +358,8 @@ public class MilkingAssist {
 	for(CattleRoster<?> r : rw.children(CattleRoster.class)) {
 	    Entry e = r.entries.get(p.cattleId);
 	    if(e == null) continue;
-	    if(e.mark.a) e.mark.set(false);
-	    if(!containerFull) rw.unmemorize(p.cattleId);
+	    String outcome = applyResolve(e.mark, containerFull);
 	    observer.clearPending();
-	    String outcome = containerFull ? "resolved_container_full" : "resolved";
 	    cap.endIfActive(outcome, endMeta(p.cattleId, sfxResname));
 	    return;
 	}
@@ -402,6 +403,20 @@ public class MilkingAssist {
 	    }
 	} catch(RuntimeException ignored) {}
 	return o;
+    }
+
+    /**
+     * The roster-side effect of a milk resolve, package-private for tests.
+     * Container at capacity: the take was capped, so the animal likely has
+     * milk left -- leave it fully selected. Otherwise clear the mark only:
+     * the glow and the name-side checkmark go, but the floating name stays
+     * (this method must never touch RosterWindow.memorized -- unmemorizing
+     * here used to hide the name, which read as the animal vanishing).
+     */
+    static String applyResolve(CheckBox mark, boolean containerFull) {
+	if(containerFull) return "resolved_container_full";
+	if(mark.a) mark.set(false);
+	return "resolved";
     }
 
     /** True if any milk-content item in the main inventory is at capacity. */

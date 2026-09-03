@@ -466,10 +466,10 @@ public abstract class CattleRoster <T extends Entry> extends Widget {
 	    T old = entries.get(entry.id);
 	    boolean wasMarked = (old != null) && old.mark.a;
 	    if(old != null) {
-		// Replace in place: don't touch memorize -- preserve any
-		// user-driven state (e.g. milking-assist's unmemorize after
-		// a milk completion). Skip clearGobHighlight too; the
-		// per-tick syncHighlights restores it on the new entry.
+		// Replace in place: don't touch memorize -- an upd is a data
+		// refresh, not a herd change, so user-driven name state must
+		// survive it. Skip clearGobHighlight too; the per-tick
+		// syncHighlights restores it on the new entry.
 		entries.remove(old.id);
 		old.destroy();
 		putEntry(entry);
