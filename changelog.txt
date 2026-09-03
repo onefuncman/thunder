@@ -1,3 +1,6 @@
+$size[14]{$u{update on 02.09.2026:}
+* Inventory and container windows get Stack all / Unstack all buttons next to Sort (Hurricane-style). Stack merges matching items; Unstack unpacks every "stack of" pile. Bindable as "Stack all opened inventories" / "Unstack all opened inventories" in Options -> Shortcuts.
+`
 $size[14]{$u{update on 26.08.2026:}
 * The "Toggle animal warnings" shortcut no longer disturbs player, gem or midge circles - it now touches animal warnings only. A rare case where a gob could permanently lose its warning circle after a toggle is also fixed.
 * Checkbox changes in the Warn settings window (highlight/warn for players, animals, gems, midges) now apply immediately to everything on screen, instead of only to things entering view afterwards.

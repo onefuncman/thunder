@@ -3,6 +3,8 @@ package haven;
 import auto.Actions;
 import auto.Equip;
 import auto.InventorySorter;
+import auto.StackAllItems;
+import auto.UnstackAllItems;
 import me.ender.CustomCursors;
 import me.ender.GobInfoOpts;
 
@@ -26,6 +28,8 @@ public enum Action {
     FILTER(GameUI::toggleFilter, "Show item filter"),
     SEARCH_GOBS(GameUI::toggleGobSearch, "Search gobs by resource ID", "Opens a window that highlights gobs in render distance whose resource ID contains the entered substring."),
     SORT_INVENTORY(InventorySorter::sortAll, "Sort all opened inventories"),
+    STACK_INVENTORIES(StackAllItems::stackOpened, "Stack all opened inventories", "Merges matching items in every open inventory and container, same as the Stack all title-bar button."),
+    UNSTACK_INVENTORIES(UnstackAllItems::unstackOpened, "Unstack all opened inventories", "Unpacks every stack-of pile in open inventories and containers."),
     TOGGLE_GOB_INFO(CFG.DISPLAY_GOB_INFO, "Display info", "Display crop/tree growth and object health overlay."),
     TOGGLE_GOB_HITBOX(Hitbox::toggle, "Display hitboxes"),
     TOGGLE_HIDE_TREES(CFG.HIDE_TREES, "Hide trees"),
