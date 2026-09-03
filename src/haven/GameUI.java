@@ -38,6 +38,7 @@ import integrations.mapv4.MappingClient;
 import me.ender.ClientUtils;
 import me.ender.QuestHelper;
 import me.ender.StatMeterWdg;
+import me.ender.TileMeasure;
 import me.ender.minimap.*;
 import thunder.TileQuality;
 import me.ender.timer.Timer;
@@ -87,6 +88,7 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
     public CharWnd chrwdg;
     public MapWnd2 mapfile;
     public Minesweeper minesweeper;
+    public final TileMeasure tileMeasure = new TileMeasure();
     public TileQuality tileQuality;
     public TileHighlight.TileHighlightCFG tileHighlight;
     public thunder.TileQualityWnd tileQualityWnd;

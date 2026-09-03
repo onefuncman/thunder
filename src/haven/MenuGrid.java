@@ -34,6 +34,7 @@ import me.ender.CustomPagina;
 import me.ender.CustomPaginaAction;
 import me.ender.GobInfoOpts;
 import me.ender.GobInfoOpts.InfoPart;
+import me.ender.TileMeasure;
 import me.ender.minimap.Minesweeper;
 
 import javax.swing.*;
@@ -903,6 +904,7 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
 	makeLocal("paginae/add/quest_help", Action.OPEN_QUEST_HELP);
 	makeLocal("paginae/add/inspect", Action.TOGGLE_INSPECT);
 	makeLocal("paginae/add/track", Action.TRACK_OBJECT);
+	makeLocal("paginae/add/measure", TileMeasure::paginaAction, TileMeasure::isActive);
 	makeLocal("paginae/add/fsmelter9", Action.FUEL_SMELTER_9);
 	makeLocal("paginae/add/fsmelter12", Action.FUEL_SMELTER_12);
 	makeLocal("paginae/add/foven4", Action.FUEL_OVEN_4);
