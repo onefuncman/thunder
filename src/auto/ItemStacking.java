@@ -51,4 +51,13 @@ public final class ItemStacking {
 	}
 	return new int[] {a, b};
     }
+
+    /**
+     * True when a take+itemact actually stacked something: the taken pile
+     * vanished, or the target's count went up. False means a full or
+     * incompatible stack — retrying that pair just pick-up/drop-loops.
+     */
+    public static boolean stacked(boolean sourceGone, int destBefore, int destAfter) {
+	return sourceGone || destAfter > destBefore;
+    }
 }

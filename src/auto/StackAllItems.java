@@ -14,9 +14,12 @@ import me.ender.WindowDetector;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.BooleanSupplier;
 
 /**
@@ -84,15 +87,19 @@ public class StackAllItems implements Defer.Callable<Void> {
 	    gui.error("Can't stack items with an occupied cursor!");
 	    return;
 	}
+	Set<String> stuck = new HashSet<>();
 	for(int pass = 0; pass < 80; pass++) {
 	    if(inv.disposed() || Thread.currentThread().isInterrupted())
 		return;
-	    if(!mergeOnePass(gui, inv))
+	    String before = state(inv);
+	    mergeOnePass(gui, inv, stuck);
+	    Thread.sleep(80);
+	    if(before.equals(state(inv)))
 		return;
 	}
     }
 
-    private static boolean mergeOnePass(GameUI gui, Inventory inv) throws InterruptedException {
+    private static void mergeOnePass(GameUI gui, Inventory inv, Set<String> stuck) throws InterruptedException {
 	Map<String, List<WItem>> groups = new LinkedHashMap<>();
 	for(Widget wdg = inv.lchild; wdg != null; wdg = wdg.prev) {
 	    if(!wdg.visible || !(wdg instanceof WItem))
@@ -103,36 +110,93 @@ public class StackAllItems implements Defer.Callable<Void> {
 		continue;
 	    groups.computeIfAbsent(key, k -> new ArrayList<>()).add(w);
 	}
-	boolean merged = false;
 	for(List<WItem> similar : groups.values()) {
 	    if(similar.size() < 2)
 		continue;
-	    int[] amounts = new int[similar.size()];
-	    for(int i = 0; i < similar.size(); i++)
-		amounts[i] = amount(similar.get(i));
-	    int[] pick = ItemStacking.twoSmallest(amounts);
-	    if(pick == null)
-		continue;
-	    WItem lowest = similar.get(pick[0]);
-	    WItem next = similar.get(pick[1]);
-	    if(lowest.disposed() || next.disposed())
-		continue;
-	    Coord dropSlot = lowest.c.sub(1, 1).div(Inventory.sqsz);
-	    lowest.take();
-	    if(!waitUntil(() -> gui.vhand != null, 40, 25)) {
-		gui.error("Stack items: could not pick up an item.");
-		return false;
+	    List<WItem> bySize = new ArrayList<>(similar);
+	    Collections.sort(bySize, new Comparator<WItem>() {
+		@Override
+		public int compare(WItem a, WItem b) {
+		    return Integer.compare(amount(a), amount(b));
+		}
+	    });
+	    boolean did = false;
+	    for(int i = 0; i < bySize.size() && !did; i++) {
+		for(int j = i + 1; j < bySize.size(); j++) {
+		    WItem lowest = bySize.get(i);
+		    WItem next = bySize.get(j);
+		    if(lowest.disposed() || next.disposed())
+			continue;
+		    String pair = pairKey(lowest, next);
+		    if(stuck.contains(pair))
+			continue;
+		    Coord dropSlot = lowest.c.sub(1, 1).div(Inventory.sqsz);
+		    int destBefore = amount(next);
+		    lowest.take();
+		    if(!waitUntil(() -> gui.vhand != null, 40, 25)) {
+			gui.error("Stack items: could not pick up an item.");
+			return;
+		    }
+		    next.itemact(3);
+		    waitUntil(() -> gui.vhand == null, 12, 25);
+		    if(gui.vhand != null) {
+			inv.wdgmsg("drop", dropSlot);
+			waitUntil(() -> gui.vhand == null, 40, 25);
+		    }
+		    Thread.sleep(50);
+		    if(!ItemStacking.stacked(lowest.disposed(), destBefore, amount(next)))
+			stuck.add(pair);
+		    did = true;
+		    break;
+		}
 	    }
-	    next.itemact(3);
-	    Thread.sleep(40);
-	    if(gui.vhand != null) {
-		inv.wdgmsg("drop", dropSlot);
-		waitUntil(() -> gui.vhand == null, 40, 25);
-	    }
-	    merged = true;
-	    Thread.sleep(20);
 	}
-	return merged;
+    }
+
+    private static String pairKey(WItem a, WItem b) {
+	int ia = a.item.wdgid();
+	int ib = b.item.wdgid();
+	if(ia > ib) {
+	    int t = ia;
+	    ia = ib;
+	    ib = t;
+	}
+	return ia + ":" + ib;
+    }
+
+    private static String state(Inventory inv) {
+	Map<String, List<Integer>> groups = new LinkedHashMap<>();
+	for(Widget wdg = inv.lchild; wdg != null; wdg = wdg.prev) {
+	    if(!(wdg instanceof WItem))
+		continue;
+	    WItem w = (WItem) wdg;
+	    String key = ItemStacking.stackKey(itemName(w));
+	    if(key == null)
+		continue;
+	    List<Integer> amts = groups.get(key);
+	    if(amts == null) {
+		amts = new ArrayList<>();
+		groups.put(key, amts);
+	    }
+	    amts.add(Integer.valueOf(amount(w)));
+	}
+	List<String> names = new ArrayList<>(groups.keySet());
+	Collections.sort(names);
+	StringBuilder sb = new StringBuilder();
+	for(int n = 0; n < names.size(); n++) {
+	    String name = names.get(n);
+	    List<Integer> amts = groups.get(name);
+	    Collections.sort(amts);
+	    if(n > 0)
+		sb.append(';');
+	    sb.append(name).append(':');
+	    for(int i = 0; i < amts.size(); i++) {
+		if(i > 0)
+		    sb.append(',');
+		sb.append(amts.get(i));
+	    }
+	}
+	return sb.toString();
     }
 
     static String itemName(WItem w) {

@@ -37,4 +37,11 @@ public class ItemStackingTest {
 	assertNull(ItemStacking.twoSmallest(new int[] {3}));
 	assertNull(ItemStacking.twoSmallest(new int[] {}));
     }
+
+    @Test
+    void stackedDetectsFullStackNoOp() {
+	assertFalse(ItemStacking.stacked(false, 4, 4));
+	assertTrue(ItemStacking.stacked(true, 4, 4));
+	assertTrue(ItemStacking.stacked(false, 3, 4));
+    }
 }
