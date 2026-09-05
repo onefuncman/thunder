@@ -416,6 +416,18 @@ public class Window extends Widget {
     
     private static Pattern febre = Pattern.compile("Food event bonus: (\\d+)%");
     private static final java.util.WeakHashMap<Button, Boolean> hookedFeastBtns = new java.util.WeakHashMap<>();
+    // Which specific table window's "Feast!" was last clicked, and its bonus at that
+    // moment -- distinct from the ambient FoodInfo.tablefep global below, which just
+    // reflects whichever table window happened to render most recently (ambiguous with
+    // multiple tables open). thunder.cookbook.EatingHelperWnd needs "the one we're
+    // actually feasting from," not "whichever is currently drawing" -- confirmed as the
+    // right distinction directly by the user.
+    public static Window lastFeastTable;
+    public static int lastFeastBonus;
+    // This window's own most-recently-parsed bonus (per-instance, so the Feast! click
+    // handler always captures the bonus this specific window actually showed, never a
+    // different table's value from whichever window rendered last).
+    private int myTableFep = -1;
     protected void CheckForDinnerTable() {
 	int tablefep = -1;
 	boolean feast = false;
@@ -440,12 +452,15 @@ public class Window extends Widget {
 			b.action = () -> {
 			    if(CFG.LEGACY_BGM_ENABLED.get())
 				me.ender.LegacyAudioPlayer.play("symbel", false, CFG.LEGACY_BGM_VOLUME.get());
+			    lastFeastTable = this;
+			    lastFeastBonus = Math.max(myTableFep, 0);
 			    if(orig != null) orig.run();
 			};
 		    }
 		}
 	    }
 	}
+	myTableFep = tablefep;
 	if(feast) {
 	    FoodInfo.tablefep = Math.max(tablefep, 0);
 	}

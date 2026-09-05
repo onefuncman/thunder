@@ -95,6 +95,7 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
     public thunder.cookbook.CookbookLoginWnd cookbookLoginWnd;
     public thunder.cookbook.CookbookPlanWnd cookbookPlanWnd;
     public thunder.cookbook.MissingRecipesWnd missingRecipesWnd;
+    public thunder.cookbook.EatingHelperWnd eatingHelperWnd;
     private Widget qqview;
     public BuddyWnd buddies;
     public EquipProxy eqproxyHandBelt, eqproxyPouchBack;
@@ -2547,6 +2548,9 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 		    }
 		}
 	    });
+	cmdmap.put("eat", (cons, args) -> {
+	    thunder.cookbook.EatingHelperWnd.toggle(ui);
+	});
 	cmdmap.put("gob", new Console.Command() {
 		public void run(Console cons, String[] args) throws Exception {
 		    if(args.length >= 3 && args[1].equals("inspect")) {

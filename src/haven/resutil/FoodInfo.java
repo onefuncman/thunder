@@ -251,6 +251,70 @@ public class FoodInfo extends ItemInfo.Tip {
 	return new Pair<>(effep, col);
     }
     
+    /** Per-attribute breakdown of what eating this item would give right now, reusing the exact same live state (hunger/satiation/subscription/table bonus) as fepnum() -- for thunder.cookbook.EatingHelperWnd, which needs the per-attribute split fepnum() only sums, and needs to control the table-bonus decision itself (a specific "which table did you click Feast on" choice, not the mouse-cursor check fepnum() uses). */
+    public static class Breakdown {
+        public final String[] names;
+        public final double[] feps;
+        public final double total;
+        public final double curFep;
+        public final double cap;
+        public final double hungerMod, satiationMod, bonusMod, tableMod;
+
+        Breakdown(String[] names, double[] feps, double total, double curFep, double cap,
+                  double hungerMod, double satiationMod, double bonusMod, double tableMod) {
+            this.names = names;
+            this.feps = feps;
+            this.total = total;
+            this.curFep = curFep;
+            this.cap = cap;
+            this.hungerMod = hungerMod;
+            this.satiationMod = satiationMod;
+            this.bonusMod = bonusMod;
+            this.tableMod = tableMod;
+        }
+    }
+
+    /**
+     * tableFepPercent: the specific table's Food Event Bonus to apply (0 for none). Takes
+     * an explicit value rather than reading the static tablefep field, since that field is
+     * ambient/ambiguous with multiple table windows open (whichever rendered most recently
+     * wins) -- callers should pass Window.lastFeastBonus (the bonus captured at the moment
+     * THAT table's own "Feast!" was actually clicked), not the shared static.
+     */
+    public Breakdown breakdown(boolean feast, int tableFepPercent) {
+        if((attr == null) && !getcw()) {return null;}
+
+        double bonusmul = 1;
+        if(GameUI.subscribedAccount) {bonusmul += 0.3;}
+        if(GameUI.verifiedAccount) {bonusmul += 0.2;}
+
+        double effective = 1;
+        for(int type : types) {
+            if((type >= 0) && (constipation != null) && (type < constipation.els.size())) {
+                BAttrWnd.Constipations.El c = constipation.els.get(type);
+                if(c != null) {effective = Math.min(effective, c.a);}
+            }
+        }
+
+        double tableMod = feast ? (1.0 + ((double) tableFepPercent / 100.0)) : 1.0;
+        double effmod = glutmeter.gmod * effective * bonusmul;
+
+        String[] names = new String[evs.length];
+        double[] fepvals = new double[evs.length];
+        double total = 0;
+        for(int i = 0; i < evs.length; i++) {
+            names[i] = evs[i].ev.nm;
+            double fep = evs[i].a * tableMod * effmod;
+            fepvals[i] = fep;
+            total += fep;
+        }
+
+        double curFep = 0;
+        for(BAttrWnd.FoodMeter.El el : feps.els) {curFep += el.a;}
+
+        return new Breakdown(names, fepvals, total, curFep, feps.cap, glutmeter.gmod, effective, bonusmul, tableMod);
+    }
+
     public static void resettts() {
 	new Thread(() -> {
 	    int delay = 200;
