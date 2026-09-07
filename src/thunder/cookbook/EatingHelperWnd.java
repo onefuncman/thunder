@@ -96,11 +96,11 @@ public class EatingHelperWnd extends WindowX {
 
     private String selectedStat = null;
     private List<PlanStep> lastPlan = Collections.emptyList();
+    private boolean lastPlanFeasting = false;
 
-    // Auto-eat state. Runs off tick(), not a blocking loop -- eating goes through
-    // Reactor.FLOWER's fire-and-forget subscribe/forceChoose pattern (same one
-    // haven.bot.AutoEat already uses for exactly this reason: tick() is the main
-    // game loop and can't block waiting for a menu widget to appear).
+    // Auto-eat state. Runs off tick(), not a blocking loop. Ordinary eating goes
+    // through Reactor.FLOWER's fire-and-forget subscribe/forceChoose pattern; Feast
+    // eating uses the table item's direct left-click path.
     //
     // Both the per-bite pacing AND the settle phase (after the last bite in a round,
     // before comparing attributes to check for a level-up) are event-driven, not fixed
@@ -126,6 +126,7 @@ public class EatingHelperWnd extends WindowX {
     private int autoItemsThisLevel = 0;
     private Map<String, Integer> autoAttrsSnapshot = null;
     private String autoCurrentBiteName = null; // for BITE-CONFIRMED/BITE-TIMEOUT log lines only
+    private boolean autoRoundFeasting = false;
     // Locked in once when auto-eat starts -- selectedStat itself gets silently reassigned by
     // runQuery()'s own dropdown-preservation fallback (falls back to "whatever's first in the
     // list" once the previously-selected stat runs out of food), which would otherwise let
@@ -254,7 +255,7 @@ public class EatingHelperWnd extends WindowX {
         }
         Entry e = autoQueue.get(autoQueueIdx++);
         if(!e.witem.disposed()) {
-            eatOne(e);
+            if(!eatOne(e)) {return;}
             long gapMs = parseMinGapMs();
             nextAllowedActionTime = System.currentTimeMillis() + gapMs;
             biteDeadline = System.currentTimeMillis() + BITE_TIMEOUT_MS;
@@ -263,7 +264,9 @@ public class EatingHelperWnd extends WindowX {
     }
 
     /**
-     * Right-click + force-choose "Eat" on the next flower menu, fire-and-forget -- same
+     * Feast food must be consumed with the table's normal left-click path; using the
+     * inventory flower-menu "Eat" action bypasses the table and loses its FEP bonus.
+     * Outside Feast mode, use right-click + force-choose "Eat" -- same
      * pattern as haven.bot.AutoEat, which never reads FlowerMenu.opts itself. An earlier
      * version of this method DID read m.opts here, inside the Reactor.FLOWER subscriber,
      * to log whether "Eat" was actually a valid option before choosing it -- crashed the
@@ -276,12 +279,23 @@ public class EatingHelperWnd extends WindowX {
      * check is done safely below via Reactor.FLOWER_CHOICE instead, which only fires once
      * a choice is actually made (menu fully constructed by then).
      */
-    private void eatOne(Entry e) {
+    private boolean eatOne(Entry e) {
         String name = itemDisplayName(e);
         autoCurrentBiteName = name;
         long sentAt = System.currentTimeMillis();
         try {
             SatiationCapture.log("BITE-SENT " + name + " res=" + e.witem.item.resname());
+            Window feastTable = activeFeastTable();
+            if(autoRoundFeasting) {
+                if(feastTable == null) {
+                    stopAutoEat("Feast mode is no longer active -- stopping before eating without the table bonus.");
+                    return false;
+                }
+                e.witem.take();
+                SatiationCapture.log("BITE-FEAST-CLICK " + name);
+                lastEatActionTime = sentAt;
+                return true;
+            }
             Reactor.FLOWER.first().subscribe(m -> m.forceChoose("Eat"));
             Reactor.FLOWER_CHOICE.first().subscribe(c -> {
                 long menuAt = System.currentTimeMillis();
@@ -295,9 +309,17 @@ public class EatingHelperWnd extends WindowX {
             });
             e.witem.rclick();
             lastEatActionTime = sentAt;
+            return true;
         } catch(Exception ex) {
             SatiationCapture.log("BITE-ERROR " + name + " " + ex);
+            stopAutoEat("Could not eat " + name + " -- stopping auto-eat.");
+            return false;
         }
+    }
+
+    private static Window activeFeastTable() {
+        Window table = Window.lastFeastTable;
+        return ((table != null) && (table.parent != null)) ? table : null;
     }
 
     private static String itemDisplayName(Entry e) {
@@ -362,6 +384,7 @@ public class EatingHelperWnd extends WindowX {
     private void stopAutoEat(String reason) {
         autoRunning = false;
         autoSettling = false;
+        autoRoundFeasting = false;
         autoQueue = Collections.emptyList();
         setAutoBtn("Auto-Eat");
         SatiationCapture.log("AUTOEAT-STOP " + (reason != null ? reason : "(user)"));
@@ -394,6 +417,7 @@ public class EatingHelperWnd extends WindowX {
             stopAutoEat("No plan available for " + selectedStat + " -- stopping auto-eat.");
             return;
         }
+        autoRoundFeasting = lastPlanFeasting;
         int limit = parseLimit();
         int projected = autoItemsThisLevel + lastPlan.size();
         // Strict, applies to EVERY round the same way -- a fresh level start or a top-off,
@@ -654,6 +678,7 @@ public class EatingHelperWnd extends WindowX {
 
     private void runQuery() {
         clearBadges();
+        lastPlanFeasting = false;
 
         if((ui == null) || (ui.root == null)) {
             status.settext("No inventory open.");
@@ -673,17 +698,16 @@ public class EatingHelperWnd extends WindowX {
             return;
         }
 
-        boolean feasting = (Window.lastFeastTable != null) && (Window.lastFeastTable.parent != null);
+        Window feastTable = activeFeastTable();
+        boolean feasting = feastTable != null;
+        lastPlanFeasting = feasting;
         int tableBonus = feasting ? Window.lastFeastBonus : 0;
 
         liveStats.settext(buildLiveStatsText(cw.battr, feasting, tableBonus));
 
-        // Every open container -- main inventory, tables, cabinets, pouches, everything --
-        // not just the main inventory and the feast table's own slots. children(Class) on
-        // ui.root is a recursive descendant search (despite the name), so this covers any
-        // Inventory anywhere in the currently-open UI. The table-bonus MULTIPLIER still only
-        // comes from Window.lastFeastTable specifically (see class doc) -- this only widens
-        // which items are considered as candidates to eat, not which one's bonus applies.
+        // Scan every open container -- main inventory, tables, cabinets, pouches,
+        // everything. While Feast mode is active, any of these foods can receive the
+        // feast bonus as long as it is consumed through its normal left-click path.
         List<WItem> candidates = new ArrayList<>(ui.root.children(WItem.class));
 
         List<Entry> entries = new ArrayList<>();
@@ -721,7 +745,7 @@ public class EatingHelperWnd extends WindowX {
         statSel.sel = selectedStat;
 
         if(entries.isEmpty()) {
-            status.settext(feasting ? "No food found in any open inventory or the feast table." : "No food found in any open inventory.");
+            status.settext("No food found in any open inventory.");
             results.setItems(Collections.emptyList());
             lastPlan = Collections.emptyList();
             relayout();

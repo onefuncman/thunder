@@ -36,7 +36,9 @@ instead, which only fires once a choice is actually made (menu fully built by th
 `docs/bot-automation-api.md`'s Eating section for the general lesson.
 
 Button next to the stat dropdown, plus "Auto-eat limit (items/level)" and "Min. gap between
-bites (ms)" fields. Runs the plan automatically: right-click + force-choose "Eat" on each
+bites (ms)" fields. In Feast mode, the planner considers food in every open inventory and
+Auto-Eat uses each item's normal left-click path so the table bonus is retained.
+Outside Feast mode it runs the plan with right-click + force-choose "Eat" on each
 queued item (same fire-and-forget
 `Reactor.FLOWER.first().subscribe(m -> m.forceChoose("Eat")); item.rclick();` pattern
 `haven.bot.AutoEat` already uses -- `tick()` is the main game loop and can't block waiting for
