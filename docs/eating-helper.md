@@ -238,6 +238,10 @@ Auto-Eat remembers the resources it consumed across top-off replans within the c
 attribute level and clears that memory after a level-up. Foods with no FEP for the selected
 target remain ineligible.
 
+FEP event variants are combined by base attribute for planning: `Strength +1` and
+`Strength +2`, for example, both contribute to the single `Strength` target. The same
+normalization applies to every attribute in the dropdown and its calculated target total.
+
 Food variety is identified by the preparation's inventory resource together with the
 server-provided satiation-category identities. This matters because species such as bear
 and fox can share the generic `gfx/invobjs/meat` resource, while roast and spitroast are

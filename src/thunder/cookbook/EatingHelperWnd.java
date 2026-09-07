@@ -337,6 +337,11 @@ public class EatingHelperWnd extends WindowX {
         }
     }
 
+    /** Collapse event variants such as "Strength +1" and "Strength +2" into Strength. */
+    private static String baseStat(String eventName) {
+        return (eventName == null) ? null : eventName.replaceFirst("\\s+\\+\\d+$", "");
+    }
+
     private int parseLimit() {
         try {
             int v = Integer.parseInt(limitField.text().trim());
@@ -614,7 +619,7 @@ public class EatingHelperWnd extends WindowX {
             for(Entry e : remaining) {
                 if(uniqueEaten.contains(e.varietyKey)) {continue;}
                 for(FoodInfo.Event ev : e.finf.evs) {
-                    if(ev.ev.nm.equals(target) && (ev.a > 0)) {
+                    if(baseStat(ev.ev.nm).equals(target) && (ev.a > 0)) {
                         hasNewTargetFood = true;
                         break;
                     }
@@ -638,7 +643,7 @@ public class EatingHelperWnd extends WindowX {
                 for(FoodInfo.Event ev : e.finf.evs) {
                     double fep = ev.a * tableMod * effmod;
                     totalGain += fep;
-                    if(ev.ev.nm.equals(target)) {targetGain += fep;}
+                    if(baseStat(ev.ev.nm).equals(target)) {targetGain += fep;}
                 }
                 boolean newFood = !uniqueEaten.contains(e.varietyKey);
                 if(hasNewTargetFood && !newFood) {continue;}
@@ -762,7 +767,7 @@ public class EatingHelperWnd extends WindowX {
             FoodInfo.Breakdown bd = finf.breakdown(feasting, tableBonus);
             if(bd == null) {continue;}
             entries.add(new Entry(w, finf, bd));
-            Collections.addAll(stats, bd.names);
+            for(String name : bd.names) {stats.add(baseStat(name));}
         }
 
         // Sync the dropdown's data/selection directly via .sel, NOT .change(...) --
