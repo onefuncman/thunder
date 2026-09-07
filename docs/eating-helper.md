@@ -236,6 +236,11 @@ Auto-Eat remembers the resources it consumed across top-off replans within the c
 attribute level and clears that memory after a level-up. Foods with no FEP for the selected
 target remain ineligible.
 
+Food variety is identified by the preparation's inventory resource together with the
+server-provided satiation-category identities. This matters because species such as bear
+and fox can share the generic `gfx/invobjs/meat` resource, while roast and spitroast are
+different preparations. Quality alone does not create a new variety.
+
 Known simplification still in place, worth revisiting if plans look off: `gmod` (hunger
 modifier) is held constant for the whole plan -- it drifts slowly in practice (~5% over 15
 real bites in the capture data), so this is a minor effect for a short plan, but not exactly

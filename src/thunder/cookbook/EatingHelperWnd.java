@@ -6,6 +6,7 @@ import haven.rx.Reactor;
 
 import java.awt.Color;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -319,7 +320,7 @@ public class EatingHelperWnd extends WindowX {
     }
 
     private void rememberAutoFood(Entry e) {
-        try {autoFoodsThisLevel.add(e.witem.item.resname());} catch(Exception ignored) {}
+        autoFoodsThisLevel.add(e.varietyKey);
     }
 
     private static Window activeFeastTable() {
@@ -492,7 +493,26 @@ public class EatingHelperWnd extends WindowX {
         final WItem witem;
         final FoodInfo finf;
         final FoodInfo.Breakdown bd; // live-state breakdown, used for the initial stat list + "no food found" check
-        Entry(WItem witem, FoodInfo finf, FoodInfo.Breakdown bd) {this.witem = witem; this.finf = finf; this.bd = bd;}
+        final String varietyKey;
+        Entry(WItem witem, FoodInfo finf, FoodInfo.Breakdown bd) {
+            this.witem = witem;
+            this.finf = finf;
+            this.bd = bd;
+            this.varietyKey = foodVarietyKey(witem, finf);
+        }
+    }
+
+    /**
+     * A resource alone is not a food identity: bear, fox, and other meats can all be
+     * gfx/invobjs/meat. The server's satiation-category identities distinguish species,
+     * while the resource distinguishes preparations such as roast and spitroast.
+     */
+    private static String foodVarietyKey(WItem witem, FoodInfo finf) {
+        String resource;
+        try {resource = witem.item.resname();} catch(Exception ex) {resource = "?";}
+        int[] types = Arrays.copyOf(finf.types, finf.types.length);
+        Arrays.sort(types);
+        return resource + "|" + Arrays.toString(types);
     }
 
     /** One step of the simulated plan: a single item "eaten" at that point in the sequence. */
@@ -604,9 +624,7 @@ public class EatingHelperWnd extends WindowX {
                     totalGain += fep;
                     if(ev.ev.nm.equals(target)) {targetGain += fep;}
                 }
-                String resource;
-                try {resource = e.witem.item.resname();} catch(Exception ex) {resource = null;}
-                boolean newFood = (resource != null) && !uniqueEaten.contains(resource);
+                boolean newFood = !uniqueEaten.contains(e.varietyKey);
                 double varietyReduction = newFood
                     ? Math.sqrt((double) maxattr * 2 * gmod / 5 / (double) (n + 1))
                     : 0;
@@ -627,7 +645,7 @@ public class EatingHelperWnd extends WindowX {
             simCurFep += bestTotal;
 
             try {
-                if(uniqueEaten.add(best.witem.item.resname())) {
+                if(uniqueEaten.add(best.varietyKey)) {
                     simCap -= Math.sqrt((double) maxattr * 2 * gmod / 5 / (double) ++n);
                 }
             } catch(Exception ignored) {}
@@ -651,7 +669,7 @@ public class EatingHelperWnd extends WindowX {
         while(i < plan.size()) {
             int j = i;
             double groupTarget = 0;
-            while((j < plan.size()) && sameResource(plan.get(j).entry, plan.get(i).entry)) {
+            while((j < plan.size()) && sameFood(plan.get(j).entry, plan.get(i).entry)) {
                 groupTarget += plan.get(j).targetGain;
                 j++;
             }
@@ -662,12 +680,8 @@ public class EatingHelperWnd extends WindowX {
         return groups;
     }
 
-    private static boolean sameResource(Entry a, Entry b) {
-        try {
-            return a.witem.item.resname().equals(b.witem.item.resname());
-        } catch(Exception e) {
-            return false;
-        }
+    private static boolean sameFood(Entry a, Entry b) {
+        return a.varietyKey.equals(b.varietyKey);
     }
 
     /**
