@@ -231,7 +231,9 @@ out to be enough).
 
 Candidate scoring credits target FEP plus the cap reduction from a genuinely new food,
 divides that useful progress by hunger cost, and caps credited progress at the remaining
-gap so overfill is not rewarded. Repeated copies receive no additional variety credit.
+gap so overfill is not rewarded. While any uneaten variety containing the selected stat is
+available, repeated copies are ineligible; repeats become available only after those distinct
+target-bearing choices are exhausted.
 Auto-Eat remembers the resources it consumed across top-off replans within the current
 attribute level and clears that memory after a level-up. Foods with no FEP for the selected
 target remain ineligible.

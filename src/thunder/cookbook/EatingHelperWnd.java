@@ -606,6 +606,22 @@ public class EatingHelperWnd extends WindowX {
         for(int step = 0; (step < MAX_SIM_STEPS) && !remaining.isEmpty() && (simCurFep < simCap); step++) {
             double gapLeft = simCap - simCurFep;
 
+            // Exhaust distinct foods that contribute to the requested stat before allowing
+            // another copy of an already-used variety. Merely adding variety credit to the
+            // score was not enough when one dish had exceptionally high FEP-per-hunger: it
+            // could still win five times in a row despite receiving no repeat bonus.
+            boolean hasNewTargetFood = false;
+            for(Entry e : remaining) {
+                if(uniqueEaten.contains(e.varietyKey)) {continue;}
+                for(FoodInfo.Event ev : e.finf.evs) {
+                    if(ev.ev.nm.equals(target) && (ev.a > 0)) {
+                        hasNewTargetFood = true;
+                        break;
+                    }
+                }
+                if(hasNewTargetFood) {break;}
+            }
+
             // Score useful target progress per hunger. A new resource gets credit for its
             // variety cap reduction; repeated copies do not. Foods with no target FEP are
             // deliberately ineligible even if they are novel.
@@ -625,6 +641,7 @@ public class EatingHelperWnd extends WindowX {
                     if(ev.ev.nm.equals(target)) {targetGain += fep;}
                 }
                 boolean newFood = !uniqueEaten.contains(e.varietyKey);
+                if(hasNewTargetFood && !newFood) {continue;}
                 double varietyReduction = newFood
                     ? Math.sqrt((double) maxattr * 2 * gmod / 5 / (double) (n + 1))
                     : 0;
@@ -802,7 +819,7 @@ public class EatingHelperWnd extends WindowX {
             double fillTo = fillFrom;
             for(PlanStep s : plan) {fillTo += s.totalGain;}
             boolean crosses = fillTo >= cw.battr.feps.cap;
-            etext = String.format("%d-step plan, %,d unique food%s scanned. Target: %s%s", plan.size(), entries.size(),
+            etext = String.format("%d-step plan, %,d food item%s scanned. Target: %s%s", plan.size(), entries.size(),
                 entries.size() == 1 ? "" : "s", selectedStat,
                 crosses ? " (this plan fills the FEP bar -- expect a level-up)" : " (won't fill the FEP bar on its own)");
         }
