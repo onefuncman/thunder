@@ -30,7 +30,7 @@ import java.util.TreeSet;
  * values at that instant, but eating six in a row is exactly what tanks that
  * category's satiation, so it was quietly wrong advice. Reported directly by
  * the user with a screenshot. The simulation greedily picks, at each step,
- * whichever remaining item gives the most FEP toward the target stat under
+ * whichever remaining item gives the most useful target progress per hunger under
  * the CURRENTLY-SIMULATED satiation state (not the live one), "eats" it, and
  * updates the simulated satiation for its categories using the best-fit
  * formula from two real eating sessions (see satiationDelta()) before moving
@@ -53,11 +53,9 @@ import java.util.TreeSet;
  *    enough).
  *  - stops once the simulated bar would cross the (now-shrinking) cap (one
  *    attribute point) or after MAX_SIM_STEPS, whichever comes first.
- *  - each step prefers a "best fit" finisher (the SMALLEST remaining item that
- *    alone would cross the current gap) over the single biggest gain once one
- *    exists -- greedy-max every step would burn a second high-FEP dish to
- *    close out a small remainder, wasting FEP beyond the cap for nothing
- *    (excess FEP is discarded on level-up). Reported directly by the user.
+ *  - candidate scoring credits target FEP plus a new food's variety-cap
+ *    reduction, divides that useful progress by hunger cost, and caps credit
+ *    at the remaining gap so overfill is not rewarded.
  *
  * Variety bonus is accounted for (see the cap-reduction note above) and its
  * formula is independently confirmed against
@@ -127,6 +125,7 @@ public class EatingHelperWnd extends WindowX {
     private Map<String, Integer> autoAttrsSnapshot = null;
     private String autoCurrentBiteName = null; // for BITE-CONFIRMED/BITE-TIMEOUT log lines only
     private boolean autoRoundFeasting = false;
+    private final Set<String> autoFoodsThisLevel = new HashSet<>();
     // Locked in once when auto-eat starts -- selectedStat itself gets silently reassigned by
     // runQuery()'s own dropdown-preservation fallback (falls back to "whatever's first in the
     // list" once the previously-selected stat runs out of food), which would otherwise let
@@ -292,6 +291,7 @@ public class EatingHelperWnd extends WindowX {
                     return false;
                 }
                 e.witem.take();
+                rememberAutoFood(e);
                 SatiationCapture.log("BITE-FEAST-CLICK " + name);
                 lastEatActionTime = sentAt;
                 return true;
@@ -308,6 +308,7 @@ public class EatingHelperWnd extends WindowX {
                 }
             });
             e.witem.rclick();
+            rememberAutoFood(e);
             lastEatActionTime = sentAt;
             return true;
         } catch(Exception ex) {
@@ -315,6 +316,10 @@ public class EatingHelperWnd extends WindowX {
             stopAutoEat("Could not eat " + name + " -- stopping auto-eat.");
             return false;
         }
+    }
+
+    private void rememberAutoFood(Entry e) {
+        try {autoFoodsThisLevel.add(e.witem.item.resname());} catch(Exception ignored) {}
     }
 
     private static Window activeFeastTable() {
@@ -374,6 +379,7 @@ public class EatingHelperWnd extends WindowX {
         autoRunning = true;
         autoSettling = false;
         autoItemsThisLevel = 0;
+        autoFoodsThisLevel.clear();
         autoTargetStat = selectedStat; // locked for the whole run -- see field doc
         snapshotAttrs(cw.battr);
         setAutoBtn("Stop Auto-Eat");
@@ -458,6 +464,7 @@ public class EatingHelperWnd extends WindowX {
         SatiationCapture.log("ROUND-RESULT leveled=" + leveled + (leveled ? (" attr=" + leveledAttr) : " (top-off needed)"));
         if(leveled) {
             autoItemsThisLevel = 0;
+            autoFoodsThisLevel.clear();
             snapshotAttrs(cw.battr);
         }
         // Either way, get a fresh plan: leveled -> plan for the NEXT point; didn't level ->
@@ -530,8 +537,9 @@ public class EatingHelperWnd extends WindowX {
     /**
      * Greedily builds an eating order: at each step, evaluate every remaining item under the
      * CURRENTLY-SIMULATED satiation/effmod state (not the live one), pick whichever gives the
-     * most FEP toward target, "eat" it (advance the simulated FEP bar and satiation for its
-     * categories), repeat. Stops at MAX_SIM_STEPS or once the simulated bar would cross the cap.
+     * most useful target progress per unit of hunger, "eat" it (advance the simulated FEP bar
+     * and satiation for its categories), repeat. Variety cap reduction counts as progress and
+     * progress beyond the remaining gap is discarded so overfill receives no credit.
      */
     private List<PlanStep> simulatePlan(List<Entry> pool, String target, BAttrWnd battr, boolean feasting, int tableBonus) {
         List<PlanStep> plan = new ArrayList<>();
@@ -568,24 +576,21 @@ public class EatingHelperWnd extends WindowX {
                 fepnext = fep - Math.sqrt((double) maxattr * 2 * gmod / 5 / (double) ++n);
             }
         }
-        java.util.Set<String> uniqueEaten = new java.util.HashSet<>();
+        // Preserve resources already eaten by Auto-Eat across top-off replans for this level;
+        // otherwise the same food would falsely receive another variety bonus on every query.
+        java.util.Set<String> uniqueEaten = autoRunning
+            ? new java.util.HashSet<>(autoFoodsThisLevel)
+            : new java.util.HashSet<>();
 
         List<Entry> remaining = new ArrayList<>(pool);
         for(int step = 0; (step < MAX_SIM_STEPS) && !remaining.isEmpty() && (simCurFep < simCap); step++) {
             double gapLeft = simCap - simCurFep;
 
-            // Two candidates tracked per step: the single biggest target-stat gain (for
-            // building up the bar efficiently while there's a long way to go), and the
-            // SMALLEST item that alone would finish the bar (a "best fit," not "biggest
-            // available") once one exists. Any FEP beyond the cap is thrown away, so
-            // reaching for another big high-FEP dish to close out a small remainder wastes
-            // it for no benefit -- a low-FEP item that also crosses the line does the same
-            // job for less. Reported directly by the user after the sim picked two
-            // high-value dishes back to back where a cheap topper would've finished it.
+            // Score useful target progress per hunger. A new resource gets credit for its
+            // variety cap reduction; repeated copies do not. Foods with no target FEP are
+            // deliberately ineligible even if they are novel.
             Entry best = null;
-            double bestTarget = -1, bestTotal = 0;
-            Entry finisher = null;
-            double finisherTarget = 0, finisherTotal = Double.MAX_VALUE;
+            double bestTarget = -1, bestTotal = 0, bestScore = -1;
             for(Entry e : remaining) {
                 double effective = 1;
                 for(int t : e.finf.types) {
@@ -599,21 +604,22 @@ public class EatingHelperWnd extends WindowX {
                     totalGain += fep;
                     if(ev.ev.nm.equals(target)) {targetGain += fep;}
                 }
-                if(targetGain > bestTarget) {
+                String resource;
+                try {resource = e.witem.item.resname();} catch(Exception ex) {resource = null;}
+                boolean newFood = (resource != null) && !uniqueEaten.contains(resource);
+                double varietyReduction = newFood
+                    ? Math.sqrt((double) maxattr * 2 * gmod / 5 / (double) (n + 1))
+                    : 0;
+                double usefulTarget = Math.min(targetGain, Math.max(0, gapLeft - varietyReduction));
+                double usefulProgress = Math.min(gapLeft, varietyReduction + usefulTarget);
+                double score = usefulProgress / Math.max(e.finf.glut, 1e-9);
+                if((targetGain > 0) && ((score > bestScore) ||
+                    ((score == bestScore) && (targetGain > bestTarget)))) {
+                    bestScore = score;
                     bestTarget = targetGain;
                     bestTotal = totalGain;
                     best = e;
                 }
-                if((targetGain > 0) && (totalGain >= gapLeft) && (totalGain < finisherTotal)) {
-                    finisherTarget = targetGain;
-                    finisherTotal = totalGain;
-                    finisher = e;
-                }
-            }
-            if(finisher != null) {
-                best = finisher;
-                bestTarget = finisherTarget;
-                bestTotal = finisherTotal;
             }
             if((best == null) || (bestTarget <= 0)) {break;}
 

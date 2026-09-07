@@ -213,7 +213,8 @@ such in the window's own status text and code comments, not presented as exact.
 Greedily builds an eating order: at each step, evaluate every remaining item under the
 CURRENTLY-SIMULATED satiation/effmod state (starts from the live state, then updated by
 `satiationDelta()` after each simulated bite -- not the live state itself, which only
-changes when you actually eat), pick whichever gives the most FEP toward the target stat,
+changes when you actually eat), pick whichever gives the most useful target progress per
+unit of hunger,
 "eat" it (advance the simulated FEP-bar total and the satiation for its categories), repeat.
 Stops once the simulated bar would cross the cap (one attribute point) or after
 `MAX_SIM_STEPS` (60), whichever comes first. Consecutive picks of the same resource are
@@ -228,6 +229,13 @@ overestimated how much total FEP was needed and recommended one extra item past 
 actually necessary -- reported directly by the user (plan said 2 items were needed, 1 turned
 out to be enough).
 
+Candidate scoring credits target FEP plus the cap reduction from a genuinely new food,
+divides that useful progress by hunger cost, and caps credited progress at the remaining
+gap so overfill is not rewarded. Repeated copies receive no additional variety credit.
+Auto-Eat remembers the resources it consumed across top-off replans within the current
+attribute level and clears that memory after a level-up. Foods with no FEP for the selected
+target remain ineligible.
+
 Known simplification still in place, worth revisiting if plans look off: `gmod` (hunger
 modifier) is held constant for the whole plan -- it drifts slowly in practice (~5% over 15
 real bites in the capture data), so this is a minor effect for a short plan, but not exactly
@@ -241,16 +249,11 @@ also in `simulatePlan()` -- is `sqrt(maxattr * 2 * gmod / 5)` for the first uniq
 gmod=2.0: `sqrt(2*2/5) = sqrt(0.8) = 0.894`. Exact match, independent confirmation the
 formula (reverse-engineered from `fepnum()`, not from this wiki page) is right.
 
-**Best-fit finishing, not greedy-max every step**: the original greedy loop picked the
-single highest-target-FEP item at EVERY step, including the last one -- so once only a
-small remainder was needed to cross the cap, it would still reach for another big high-FEP
-dish rather than a smaller one that finishes the job with less waste (FEP beyond the cap is
-discarded per the FEP wiki page: "any excess FEPs are lost"). Reported directly by the user
-("I'd normally fill the remainder with some low-FEP food... not two high-FEP foods, I need
-the biggest bang for my buck") after the sim recommended two high-value dishes back to back.
-Fixed: at each step, if any remaining item alone would cross the current gap, the SMALLEST
-such item is used instead of whichever gives the single biggest gain -- a "best fit," saving
-higher-FEP dishes for future cycles instead of burning two on one level-up.
+**Hunger-efficient finishing**: the original greedy loop picked the highest-target-FEP item,
+including near the end of the bar. The current score caps useful progress at the remaining
+gap before dividing by hunger, so FEP that would overfill the bar provides no advantage.
+This naturally favors a low-hunger finisher that supplies enough useful progress and saves
+larger dishes for later levels.
 
 ## Files
 
