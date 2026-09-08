@@ -16,6 +16,14 @@ public class CustomCursors {
 	public Resource get() {return INSPECT.get();}
     };
     private static Consumer<Gob> pickCallback;
+    private static Consumer<Coord2d> markGroundCallback;
+    private static Consumer<Coord2d> markAreaCallback;
+    private static Runnable markAreaCancel;
+    private static Coord2d markAreaStart;
+    private static int markAreaClicks = 0;
+    private static int markAreaMaxClicks = 2;
+    private static MCache.RectOverlay markAreaOverlay;
+    private static MapView markAreaMap;
     private static boolean pickConsumeEmpty;
     private static boolean pickShowTooltip;
 
@@ -24,17 +32,34 @@ public class CustomCursors {
 	UI ui = map.ui;
 
 	if(isPicking(map)) {
+	    if(markAreaCallback != null) {
+		if(markingAreaCtrlPass(map)) {
+		    return false; // Ctrl = pass through to normal click-to-move
+		}
+		boolean first = markAreaStart == null;
+		if(first) markAreaStart = mc;
+		updateAreaOverlay(map, mc);
+		markAreaCallback.accept(mc);
+		markAreaClicks++;
+		if(markAreaClicks >= markAreaMaxClicks) stopPicking(map, false, true);
+		return true;
+	    }
+	    if(markGroundCallback != null) {
+		markGroundCallback.accept(mc);
+		stopPicking(map, true, false);
+		return true;
+	    }
 	    if(inf == null) {
-		if(pickConsumeEmpty) { stopPicking(map); return true; }
+		if(pickConsumeEmpty) { stopPicking(map, true, false); return true; }
 		return false;
 	    }
 	    Gob gob = Gob.from(inf.ci);
 	    if(gob == null) {
-		if(pickConsumeEmpty) { stopPicking(map); return true; }
+		if(pickConsumeEmpty) { stopPicking(map, true, false); return true; }
 		return false;
 	    }
 	    if(pickCallback != null) pickCallback.accept(gob);
-	    stopPicking(map);
+	    stopPicking(map, true, false);
 	    return true;
 	} else if(isTracking(map)) {
 	    if(inf == null) {return false;}
@@ -79,7 +104,7 @@ public class CustomCursors {
 		stopSweeping(map);
 		return true;
 	    } else if(isPicking(map)) {
-		stopPicking(map);
+		stopPicking(map, true, false);
 		return true;
 	    }
 
@@ -141,7 +166,7 @@ public class CustomCursors {
 	stopInspecting(map);
 	stopTracking(map);
 	stopSweeping(map);
-	stopPicking(map);
+	stopPicking(map, true, false);
     }
     
     //INSPECTING
@@ -251,11 +276,80 @@ public class CustomCursors {
 	}
     }
 
-    private static void stopPicking(MapView map) {
+    public static void startMarkingGround(MapView map, Consumer<Coord2d> callback) {
+	stopCustomModes(map);
+	if(map.cursor == null) {
+	    markGroundCallback = callback;
+	    pickCallback = null;
+	    pickConsumeEmpty = false;
+	    pickShowTooltip = false;
+	    map.cursor = PICK;
+	}
+    }
+
+    /** Starts a two-click, tile-aligned area picker. The callback receives each click. */
+    public static void startMarkingArea(MapView map, Consumer<Coord2d> callback, Runnable cancelled) {
+	startMarkingArea(map, callback, cancelled, 2);
+    }
+
+    public static void startMarkingArea(MapView map, Consumer<Coord2d> callback, Runnable cancelled, int maxClicks) {
+	stopCustomModes(map);
+	clearAreaOverlay();
+	if(map.cursor == null) {
+	    markAreaCallback = callback;
+	    markAreaCancel = cancelled;
+	    markAreaStart = null;
+	    markAreaClicks = 0;
+	    markAreaMaxClicks = Math.max(2, maxClicks);
+	    markAreaMap = map;
+	    pickCallback = null;
+	    markGroundCallback = null;
+	    pickConsumeEmpty = false;
+	    pickShowTooltip = false;
+	    map.cursor = PICK;
+	}
+    }
+
+    public static boolean isMarkingArea(MapView map) {
+	return map != null && map.cursor == PICK && markAreaCallback != null;
+    }
+
+    /** True when area-marking is active and Ctrl is held — the click should pass through as a normal move. */
+    public static boolean markingAreaCtrlPass(MapView map) {
+	return isMarkingArea(map) && (map.ui.modflags() & UI.MOD_CTRL) != 0;
+    }
+
+    private static void updateAreaOverlay(MapView map, Coord2d end) {
+	if(markAreaStart == null || map == null) return;
+	Coord a = markAreaStart.floor(MCache.tilesz);
+	Coord b = end.floor(MCache.tilesz);
+	Coord ul = new Coord(Math.min(a.x, b.x), Math.min(a.y, b.y));
+	Coord br = new Coord(Math.max(a.x, b.x), Math.max(a.y, b.y));
+	if(markAreaOverlay != null) map.glob.map.remove(markAreaOverlay);
+	markAreaOverlay = map.glob.map.new RectOverlay(MapView.selol, new Area(ul, br.add(1, 1)));
+	map.glob.map.add(markAreaOverlay);
+    }
+
+    private static void clearAreaOverlay() {
+	if(markAreaOverlay != null && markAreaMap != null && markAreaMap.glob != null)
+	    markAreaMap.glob.map.remove(markAreaOverlay);
+	markAreaOverlay = null;
+	markAreaMap = null;
+    }
+
+    private static void stopPicking(MapView map, boolean notifyCancel, boolean preserveArea) {
 	if(map.cursor == PICK) {
 	    map.cursor = null;
 	    map.ttip(null);
 	    pickCallback = null;
+	    markGroundCallback = null;
+	    if(markAreaCallback != null && notifyCancel && markAreaCancel != null) markAreaCancel.run();
+	    markAreaCallback = null;
+	    markAreaCancel = null;
+	    markAreaStart = null;
+	    markAreaClicks = 0;
+	    markAreaMaxClicks = 2;
+	    if(!preserveArea) clearAreaOverlay();
 	}
     }
 

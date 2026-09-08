@@ -1,0 +1,97 @@
+{
+  "routes": [
+    {
+      "bidirectional": true,
+      "scenario": "campaign_surface_out_and_back",
+      "aspects": ["surface"],
+      "id": "surface_out_and_back",
+      "enabled": true
+    },
+    {
+      "bidirectional": true,
+      "scenario": "campaign_surface_and_door",
+      "aspects": [
+        "surface",
+        "interaction"
+      ],
+      "id": "surface_and_door",
+      "enabled": true
+    },
+    {
+      "bidirectional": true,
+      "scenario": "campaign_door_gate_roundtrip",
+      "aspects": [
+        "surface",
+        "interaction",
+        "transition"
+      ],
+      "id": "door_gate_roundtrip",
+      "enabled": true
+    },
+    {
+      "bidirectional": true,
+      "scenario": "campaign_cellar_roundtrip",
+      "aspects": [
+        "surface",
+        "transition",
+        "underground"
+      ],
+      "id": "cellar_roundtrip",
+      "enabled": true
+    },
+    {
+      "bidirectional": true,
+      "scenario": "campaign_minehole_roundtrip",
+      "aspects": [
+        "surface",
+        "transition",
+        "underground"
+      ],
+      "id": "minehole_roundtrip",
+      "enabled": true
+    },
+    {
+      "bidirectional": true,
+      "scenario": "campaign_cave_roundtrip",
+      "aspects": [
+        "surface",
+        "transition",
+        "underground"
+      ],
+      "id": "cave_roundtrip",
+      "enabled": true
+    },
+    {
+      "bidirectional": true,
+      "scenario": "campaign_boat_roundtrip",
+      "aspects": [
+        "surface",
+        "mobility",
+        "vehicle"
+      ],
+      "id": "boat_roundtrip",
+      "enabled": true
+    },
+    {
+      "bidirectional": true,
+      "scenario": "campaign_vehicle_roundtrip",
+      "aspects": [
+        "surface",
+        "mobility",
+        "vehicle"
+      ],
+      "id": "vehicle_roundtrip",
+      "enabled": true
+    },
+    {
+      "bidirectional": true,
+      "route": "basement_to_surface",
+      "scenario": "campaign_recorded",
+      "aspects": ["surface"],
+      "id": "basement_to_surface",
+      "enabled": true
+    }
+  ],
+  "description": "User-defined critical-route campaign. Edit enabled flags to match available fixtures. Each enabled bidirectional route is one allowlisted scenario that must complete both directions in a single run while holding the original POINT destination across transitions. Missing fixtures are NOT_RUN, never PASS.",
+  "consecutive": 5
+}

@@ -18,6 +18,8 @@ if [ -f thunder.sh.new ]; then
     exec sh thunder.sh "$@"
 fi
 
+export _JAVA_AWT_WM_NONREPARENTING=1
+
 exec java \
   -Dsun.java2d.uiScale.enabled=false \
   -Xss8m \

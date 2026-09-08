@@ -3,6 +3,7 @@ package haven;
 import auto.Actions;
 import auto.Equip;
 import auto.InventorySorter;
+import haven.pathfinding.CupboardBot;
 import me.ender.CustomCursors;
 import me.ender.GobInfoOpts;
 
@@ -25,6 +26,11 @@ public enum Action {
     TOGGLE_STUDY(GameUI::toggleStudy, "Toggle study window"),
     FILTER(GameUI::toggleFilter, "Show item filter"),
     SEARCH_GOBS(GameUI::toggleGobSearch, "Search gobs by resource ID", "Opens a window that highlights gobs in render distance whose resource ID contains the entered substring."),
+    PATHFIND_NEARBY(GameUI::togglePathfinder, "Path to nearby object", "Opens a list of nearby objects. Click one to select it, double-click or Path to walk there."),
+    CRITICAL_ROUTES(GameUI::toggleCriticalRoutes, "Critical routes", "Mark stands and objects in the world, save a named route, walk it both ways, and add it to the campaign."),
+    BOARD_STOCKPILE(GameUI::toggleBoardStockpile, "Board stockpile", "Plan and supervise board stockpile placement in Navigation Lab."),
+    CATALOG_CUPBOARDS(CupboardBot::start, "Catalog nearby cupboards", "Walks packed cupboard rooms, opens each cupboard (corners through a neighbour already open), and lists contents."),
+    FISH_SPIT_ROAST(gui -> thunder.fish.FishSpitRoastSetupWnd.toggle(gui), "Fish Spit-Roast", "Designate raw-fish input, fire/spit, and cooked-fish output areas, then auto-roast whole fish in batches."),
     SORT_INVENTORY(InventorySorter::sortAll, "Sort all opened inventories"),
     TOGGLE_GOB_INFO(CFG.DISPLAY_GOB_INFO, "Display info", "Display crop/tree growth and object health overlay."),
     TOGGLE_GOB_HITBOX(Hitbox::toggle, "Display hitboxes"),

@@ -1,0 +1,93 @@
+<?xml version="1.0" ?>
+<project name="HavenNavigationCore" default="jar">
+  <property name="src" location="src"/>
+  <property name="stubs" location="stubs"/>
+  <property name="json-src" location="../src/org/json"/>
+  <property name="build" location="build"/>
+  <property name="classes" location="build/classes"/>
+  <property name="stub-classes" location="build/stub-classes"/>
+  <property name="json-classes" location="build/json-classes"/>
+  <property name="test-classes" location="build/test-classes"/>
+  <property name="jar.file" location="build/HavenNavigationCore.jar"/>
+  <property name="junit" location="../lib/junit-platform-console-standalone-1.10.2.jar"/>
+
+  <target name="git-hash">
+    <exec executable="git" outputproperty="navcore.git" failifexecutionfails="false" dir="..">
+      <arg line="rev-parse HEAD"/>
+    </exec>
+    <property name="navcore.git" value="unknown"/>
+  </target>
+
+  <target name="compile-deps">
+    <mkdir dir="${stub-classes}"/>
+    <mkdir dir="${json-classes}"/>
+    <javac srcdir="${stubs}" destdir="${stub-classes}" source="1.8" target="1.8" release="8"
+           includeantruntime="no" encoding="UTF-8" debug="on">
+      <compilerarg value="-Xlint:-options"/>
+    </javac>
+    <javac destdir="${json-classes}" source="1.8" target="1.8" release="8"
+           includeantruntime="no" encoding="UTF-8" debug="on">
+      <src path="${json-src}"/>
+      <include name="JSONObject.java"/>
+      <include name="JSONArray.java"/>
+      <include name="JSONTokener.java"/>
+      <include name="JSONException.java"/>
+      <include name="JSONString.java"/>
+      <compilerarg value="-Xlint:-options"/>
+    </javac>
+  </target>
+
+  <target name="compile" depends="compile-deps,git-hash">
+    <mkdir dir="${classes}"/>
+    <mkdir dir="${classes}/haven/nav"/>
+    <echo file="${classes}/haven/nav/buildinfo.properties">git.hash=${navcore.git}${line.separator}version=${navcore.git}${line.separator}</echo>
+    <javac srcdir="${src}" destdir="${classes}" source="1.8" target="1.8" release="8"
+           includeantruntime="no" encoding="UTF-8" debug="on" excludes="test/**">
+      <classpath>
+        <pathelement path="${stub-classes}"/>
+        <pathelement path="${json-classes}"/>
+      </classpath>
+      <compilerarg value="-Xlint:unchecked"/>
+      <compilerarg value="-Xlint:-options"/>
+    </javac>
+  </target>
+
+  <target name="jar" depends="compile">
+    <jar destfile="${jar.file}">
+      <fileset dir="${classes}"/>
+      <manifest>
+        <attribute name="Implementation-Title" value="HavenNavigationCore"/>
+        <attribute name="Implementation-Version" value="${navcore.git}"/>
+        <attribute name="Navigation-Core-Git" value="${navcore.git}"/>
+      </manifest>
+    </jar>
+    <echo file="${build}/HavenNavigationCore.git" message="${navcore.git}${line.separator}"/>
+  </target>
+
+  <target name="compile-tests" depends="jar">
+    <mkdir dir="${test-classes}"/>
+    <javac srcdir="${src}/test/java" destdir="${test-classes}" source="1.8" target="1.8"
+           includeantruntime="no" encoding="UTF-8" debug="on">
+      <classpath>
+        <pathelement path="${classes}"/>
+        <pathelement path="${stub-classes}"/>
+        <pathelement path="${json-classes}"/>
+        <pathelement path="${junit}"/>
+      </classpath>
+      <compilerarg value="-Xlint:-options"/>
+    </javac>
+  </target>
+
+  <target name="test" depends="compile-tests">
+    <java jar="${junit}" fork="true" failonerror="true">
+      <arg value="--class-path"/>
+      <arg value="${test-classes}${path.separator}${classes}${path.separator}${stub-classes}${path.separator}${json-classes}"/>
+      <arg value="--scan-classpath"/>
+      <arg value="${test-classes}"/>
+    </java>
+  </target>
+
+  <target name="clean">
+    <delete dir="${build}"/>
+  </target>
+</project>
