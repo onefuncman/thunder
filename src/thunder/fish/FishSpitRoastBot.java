@@ -3,6 +3,9 @@ package thunder.fish;
 import auto.Bot;
 import haven.*;
 import haven.pathfinding.ApproachOnly;
+import haven.pathfinding.NamedPlaceNavigator;
+import haven.pathfinding.PrototypePathfinder;
+import haven.pathfinding.WaypointWalker;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -24,7 +27,7 @@ import java.util.stream.Collectors;
 public class FishSpitRoastBot {
     private static volatile boolean running = false;
     private static Bot active;  // the one running fish bot, for precise Stop semantics
-    private static java.io.PrintWriter runLog;
+
     private static final long CURSOR_TIMEOUT = 5000;
     private static final long LOAD_TIMEOUT = 8000;
     private static final long MENU_TIMEOUT = 4000;
@@ -59,14 +62,11 @@ public class FishSpitRoastBot {
         running = true;
         Bot bot = Bot.execute((target, b) -> {
             try {
-                openRunLog();
-                log("start batch=%d input=%s fire=%s output=%s", batch, areaStr(input), areaStr(fire), areaStr(output));
                 new Run(gui, b, input, fire, output, batch).execute();
             } finally {
                 running = false;
                 clearPaths(gui);
                 returnHeldToInventory(gui);
-                closeRunLog();
                 active = null;
             }
         });
@@ -78,35 +78,6 @@ public class FishSpitRoastBot {
         Bot b = active;
         if (running && b != null) {
             b.cancel("Stopped by user.");
-        }
-    }
-
-    private static String areaStr(Area a) {
-        return a == null ? "null" : (a.ul + "-" + a.br);
-    }
-
-    private static void openRunLog() {
-        try {
-            java.nio.file.Path dir = Debug.somedir("fishbot-logs");
-            dir.toFile().mkdirs();
-            // Single fixed file, truncated on each run so logs never accumulate.
-            runLog = new java.io.PrintWriter(new java.io.FileWriter(dir.resolve("fishbot.log").toFile(), false), true);
-        } catch (Exception e) {
-            runLog = null;
-        }
-    }
-
-    private static void closeRunLog() {
-        if (runLog != null) {
-            runLog.close();
-            runLog = null;
-        }
-    }
-
-    private static void log(String fmt, Object... args) {
-        if (runLog != null) {
-            runLog.println(String.format(fmt, args));
-            runLog.flush();
         }
     }
 
@@ -169,9 +140,8 @@ public class FishSpitRoastBot {
             try {
                 runLoop();
             } catch (InterruptedException e) {
-                log("cancelled");
+                // Cancelled by Stop/Esc.
             } catch (Abort a) {
-                log("%s: %s", a.success ? "done" : "fail", a.getMessage());
                 if (a.success) {
                     gui.msg("Fish Spit-Roast: " + a.getMessage(), GameUI.MsgType.GOOD);
                 } else {
@@ -659,12 +629,14 @@ public class FishSpitRoastBot {
             if (countCookedItems() == 0) {return;}
             List<Gob> outputs = findOutputCandidates();
             if (outputs.isEmpty()) {fail("no output storage found in output area.");}
+            boolean opened = false;
             for (Gob out : outputs) {
                 bot.checkCancelled();
                 if (countCookedItems() == 0) {break;}
                 if (!approachAndSettle(out)) {continue;}
                 Window win = openContainerWindow(out, CURSOR_TIMEOUT);
                 if (win == null) {continue;}
+                opened = true;
                 try {
                     Inventory inv = largestInventory(win);
                     if (inv == null) {continue;}
@@ -677,7 +649,9 @@ public class FishSpitRoastBot {
                     win.reqdestroy();
                 }
             }
-            if (countCookedItems() > 0) {fail("all output storage is full.");}
+            if (countCookedItems() > 0) {
+                fail(opened ? "all output storage is full." : "could not open output container.");
+            }
         }
 
         private boolean depositOne(WItem fish, Inventory inv) throws InterruptedException {
@@ -731,7 +705,26 @@ public class FishSpitRoastBot {
 
         private boolean approachGob(Gob gob) throws InterruptedException {
             ApproachOnly.Result r = ApproachOnly.approach(gui, gob, bot);
-            return r != null && r.outcome == ApproachOnly.Outcome.APPROACH_READY;
+            boolean ok = r != null && r.outcome == ApproachOnly.Outcome.APPROACH_READY;
+            if (!ok) {
+                // Fall back to a direct Nav Core route to a point just outside the gob.
+                ok = walkNear(gob);
+            }
+            return ok;
+        }
+
+        /** Direct Nav Core walk to a point just outside the gob's center (never the
+         *  center itself), for when the full staged approach cannot complete. */
+        private boolean walkNear(Gob gob) throws InterruptedException {
+            Gob player = gui.map.player();
+            if (player == null || gob.rc == null) {return false;}
+            Coord2d dest = PrototypePathfinder.approach(player.rc, gob.rc, MCache.tilesz.x * 1.2);
+            PrototypePathfinder.Plan plan = PrototypePathfinder.plan(gui, dest);
+            if (plan == null || plan.waypoints == null || plan.waypoints.size() < 2) {
+                return player.rc.dist(gob.rc) <= MCache.tilesz.x * 2.0;
+            }
+            WaypointWalker.Result wr = WaypointWalker.execute(gui, bot, plan.waypoints, 0, 60000L, NamedPlaceNavigator.NOOP);
+            return wr == WaypointWalker.Result.ARRIVED || wr == WaypointWalker.Result.READY_TO_INTERACT;
         }
 
         /** Approach then wait for the server-driven Moving attribute to clear so the
