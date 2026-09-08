@@ -86,6 +86,110 @@ public final class ApproachOnly {
       return Outcome.APPROACH_READY;
    }
 
+   /**
+    * Public Nav Core entry point for a running {@code auto.Bot}: walk to a legal
+    * interaction pose around {@code gob} and stop, using the bot's own
+    * cancellation object for every staging and walking step. The target's center
+    * is never a walking destination.
+    */
+   public static Result approach(GameUI gui, Gob gob, Bot bot) throws InterruptedException {
+      return approach(gui.ui, gui, gob, bot);
+   }
+
+   public static Result approach(UI ui, GameUI gui, Gob gob, Bot bot) throws InterruptedException {
+      bot.checkCancelled();
+      if (gui == null || gui.map == null || gob == null) {
+         PathfinderLog.dumpFailure("approach TARGET_DISAPPEARED: no live object");
+         return new Result(Outcome.TARGET_DISAPPEARED, null, null, "no live object");
+      }
+      PrototypePathfinder.Scene scene;
+      synchronized (ui) {
+         scene = PrototypePathfinder.observe(gui);
+      }
+      PrototypePathfinder.GobGeom geom = find(scene, gob.id);
+      if (geom == null) {
+         geom = PrototypePathfinder.gobGeom(gui, gob.id);
+      }
+      if (geom == null || geom.rc == null) {
+         PathfinderLog.dumpFailure("approach TARGET_DISAPPEARED: object not in scene");
+         return new Result(Outcome.TARGET_DISAPPEARED, null, null, "object not in scene");
+      }
+      InteractionSpec spec = spec(geom, scene.player);
+      if (spec == null || CollisionGeom.UNAVAILABLE.equals(spec.geometrySource)) {
+         PathfinderLog.dumpFailure("approach GEOMETRY_UNAVAILABLE: target geometry unavailable");
+         return new Result(Outcome.GEOMETRY_UNAVAILABLE, null, spec, "target geometry unavailable");
+      }
+      long targetId = gob.id;
+      if (StagingPlanner.required(scene.player, scene.occupancy, spec)) {
+         InteractionTarget target = InteractionTarget.of(geom, KIND, null, scene.terrain);
+         InteractionStaging.Result st = InteractionStaging.stage(ui, gui, target, (g, near) -> spec(g, near), null, bot);
+         if (!st.staged()) {
+            return new Result(mapStaging(st.outcome), null, spec, st.detail);
+         }
+         scene = st.scene;
+         geom = st.target;
+         spec = spec(geom, scene.player);
+         targetId = st.target.id;
+         if (spec == null || CollisionGeom.UNAVAILABLE.equals(spec.geometrySource)) {
+            PathfinderLog.dumpFailure("approach GEOMETRY_UNAVAILABLE: geometry unavailable after staging");
+            return new Result(Outcome.GEOMETRY_UNAVAILABLE, null, spec, "geometry unavailable after staging");
+         }
+      }
+      InteractionGoals.Geometry poseGeom = new InteractionGoals.Geometry(scene.solids, scene.playerBody);
+      ApproachGoals.Result planned = ApproachGoals.plan(scene.player, spec, scene.occupancy, poseGeom);
+      PathfinderLog.recordOccupancy(scene.occupancy);
+      GeometryDump.dump(gui, scene, geom, planned.pose);
+      if (!planned.ok()) {
+         Outcome out = mapPlan(planned.status);
+         if (out == Outcome.APPROACH_READY) {
+            out = Outcome.NO_VALID_POSE;
+         }
+         PathfinderLog.dumpFailure("approach " + out.name() + ": " + planned.status.name());
+         return new Result(out, null, spec, planned.status.name());
+      }
+      Coord2d pose = planned.pose.selected.world;
+      List<Coord2d> route = planned.pose.plan.smoothedRoute;
+      if (route == null || route.size() < 2) {
+         route = new ArrayList<Coord2d>();
+         route.add(scene.player);
+         route.add(pose);
+      }
+      WaypointWalker.Result walk = WaypointWalker.execute(
+         WaypointWalker.liveEnv(gui),
+         bot,
+         route,
+         0,
+         60000L,
+         WaypointWalker.Params.DEFAULT,
+         NamedPlaceNavigator.NOOP,
+         planned.pose.plan.status,
+         pose,
+         spec
+      );
+      if (walk != WaypointWalker.Result.READY_TO_INTERACT && walk != WaypointWalker.Result.ARRIVED) {
+         PathfinderLog.dumpFailure("approach UNREACHABLE: walk " + walk);
+         return new Result(Outcome.UNREACHABLE, pose, spec, "walk " + walk);
+      }
+      synchronized (ui) {
+         scene = PrototypePathfinder.observe(gui);
+      }
+      PrototypePathfinder.GobGeom live = find(scene, targetId);
+      if (live == null) {
+         PathfinderLog.dumpFailure("approach TARGET_DISAPPEARED: object gone after walk");
+         return new Result(Outcome.TARGET_DISAPPEARED, pose, spec, "object gone after walk");
+      }
+      InteractionSpec fresh = spec(live, spec.origin);
+      if (fresh == null || CollisionGeom.UNAVAILABLE.equals(fresh.geometrySource)) {
+         PathfinderLog.dumpFailure("approach GEOMETRY_UNAVAILABLE: geometry gone after walk");
+         return new Result(Outcome.GEOMETRY_UNAVAILABLE, pose, spec, "geometry gone after walk");
+      }
+      Outcome checked = revalidate(scene.player, pose, spec, true, fresh.origin);
+      if (checked != Outcome.APPROACH_READY) {
+         PathfinderLog.dumpFailure("approach " + checked.name() + ": revalidation failed");
+      }
+      return new Result(checked, pose, spec, checked.name());
+   }
+
    static Result run(PfTestRunner.Run run, UI ui, GameUI gui, Gob gob) throws Exception {
       if (run != null && run.cancelled) {
          throw new PfTestRunner.Cancelled();

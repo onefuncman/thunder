@@ -30,6 +30,7 @@ public enum Action {
     CRITICAL_ROUTES(GameUI::toggleCriticalRoutes, "Critical routes", "Mark stands and objects in the world, save a named route, walk it both ways, and add it to the campaign."),
     BOARD_STOCKPILE(GameUI::toggleBoardStockpile, "Board stockpile", "Plan and supervise board stockpile placement in Navigation Lab."),
     CATALOG_CUPBOARDS(CupboardBot::start, "Catalog nearby cupboards", "Walks packed cupboard rooms, opens each cupboard (corners through a neighbour already open), and lists contents."),
+    FISH_SPIT_ROAST(gui -> thunder.fish.FishSpitRoastSetupWnd.toggle(gui), "Fish Spit-Roast", "Designate raw-fish input, fire/spit, and cooked-fish output areas, then auto-roast whole fish in batches."),
     SORT_INVENTORY(InventorySorter::sortAll, "Sort all opened inventories"),
     TOGGLE_GOB_INFO(CFG.DISPLAY_GOB_INFO, "Display info", "Display crop/tree growth and object health overlay."),
     TOGGLE_GOB_HITBOX(Hitbox::toggle, "Display hitboxes"),

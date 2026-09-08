@@ -104,12 +104,42 @@ public final class InteractionStaging {
    }
 
    /**
+    * Live-game staging entry point for an already-running {@code auto.Bot}:
+    * the bot's own cancellation object is threaded through every staging walk
+    * so Stop/Esc cancels movement instead of racing against an unrelated
+    * uncancellable {@code Bot}.
+    */
+   public static Result stage(
+      UI ui, GameUI gui, InteractionTarget identity, SpecMaker specMaker, Listener listener, Bot bot
+   ) throws InterruptedException {
+      try {
+         return stage(null, ui, gui, observing(ui, gui), identity, specMaker, listener, bot);
+      } catch (PfTestRunner.Cancelled e) {
+         // run is null on this path, so this is unreachable in practice; keep the
+         // public bot-based signature free of the test-runner's cancellation type.
+         throw new InterruptedException(e.getMessage());
+      }
+   }
+
+   /**
     * Staging cycle with an injectable scene source. With a null run, waits
     * and cancellation checks are skipped (headless test mode).
     */
    public static Result stage(
       PfTestRunner.Run run, UI ui, GameUI gui, SceneSupplier scenes, InteractionTarget identity,
       SpecMaker specMaker, Listener listener
+   ) throws InterruptedException, PfTestRunner.Cancelled {
+      return stage(run, ui, gui, scenes, identity, specMaker, listener, Bot.execute(new Bot.BotAction[0]));
+   }
+
+   /**
+    * Shared staging core. {@code bot} is the movement-cancellation authority:
+    * when null (headless test mode) no bot cancellation checks are made, and
+    * the historical {@code run}-based checks are used instead.
+    */
+   public static Result stage(
+      PfTestRunner.Run run, UI ui, GameUI gui, SceneSupplier scenes, InteractionTarget identity,
+      SpecMaker specMaker, Listener listener, Bot bot
    ) throws InterruptedException, PfTestRunner.Cancelled {
       List<Coord2d> stagingPoints = new ArrayList<Coord2d>();
       PathfinderLog.setTarget("interact " + identity.label() + " STAGING>INTERACT");
@@ -179,7 +209,7 @@ public final class InteractionStaging {
                listener.phase(PHASE_STAGING_POSE_SELECTED, identity, scene.player, pick.selected.world,
                   "angle=" + pick.selected.angle + " radius=" + Math.round(pick.selected.radius));
             }
-            String walkErr = walkTo(run, ui, gui, scene, pick.selected.world, identity);
+            String walkErr = walkTo(run, ui, gui, scene, pick.selected.world, identity, bot);
             if (walkErr != null) {
                PathfinderLog.dumpFailure("staging STAGING_UNREACHABLE: " + walkErr);
                return new Result(STAGING_UNREACHABLE, null, null, identity, stagingPoints, walkErr);
@@ -206,7 +236,7 @@ public final class InteractionStaging {
     * phase, so the movement is never mistaken for a plain go-to.
     */
    private static String walkTo(
-      PfTestRunner.Run run, UI ui, GameUI gui, PrototypePathfinder.Scene scene, Coord2d staging, InteractionTarget identity
+      PfTestRunner.Run run, UI ui, GameUI gui, PrototypePathfinder.Scene scene, Coord2d staging, InteractionTarget identity, Bot bot
    ) throws InterruptedException, PfTestRunner.Cancelled {
       NavPlan plan = LocalPlanner.planFromOccupancy(scene.player, staging, false, 0.0, scene.occupancy, 0, new PlanningTrace());
       List<Coord2d> route;
@@ -224,7 +254,6 @@ public final class InteractionStaging {
       if (run != null && run.cancelled) {
          throw new PfTestRunner.Cancelled();
       }
-      Bot bot = Bot.execute(new Bot.BotAction[0]);
       WaypointWalker.Result walk = WaypointWalker.execute(
          WaypointWalker.liveEnv(gui), bot, route, 0, WALK_BUDGET_MS, WaypointWalker.Params.DEFAULT, NamedPlaceNavigator.NOOP
       );
