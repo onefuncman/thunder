@@ -46,7 +46,8 @@ public class LoginScreen extends Widget {
     private OptWnd opts;
 
     private WindowX log;
-    AccountList accounts;
+    public AccountList accounts;
+    public boolean autologinTried;
 
     private String getpref(String name, String def) {
 	return(Utils.getpref(name + "@" + confname, def));
@@ -456,6 +457,11 @@ public class LoginScreen extends Widget {
 	if(Config.isUpdate) {
 	    showChangeLog();
 	}
+    }
+
+    public void tick(double dt) {
+	super.tick(dt);
+	haven.dev.DevControl.tickLogin(this);
     }
 
     public void draw(GOut g) {

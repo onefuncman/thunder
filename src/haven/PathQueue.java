@@ -19,6 +19,7 @@ public class PathQueue {
     private boolean clicked = false;
     private Coord2d clickPos = null;
     private boolean passenger = false;
+    private int ignoreStops = 0;
     
     public PathQueue(MapView map) {
 	this.map = map;
@@ -153,6 +154,10 @@ public class PathQueue {
 	moving = (Moving) to;
 	synchronized (queue) {
 	    if(to == null) {
+		if(ignoreStops > 0) {
+		    ignoreStops--;
+		    return;
+		}
 		Coord2d next = pop();
 		if(next != null) {
 		    unclick();
@@ -160,13 +165,17 @@ public class PathQueue {
 		}
 	    } else if(to instanceof Homing || to instanceof Following) {
 		clear();
-	    } else if(clicked) {
-		if(this.clickPos != null) {
-		    start(this.clickPos);
-		} else {
-		    clear();
+	    } else {
+		if(to instanceof LinMove)
+		    ignoreStops = 0;
+		if(clicked) {
+		    if(this.clickPos != null) {
+			start(this.clickPos);
+		    } else {
+			clear();
+		    }
+		    unclick();
 		}
-		unclick();
 	    }
 	}
     }
@@ -218,8 +227,19 @@ public class PathQueue {
 	}
     }
     
+    public void repath() {
+	synchronized (queue) {
+	    ignoreStops = moving != null ? 1 : 0;
+	    queue.clear();
+	    unclick();
+	}
+    }
+
     public void clear() {
-	synchronized (queue) {queue.clear();}
+	synchronized (queue) {
+	    queue.clear();
+	    ignoreStops = 0;
+	}
     }
     
     private void log(Gob gob, GAttrib from, GAttrib to) {

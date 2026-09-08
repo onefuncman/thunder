@@ -3,6 +3,8 @@
 <project name="hafen" default="deftgt" xmlns:if="ant:if">
   <property file="build.properties" />
   <property name="ext-lib-base" value="http://www.havenandhearth.com/java" />
+  <property name="navigation-core.dir" value="HavenNavigationCore" />
+  <property name="navigation-core.jar" value="${navigation-core.dir}/build/HavenNavigationCore.jar" />
 
   <target name="build-env">
     <mkdir dir="build" />
@@ -90,7 +92,14 @@
   </target>
 
 
-  <target name="hafen-client" depends="build-env, extlib/jogl, extlib/lwjgl-gl, extlib/steamworks">
+  <target name="navigation-core">
+    <ant dir="${navigation-core.dir}" target="jar" inheritAll="false" />
+    <available file="${navigation-core.jar}" property="has-navigation-core-jar" />
+    <fail unless="has-navigation-core-jar" message="HavenNavigationCore.jar was not built" />
+    <echo message="Thunder will compile against ${navigation-core.jar}" />
+  </target>
+
+  <target name="hafen-client" depends="build-env, extlib/jogl, extlib/lwjgl-gl, extlib/steamworks, navigation-core">
     <condition property="explicit-annotations">
       <javaversion atleast="21" />
     </condition>
@@ -102,6 +111,7 @@
 	   encoding="UTF-8"
 	   bootclasspath="${boot-classpath}">
       <classpath>
+	<pathelement path="${navigation-core.jar}" />
 	<pathelement path="lib/ext/jogl/jogl-all.jar" />
 	<pathelement path="lib/ext/jogl/gluegen-rt.jar" />
 	<pathelement path="lib/ext/lwjgl/lwjgl-fat.jar" />
@@ -227,7 +237,7 @@
       <zipfileset dir="etc/AlarmSounds" prefix="AlarmSounds" includes="*.wav" />
       <manifest>
 	<attribute name="Main-Class" value="haven.Client" />
-	<attribute name="Class-Path" value="hafen-panama.jar jogl-all.jar gluegen-rt.jar lwjgl-fat.jar lwjgl-awt.jar client-res.jar lwjgl-opengl-fat.jar steamworks4j.jar builtin-res.jar hafen-res.jar" />
+	<attribute name="Class-Path" value="HavenNavigationCore.jar hafen-panama.jar jogl-all.jar gluegen-rt.jar lwjgl-fat.jar lwjgl-awt.jar client-res.jar lwjgl-opengl-fat.jar steamworks4j.jar builtin-res.jar hafen-res.jar" />
 	<attribute name="Add-Exports" value="java.base/java.lang java.desktop/sun.awt java.desktop/sun.java2d" />
 	<attribute name="Enable-Native-Access" value="ALL-UNNAMED" />
       </manifest>
@@ -281,8 +291,17 @@
 	<include name="hafen-panama.jar" />
       </fileset>
     </copy>
+    <copy file="${navigation-core.jar}" tofile="bin/HavenNavigationCore.jar" overwrite="true" />
     <copy file="etc/ansgar-config.properties" tofile="bin/haven-config.properties" />
     <chmod file="bin/hafen.jar" perm="a+x" />
+    <copy file="bin/hafen.jar" tofile="bin/navigation-lab.jar" overwrite="true" />
+    <chmod file="bin/navigation-lab.jar" perm="a+x" />
+    <loadfile property="navigation-core.git" srcFile="${navigation-core.dir}/build/HavenNavigationCore.git">
+      <filterchain>
+        <striplinebreaks/>
+      </filterchain>
+    </loadfile>
+    <echo message="Packed navigation-lab.jar with Class-Path HavenNavigationCore.jar (Navigation-Core-Git ${navigation-core.git})" />
   </target>
 
   <target name="play" depends="jar, extlib/jogl, extlib/lwjgl-gl, extlib/steamworks, res-jar, resources">
@@ -301,6 +320,7 @@
       <fileset dir="lib/ext/steamworks"><include name="*.jar" /></fileset>
     </copy>
     <copy file="etc/ansgar-config.properties" tofile="play/haven-config.properties" />
+    <copy file="${navigation-core.jar}" tofile="play/HavenNavigationCore.jar" overwrite="true" />
     <chmod file="play/hafen.jar" perm="a+x" />
   </target>
 
@@ -330,6 +350,7 @@
     <javac srcdir="src/test/java" destdir="build/test-classes" debug="on"
 	   includeantruntime="no">
       <classpath>
+	<pathelement path="${navigation-core.jar}" />
 	<pathelement path="build/classes" />
 	<pathelement path="lib/junit-platform-console-standalone-1.10.2.jar" />
 	<pathelement path="lib/ext/jogl/jogl-all.jar" />
@@ -350,7 +371,7 @@
   <target name="test" depends="compile-tests">
     <java jar="lib/junit-platform-console-standalone-1.10.2.jar" fork="true" failonerror="true">
       <arg value="--class-path" />
-      <arg value="build/test-classes${path.separator}build/classes${path.separator}lib/jglob.jar${path.separator}lib/gson-2.8.6.jar${path.separator}lib/rxjava-1.1.5.jar" />
+      <arg value="build/test-classes${path.separator}${navigation-core.jar}${path.separator}build/classes${path.separator}lib/jglob.jar${path.separator}lib/gson-2.8.6.jar${path.separator}lib/rxjava-1.1.5.jar" />
       <arg value="--scan-classpath" />
       <arg value="build/test-classes" />
     </java>
@@ -385,6 +406,8 @@
 	<include name="lwjgl*.jar" />
 	<include name="steamworks4j*.jar" />
 	<include name="haven-config.properties" />
+	<include name="HavenNavigationCore.jar" />
+	<include name="navigation-lab.jar" />
       </fileset>
     </delete>
   </target>

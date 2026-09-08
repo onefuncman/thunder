@@ -2969,7 +2969,8 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	}
 	
 	protected void hit(Coord pc, Coord2d mc, ClickData inf) {
-	    Object[] args = {pc, mc.floor(posres), clickb, ui.modflags()};
+	    int mods = CustomCursors.markingAreaCtrlPass(MapView.this) ? 0 : ui.modflags();
+	    Object[] args = {pc, mc.floor(posres), clickb, mods};
 	    
 	    if(CustomCursors.processHit(MapView.this, mc, inf)) {return;}
 	    if(inf != null) {
@@ -3011,6 +3012,55 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	}
     }
     
+    /** Sends the normal held-item action at a world point, using the same wire shape as iteminteract. */
+    public boolean itemactAt(Coord2d world, int modflags) {
+	if(world == null) return false;
+	Coord3f screen;
+	try {
+	    screen = screenxf(glob.map.getzp(world));
+	} catch(RuntimeException e) {
+	    screen = screenxf(world);
+	}
+	if(screen == null) return false;
+	wdgmsg("itemact", Coord.of(Math.round(screen.x), Math.round(screen.y)), world.floor(posres), modflags);
+	return true;
+    }
+
+    /** Sends place only when the server has supplied a live placement preview. */
+    public boolean placeCurrent(int button, int modflags) {
+	Loader.Future<Plob> p = placing;
+	if(p == null || !p.done()) return false;
+	Plob plob;
+	try { plob = p.get(); } catch(RuntimeException e) { return false; }
+	if(plob == null || plob.lastmc == null || plob.rc == null) return false;
+	wdgmsg("place", plob.rc.floor(posres), (int)Math.round(plob.a * 32768 / Math.PI), button, modflags);
+	return true;
+    }
+
+    public boolean hasPlacementPreview() {
+	Loader.Future<Plob> p = placing;
+	if(p == null || !p.done()) return false;
+	try { return p.get() != null && p.get().lastmc != null; }
+	catch(RuntimeException e) { return false; }
+    }
+
+    /** True once the server has entered placement mode (a Plob preview exists),
+     *  regardless of whether the mouse happens to be over the map. */
+    public boolean isPlacing() {
+	Loader.Future<Plob> p = placing;
+	if(p == null || !p.done()) return false;
+	try { return p.get() != null; }
+	catch(RuntimeException e) { return false; }
+    }
+
+    /** Confirms placement at an explicit world tile with angle 0, matching the wire shape
+     *  Nurgling sends after entering the placer; does not depend on the mouse position. */
+    public boolean placeAt(Coord2d world, int button, int modflags) {
+	if(world == null) return false;
+	wdgmsg("place", world.floor(posres), 0, button, modflags);
+	return true;
+    }
+
     public void click(Coord2d c, int button) {
 	click(c, button, ui.mc, c.floor(posres), button, ui.modflags());
     }

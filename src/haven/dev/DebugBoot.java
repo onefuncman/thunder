@@ -20,6 +20,10 @@ public final class DebugBoot {
 	touch("thunder.MilkingAssistDebug");
 	touch("thunder.TileQualityDebug");
 	touch("haven.GobWarningDebug");
+	touch("haven.pathfinding.PathfinderDebug");
+	touch("haven.pathfinding.CriticalRouteOverlay");
+	touch("haven.pathfinding.BoardStockpileOverlay");
+	touch("haven.pathfinding.NavReplayRunner");
     }
 
     private static void touch(String fqcn) {

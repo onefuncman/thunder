@@ -110,7 +110,8 @@ public class NearestInteract {
 	if(gate != null) {return gob.isVisitorGate() ? null : gate;}
 	if(res.startsWith("gfx/terobjs/road/milestone-")) {return Kind.MILESTONE;}
 	if(res.endsWith("-door")) {return Kind.DOORWAY;}
-	if("gfx/terobjs/arch/cellardoor".equals(res) || "gfx/terobjs/arch/cellarstairs".equals(res)) {return Kind.CELLAR;}
+	if("gfx/terobjs/arch/cellardoor".equals(res) || "gfx/terobjs/arch/cellarstairs".equals(res)
+	    || "gfx/terobjs/arch/downstairs".equals(res) || "gfx/terobjs/arch/upstairs".equals(res)) {return Kind.CELLAR;}
 	if("gfx/terobjs/minehole".equals(res) || "gfx/terobjs/ladder".equals(res)) {return Kind.MINEHOLE;}
 	return null;
     }
