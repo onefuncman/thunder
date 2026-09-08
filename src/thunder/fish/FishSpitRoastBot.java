@@ -24,8 +24,7 @@ import java.util.stream.Collectors;
 public class FishSpitRoastBot {
     private static volatile boolean running = false;
     private static Bot active;  // the one running fish bot, for precise Stop semantics
-    private static java.io.PrintWriter diagLog;
-    private static java.nio.file.Path diagLogPath;
+    private static java.io.PrintWriter runLog;
     private static final long CURSOR_TIMEOUT = 5000;
     private static final long LOAD_TIMEOUT = 8000;
     private static final long MENU_TIMEOUT = 4000;
@@ -60,14 +59,14 @@ public class FishSpitRoastBot {
         running = true;
         Bot bot = Bot.execute((target, b) -> {
             try {
-                openDiagLog();
-                diag("start: batch=%d input=%s fire=%s output=%s", batch, areaStr(input), areaStr(fire), areaStr(output));
+                openRunLog();
+                log("start batch=%d input=%s fire=%s output=%s", batch, areaStr(input), areaStr(fire), areaStr(output));
                 new Run(gui, b, input, fire, output, batch).execute();
             } finally {
                 running = false;
                 clearPaths(gui);
                 returnHeldToInventory(gui);
-                closeDiagLog();
+                closeRunLog();
                 active = null;
             }
         });
@@ -86,32 +85,28 @@ public class FishSpitRoastBot {
         return a == null ? "null" : (a.ul + "-" + a.br);
     }
 
-    private static void openDiagLog() {
+    private static void openRunLog() {
         try {
             java.nio.file.Path dir = Debug.somedir("fishbot-logs");
             dir.toFile().mkdirs();
-            diagLogPath = dir.resolve("fishbot-" + System.currentTimeMillis() + ".log");
-            diagLog = new java.io.PrintWriter(new java.io.FileWriter(diagLogPath.toFile(), true), true);
+            // Single fixed file, truncated on each run so logs never accumulate.
+            runLog = new java.io.PrintWriter(new java.io.FileWriter(dir.resolve("fishbot.log").toFile(), false), true);
         } catch (Exception e) {
-            diagLog = null;
-            diagLogPath = null;
+            runLog = null;
         }
     }
 
-    private static void closeDiagLog() {
-        if (diagLog != null) {
-            diagLog.close();
-            diagLog = null;
+    private static void closeRunLog() {
+        if (runLog != null) {
+            runLog.close();
+            runLog = null;
         }
     }
 
-    private static void diag(String fmt, Object... args) {
-        String line = String.format(fmt, args);
-        Debug.log.println("[fishbot] " + line);
-        Debug.log.flush();
-        if (diagLog != null) {
-            diagLog.println("[fishbot] " + line);
-            diagLog.flush();
+    private static void log(String fmt, Object... args) {
+        if (runLog != null) {
+            runLog.println(String.format(fmt, args));
+            runLog.flush();
         }
     }
 
@@ -173,11 +168,10 @@ public class FishSpitRoastBot {
         void execute() {
             try {
                 runLoop();
-                diag("execute: runLoop returned normally (unexpected)");
             } catch (InterruptedException e) {
-                diag("execute: cancelled");
+                log("cancelled");
             } catch (Abort a) {
-                diag("execute: %s %s", a.success ? "SUCCESS" : "FAIL", a.getMessage());
+                log("%s: %s", a.success ? "done" : "fail", a.getMessage());
                 if (a.success) {
                     gui.msg("Fish Spit-Roast: " + a.getMessage(), GameUI.MsgType.GOOD);
                 } else {
@@ -434,15 +428,10 @@ public class FishSpitRoastBot {
             for (Gob g : gobsIn(fire)) {
                 for (Gob.Overlay ol : new ArrayList<>(g.ols)) {
                     if (isRoastspitOverlay(ol)) {
-                        diag("findSpit: fire=%d resid=%s overlayId=%d sprClass=%s res=%s",
-                            g.id, residOf(g), ol.id,
-                            ol.spr != null ? ol.spr.getClass().getName() : "null",
-                            ol.spr != null && ol.spr.res != null ? ol.spr.res.name : "null");
                         return new Spit(g.id);
                     }
                 }
             }
-            diag("findSpit: no roastspit overlay found in fire area");
             return null;
         }
 
@@ -472,15 +461,14 @@ public class FishSpitRoastBot {
         }
 
         private static final String CONTENT_UNREADABLE = "\u0000unreadable";
-        private boolean dumpedSpitShape = false;
 
         /**
          * Returns the current spit content resource name, or null when the spit is
          * empty. The live server's Roastspit sprite has no {@code getContent()}
          * method (only the Nurgling fork added one); it stores the loaded fish in a
-         * private {@code equed} field, which is a {@code RUtils.StateNode} wrapping
-         * the content sprite. We try {@code getContent()} first for forward
-         * compatibility, then fall back to reading {@code equed}.
+         * private {@code equed} field (a {@code Roastspit$Equed} wrapping the content
+         * resource). We try {@code getContent()} first for forward compatibility,
+         * then fall back to reading {@code equed}.
          */
         private String spitContentName(Spit spit) {
             Gob.Overlay ol = spitOverlay(spit);
@@ -496,8 +484,7 @@ public class FishSpitRoastBot {
                 return null;
             } catch (NoSuchMethodException ignored) {
                 // fall through to the equed field below
-            } catch (Exception e) {
-                diag("spitContentName: getContent threw %s", e.getClass().getSimpleName());
+            } catch (Exception ignored) {
             }
 
             try {
@@ -507,48 +494,12 @@ public class FishSpitRoastBot {
                 if (equed == null) {return null;}
                 String n = contentName(equed);
                 if (n != null) {return n;}
-                dumpSpitShape(spr);
                 return CONTENT_UNREADABLE;
             } catch (NoSuchFieldException e) {
-                dumpSpitShape(spr);
                 return null;
-            } catch (Exception e) {
-                diag("spitContentName: equed read threw %s", e.getClass().getSimpleName());
+            } catch (Exception ignored) {
                 return null;
             }
-        }
-
-        /** One-shot recursive dump of the sprite's field graph when introspection guesses miss. */
-        private void dumpSpitShape(Sprite spr) {
-            if (dumpedSpitShape) {return;}
-            dumpedSpitShape = true;
-            diag("spit shape: class=%s", spr.getClass().getName());
-            dumpObjectFields(spr, 0);
-        }
-
-        private void dumpObjectFields(Object o, int depth) {
-            if (o == null || depth > 2) {return;}
-            for (java.lang.reflect.Field f : o.getClass().getDeclaredFields()) {
-                int mod = f.getModifiers();
-                if (java.lang.reflect.Modifier.isStatic(mod) || f.isSynthetic()) {continue;}
-                try {
-                    f.setAccessible(true);
-                    Object v = f.get(o);
-                    diag("spit shape: %s.%s : %s = %s", o.getClass().getSimpleName(), f.getName(),
-                        f.getType().getSimpleName(), v == null ? "null" : (v.getClass().getName() + "|" + v));
-                    if (v != null && !f.getType().isPrimitive() && v != o) {
-                        dumpObjectFields(v, depth + 1);
-                    }
-                } catch (Exception ignored) {}
-            }
-        }
-
-        private String contentStr(Spit spit) {
-            Gob.Overlay ol = spitOverlay(spit);
-            if (ol == null) {return "no-overlay";}
-            if (ol.spr == null) {return "no-sprite";}
-            String n = spitContentName(spit);
-            return n == null ? "null" : n;
         }
 
         /** Recursively unwrap an object (Indir / StateNode / Sprite / Resource / String, then a
@@ -617,11 +568,9 @@ public class FishSpitRoastBot {
             if (gui.hand() != null) {returnHeldToInventory(gui);}
             fish.take();
             if (!waitForHand(CURSOR_TIMEOUT)) {fail("could not pick up a raw fish.");}
-            diag("loadFish: fire=%d overlay=%d content-before=%s handEmpty=%b", fire.id, ol.id, contentStr(spit), gui.hand() == null);
             Coord mc = fire.rc.floor(OCache.posres);
             gui.map.wdgmsg("itemact", Coord.z, mc, 0, 1, (int) fire.id, mc, ol.id, -1);
             boolean loaded = waitFor(LOAD_TIMEOUT, () -> gui.hand() == null && spitState(spit) == FishRecognition.SpitState.RAW);
-            diag("loadFish: loaded=%b content-after=%s handEmpty=%b", loaded, contentStr(spit), gui.hand() == null);
             if (!loaded) {
                 returnHeldToInventory(gui);
                 fail("spit rejected the fish.");
@@ -632,37 +581,27 @@ public class FishSpitRoastBot {
             if (fireGob(spit) == null || spitOverlay(spit) == null) {fail("no roasting spit found in fire area.");}
             FlowerMenu menu = rightClickSpitForMenu(spit);
             if (menu == null) {fail("turn menu did not appear.");}
-            diag("turn: menu options=%s", java.util.Arrays.toString(menu.options));
             FlowerMenu.Petal turn = findPetal(menu, "Turn");
             if (turn == null) {
                 menu.choose(null);
                 fail("turn menu did not appear.");
             }
             menu.choose(turn);
-            diag("turn: chose Turn, content=%s", contentStr(spit));
 
             long start = System.currentTimeMillis();
             boolean sawProgress = false;
-            String lastContent = null;
             long deadline = System.currentTimeMillis() + ROAST_TIMEOUT;
             while (System.currentTimeMillis() < deadline) {
                 bot.checkCancelled();
                 FishRecognition.SpitState s = spitState(spit);
-                String c = contentStr(spit);
-                if (!c.equals(lastContent)) {
-                    diag("turn: t=%dms content=%s prog=%s", System.currentTimeMillis() - start, c, gui.prog != null);
-                    lastContent = c;
-                }
-                if (s == FishRecognition.SpitState.COOKED) {diag("turn: cooked"); return;}
+                if (s == FishRecognition.SpitState.COOKED) {return;}
                 if (s == FishRecognition.SpitState.UNKNOWN) {fail("spit occupied by an unknown item.");}
                 if (gui.prog != null) {sawProgress = true;}
                 if (!sawProgress && (System.currentTimeMillis() - start) > NO_PROGRESS_GRACE) {
-                    diag("turn: no progress within %dms, content=%s", NO_PROGRESS_GRACE, c);
                     fail("fire may be unlit or unfueled.");
                 }
                 sleep(200);
             }
-            diag("turn: timed out after %dms, content=%s", ROAST_TIMEOUT, contentStr(spit));
             fail("cooking timed out.");
         }
 
@@ -670,7 +609,6 @@ public class FishSpitRoastBot {
             if (fireGob(spit) == null || spitOverlay(spit) == null) {fail("no roasting spit found in fire area.");}
             FlowerMenu menu = rightClickSpitForMenu(spit);
             if (menu == null) {fail("carve menu did not appear.");}
-            diag("carve: menu options=%s", java.util.Arrays.toString(menu.options));
             FlowerMenu.Petal carve = findPetal(menu, "Carve");
             if (carve == null) {
                 menu.choose(null);
@@ -678,9 +616,7 @@ public class FishSpitRoastBot {
             }
             int before = countCookedItems();
             menu.choose(carve);
-            diag("carve: chose Carve, content=%s cookedBefore=%d", contentStr(spit), before);
             boolean empty = waitFor(CARVE_TIMEOUT, () -> spitState(spit) == FishRecognition.SpitState.EMPTY);
-            diag("carve: empty=%b content=%s cookedNow=%d", empty, contentStr(spit), countCookedItems());
             if (!empty) {fail("carving timed out.");}
             boolean appeared = waitFor(CURSOR_TIMEOUT, () -> countCookedItems() > before);
             if (!appeared) {fail("cooked output could not be identified.");}
@@ -700,7 +636,6 @@ public class FishSpitRoastBot {
                 if (menu != null) {return menu;}
                 sleep(100);
             }
-            diag("rightClickSpitForMenu: no flower menu appeared (fire=%d overlay=%d)", fire.id, ol.id);
             return null;
         }
 
@@ -721,30 +656,22 @@ public class FishSpitRoastBot {
         }
 
         private void depositCooked() throws InterruptedException, Abort {
-            int have = countCookedItems();
-            if (have == 0) {return;}
-            diag("depositCooked: %d cooked items to deposit", have);
+            if (countCookedItems() == 0) {return;}
             List<Gob> outputs = findOutputCandidates();
-            diag("depositCooked: %d output candidates", outputs.size());
             if (outputs.isEmpty()) {fail("no output storage found in output area.");}
             for (Gob out : outputs) {
                 bot.checkCancelled();
                 if (countCookedItems() == 0) {break;}
-                diag("depositCooked: trying gob=%d resid=%s prio=%d", out.id, residOf(out), outputPriorityOf(out));
-                if (!approachAndSettle(out)) {diag("depositCooked: approach failed for gob %d", out.id); continue;}
+                if (!approachAndSettle(out)) {continue;}
                 Window win = openContainerWindow(out, CURSOR_TIMEOUT);
-                if (win == null) {diag("depositCooked: open failed for gob %d", out.id); continue;}
-                diag("depositCooked: opened window caption=%s", win.caption());
+                if (win == null) {continue;}
                 try {
                     Inventory inv = largestInventory(win);
-                    if (inv == null) {diag("depositCooked: no inventory widget in window"); continue;}
-                    diag("depositCooked: largest inventory size=%d", inv.size());
+                    if (inv == null) {continue;}
                     while (countCookedItems() > 0) {
                         bot.checkCancelled();
                         WItem fish = collectCookedItems().get(0);
-                        boolean ok = depositOne(fish, inv);
-                        diag("depositCooked: depositOne -> %b (remaining %d)", ok, countCookedItems());
-                        if (!ok) {break;}
+                        if (!depositOne(fish, inv)) {break;}
                     }
                 } finally {
                     win.reqdestroy();
@@ -754,29 +681,23 @@ public class FishSpitRoastBot {
         }
 
         private boolean depositOne(WItem fish, Inventory inv) throws InterruptedException {
-            if (fish.disposed()) {diag("depositOne: fish disposed"); return false;}
+            if (fish.disposed()) {return false;}
             returnHeldToInventory(gui);
-            if (gui.hand() != null) {diag("depositOne: cursor busy"); return false;}
+            if (gui.hand() != null) {return false;}
             Coord size = fish.lsz != null ? fish.lsz : new Coord(1, 1);
             Coord slot = inv.findPlaceFor(size);
-            if (slot == null) {diag("depositOne: no free slot for size %s", size); return false;}
-            diag("depositOne: size=%s slot=%s invIsz=%s filled=%d free=%d", size, slot, inv.isz, inv.filled(), inv.free());
-            // 1-arg take: matches a real left-click / MacroStep, unlike WItem.take()'s
-            // extra trailing 0 argument.
+            if (slot == null) {return false;}
+            // 1-arg take: matches a real left-click, unlike WItem.take()'s extra trailing 0.
             fish.item.wdgmsg("take", fish.sz.div(2));
-            if (!waitForHand(CURSOR_TIMEOUT)) {diag("depositOne: take failed"); return false;}
-            GameUI.DraggedItem drag = gui.hand();
-            diag("depositOne: cursor item=%s", drag != null && drag.item != null ? drag.item.resname() : "null");
+            if (!waitForHand(CURSOR_TIMEOUT)) {return false;}
             inv.wdgmsg("drop", slot);
             if (!waitForHandEmpty(CURSOR_TIMEOUT)) {
-                diag("depositOne: drop at %s did not clear cursor, trying origin", slot);
+                // Fall back to dropping at the origin slot before giving up.
                 inv.wdgmsg("drop", Coord.z);
                 if (!waitForHandEmpty(2000)) {
-                    diag("depositOne: origin drop also failed");
                     returnHeldToInventory(gui);
                     return false;
                 }
-                diag("depositOne: origin drop succeeded");
             }
             return true;
         }
@@ -785,7 +706,6 @@ public class FishSpitRoastBot {
             List<Gob> out = new ArrayList<>();
             for (Gob g : gobsIn(output)) {
                 int p = outputPriorityOf(g);
-                diag("findOutputCandidates: gob=%d resid=%s prio=%d", g.id, residOf(g), p);
                 if (p != FishRecognition.NOT_OUTPUT) {out.add(g);}
             }
             out.sort((a, b) -> {
@@ -811,8 +731,6 @@ public class FishSpitRoastBot {
 
         private boolean approachGob(Gob gob) throws InterruptedException {
             ApproachOnly.Result r = ApproachOnly.approach(gui, gob, bot);
-            diag("approachGob: gob=%d resid=%s outcome=%s detail=%s",
-                gob.id, residOf(gob), r != null ? r.outcome : "null", r != null ? r.detail : "");
             return r != null && r.outcome == ApproachOnly.Outcome.APPROACH_READY;
         }
 
