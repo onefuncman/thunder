@@ -41,6 +41,8 @@ import me.ender.StatMeterWdg;
 import me.ender.minimap.*;
 import thunder.TileQuality;
 import me.ender.timer.Timer;
+import haven.pathfinding.PathfinderWnd;
+import haven.pathfinding.PrototypePathfinder;
 
 import java.util.*;
 import java.awt.Color;
@@ -96,6 +98,9 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
     public EquipProxy eqproxyHandBelt, eqproxyPouchBack;
     public FilterWnd filter;
     public GobSearchWnd gobSearch;
+    public PathfinderWnd pathfinderWnd;
+    public haven.pathfinding.CriticalRouteWnd criticalRouteWnd;
+    public haven.pathfinding.BoardStockpileWnd boardStockpileWnd;
     public haven.proto.ProtoInspector protoInspector;
     public haven.proto.StateInspector stateInspector;
     public haven.proto.StatsPanel statsPanel;
@@ -712,6 +717,28 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	    gobSearch = add(new GobSearchWnd(), ClientUtils.getScreenCenter(ui));
 	}
 	gobSearch.toggle();
+    }
+
+    public void togglePathfinder() {
+	if(pathfinderWnd == null) {
+	    pathfinderWnd = add(new PathfinderWnd(), ClientUtils.getScreenCenter(ui));
+	}
+	pathfinderWnd.toggle();
+    }
+
+    public void toggleBoardStockpile() {
+        if(boardStockpileWnd == null)
+            boardStockpileWnd = add(new haven.pathfinding.BoardStockpileWnd(), ClientUtils.getScreenCenter(ui));
+        boardStockpileWnd.toggle();
+    }
+
+    public void toggleCriticalRoutes() {
+	if(criticalRouteWnd == null) {
+	    criticalRouteWnd = add(new haven.pathfinding.CriticalRouteWnd(), ClientUtils.getScreenCenter(ui));
+	    criticalRouteWnd.show();
+	    return;
+	}
+	criticalRouteWnd.toggle();
     }
 
     public void toggleProtoInspector() {
@@ -2496,6 +2523,7 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	cmdmap.put("chrmap", (cons, args) -> {
 	    Utils.setpref("mapfile/" + GameUI.this.chrid, args[1]);
 	});
+	cmdmap.put("pf", (cons, args) -> PrototypePathfinder.console(this, args));
 	cmdmap.put("tool", (cons, args) -> {
 	    try {
 		Object[] wargs = new Object[args.length - 2];

@@ -64,6 +64,7 @@ public abstract class UILoop implements Console.Directory {
 
     public void start() {
 	this.th.start();
+	haven.dev.DevControl.attach(this);
     }
 
     private void setenv(Environment env) {

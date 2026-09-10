@@ -44,6 +44,8 @@ public class Charlist extends Widget {
     public Button logout2;
     private boolean dirty;
     private boolean showdisc;
+    public boolean autoplayed;
+    public double autoplayWait;
 
     @RName("charlist")
     public static class $_ implements Factory {
@@ -233,6 +235,7 @@ public class Charlist extends Widget {
 	    dirty = false;
 	}
 	super.tick(dt);
+	haven.dev.DevControl.tickChars(this, dt);
     }
 
     public void scroll(int amount) {

@@ -708,6 +708,10 @@ public class Window extends Widget {
 	this.trans = trans;
     }
 
+    public long gobId() {
+	return (trans instanceof GameUI.GobTrans) ? ((GameUI.GobTrans)trans).gobid : -1L;
+    }
+
     public boolean visible() {
 	return(visible && ((animst == null) || (animst == "show")));
     }
