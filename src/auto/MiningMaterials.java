@@ -224,7 +224,7 @@ public class MiningMaterials {
                 MiningBot.diag("[minebot-diag] fetchFromZone: container %s disposed, skipping", container.resid());
                 continue;
             }
-            boolean walked = MapHelper.walkTo(gui, container.rc, 6000, MapHelper.GOB_ARRIVE_RADIUS);
+            boolean walked = MiningNav.walkTo(gui, bot, container.rc, MapHelper.GOB_ARRIVE_RADIUS);
             MiningBot.diag("[minebot-diag] fetchFromZone: walkTo container %s -> %b", container.resid(), walked);
             if(!walked) {continue;}
             // walkTo's distance-based "arrived" can fire while the character is still
@@ -275,7 +275,12 @@ public class MiningMaterials {
                 MiningBot.diag("[minebot-diag] fetchFromZone: crate-style, inventory widget found=%b", inv != null);
                 if(inv != null) {
                     int matched = 0;
+                    // Stop once `need` is satisfied -- unlike the Stockpile "Take" branch
+                    // above, nothing here was bounding this loop before, so it grabbed
+                    // every matching item in the crate regardless of `need` (confirmed
+                    // live: a bars_target of 10 still emptied an entire crate of bars).
                     for(WItem w : inv.children(WItem.class)) {
+                        if(countMatching(gui, want) >= need) {break;}
                         if(want.test(w)) {
                             matched++;
                             w.item.wdgmsg("transfer", Coord.z);
@@ -320,7 +325,7 @@ public class MiningMaterials {
             String resid = nearest.resid(); // captured before pickup -- resid() on an already-removed gob is unsafe
             MiningBot.diag("[minebot-diag] pickUpLooseFromZone: trying %s", resid);
             tried.add(nearest.id);
-            if(nearest.disposed() || !MapHelper.walkTo(gui, nearest.rc, 6000)) {
+            if(nearest.disposed() || !MiningNav.walkTo(gui, bot, nearest.rc, MCache.tilesz.x * 0.6)) {
                 MiningBot.diag("[minebot-diag] pickUpLooseFromZone: couldn't walk to %s, skipping", resid);
                 continue;
             }
@@ -390,7 +395,7 @@ public class MiningMaterials {
             MiningBot.diag("[minebot-diag] refillWaterFromZone: no GobTag.HAS_WATER gob in zone");
             return false;
         }
-        boolean walked = MapHelper.walkTo(gui, barrel.rc, 6000, MapHelper.GOB_ARRIVE_RADIUS);
+        boolean walked = MiningNav.walkTo(gui, bot, barrel.rc, MapHelper.GOB_ARRIVE_RADIUS);
         MiningBot.diag("[minebot-diag] refillWaterFromZone: found barrel %s, walkTo -> %b", barrel.resid(), walked);
         if(!walked) {return false;}
 
@@ -456,7 +461,7 @@ public class MiningMaterials {
             bot.checkCancelled();
             if(container.disposed()) {continue;}
 
-            boolean walked = MapHelper.walkTo(gui, container.rc, 6000, MapHelper.GOB_ARRIVE_RADIUS);
+            boolean walked = MiningNav.walkTo(gui, bot, container.rc, MapHelper.GOB_ARRIVE_RADIUS);
             MiningBot.diag("[minebot-diag] eatFromZone: walkTo container %s -> %b", container.resid(), walked);
             if(!walked) {continue;}
             MiningBot.waitForMovementSettled(gui, bot, 3000);
