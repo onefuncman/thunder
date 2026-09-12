@@ -15,6 +15,7 @@ public class DecoX extends Window.DefaultDeco {
     
     public DecoX(boolean large) {
 	super(large);
+	dragsize(false);
     }
     
     @Override
@@ -29,8 +30,8 @@ public class DecoX extends Window.DefaultDeco {
 	super.destroy();
     }
     
-    private WindowX wndx() {
-	return (WindowX) parent;
+    private Window wnd() {
+	return (Window) parent;
     }
     
     private void initTheme() {
@@ -44,7 +45,7 @@ public class DecoX extends Window.DefaultDeco {
     
     private void setTheme(DecoThemeType type) {
 	this.theme = DecoTheme.fromType(type);
-	WindowX wnd = wndx();
+	Window wnd = wnd();
 	if(theme != null) {
 	    theme.apply(wnd, this);
 	} else {
@@ -102,6 +103,16 @@ public class DecoX extends Window.DefaultDeco {
 	Window wnd = (Window) parent;
 	wnd.CheckForDinnerTable();
     }
+
+    @Override
+    public void draw(GOut g) {
+	Window wnd = wnd();
+	if(wnd.frameHidden() && !wnd.minimized()) {
+	    wnd.cdraw(g.reclip(aa.ul, aa.sz()));
+	    return;
+	}
+	super.draw(g);
+    }
     
     @Override
     public boolean checkhit(Coord c) {
@@ -142,12 +153,13 @@ public class DecoX extends Window.DefaultDeco {
     }
     
     public enum DecoThemeType {
-	Big, Small
+	Big, Small, Ard
     }
     
     public interface DecoTheme {
 	DecoTheme BIG = new Pretty();
 	DecoTheme SMALL = new Slim();
+	DecoTheme ARD = new Ard();
 	
 	static DecoTheme fromType(DecoThemeType type) {
 	    switch (type) {
@@ -155,13 +167,15 @@ public class DecoX extends Window.DefaultDeco {
 		    return BIG;
 		case Small:
 		    return SMALL;
+		case Ard:
+		    return ARD;
 		default:
 		    throw new IllegalArgumentException(String.format("Unknown theme type: '%s'", type));
 	    }
 	}
 	
-	default void apply(WindowX wndX, DecoX decoX) {
-	    wndX.resize2(wndX.contentsz());
+	default void apply(Window wnd, DecoX decoX) {
+	    wnd.resize2(wnd.contentsz());
 	}
 	
 	void iresize(Coord isz, DecoX decoX);
@@ -196,9 +210,10 @@ public class DecoX extends Window.DefaultDeco {
 	private boolean cfocus;
 	
 	@Override
-	public void apply(WindowX wndX, DecoX decoX) {
+	public void apply(Window wnd, DecoX decoX) {
+	    decoX.cbtn.recthit = false;
 	    decoX.cbtn.images(cbtni[0], cbtni[1], cbtni[2]);
-	    DecoTheme.super.apply(wndX, decoX);
+	    DecoTheme.super.apply(wnd, decoX);
 	}
 	
 	@Override
@@ -225,7 +240,7 @@ public class DecoX extends Window.DefaultDeco {
 	
 	@Override
 	public void drawframe(GOut g, DecoX decoX) {
-	    Window wnd = decoX.wndx();
+	    Window wnd = decoX.wnd();
 	    Text cap = decoX.cap;
 	    if((cap == null) || (!Objects.equals(cap.text, wnd.cap)) || (cfocus != wnd.hasfocus)) {
 		if(cap != null) cap.dispose();
@@ -266,12 +281,113 @@ public class DecoX extends Window.DefaultDeco {
 //	    return c.isect(decoX.sz.sub(Window.sizer_sz), Window.sizer_sz);
 	}
     }
+
+    private static class Ard implements DecoTheme {
+	private static final Coord dlmrgn = UI.scale(23, 14);
+	private static final Coord dsmrgn = UI.scale(3, 3);
+	private static final Text.Forge cf = new PUtils.BlurFurn(
+	    new PUtils.TexFurn(new Text.Foundry(Text.sans, UI.scale(15)).aa(true), Window.ctex),
+	    1, 1, Color.BLACK);
+
+	@Override
+	public void apply(Window wnd, DecoX decoX) {
+	    ArdHud.ensure();
+	    decoX.cbtn.recthit = false;
+	    decoX.cbtn.images(ArdHud.close[0], ArdHud.close[1], ArdHud.close[2]);
+	    DecoTheme.super.apply(wnd, decoX);
+	}
+
+	@Override
+	public void iresize(Coord isz, DecoX decoX) {
+	    ArdHud.ensure();
+	    Coord mrgn = decoX.lg ? dlmrgn : dsmrgn;
+	    Coord asz = Coord.of(Math.max(0, isz.x), Math.max(0, isz.y));
+	    Coord csz = asz.add(mrgn.mul(2));
+	    Coord tlc = UI.scale(ArdHud.tlc);
+	    Coord brc = UI.scale(ArdHud.brc);
+	    Coord wsz = csz.add(tlc).add(brc);
+	    decoX.resize(wsz);
+	    decoX.cptl = Coord.z;
+	    decoX.ca = Area.sized(tlc, csz);
+	    decoX.aa = Area.sized(tlc.add(mrgn), asz);
+	    decoX.cpsz = Coord.of(wsz.x, ArdHud.cl.sz().y);
+	    decoX.cbtn.c = Coord.of(wsz.x - decoX.cbtn.sz.x - UI.scale(ArdHud.btnc).x,
+		UI.scale(ArdHud.btnc).y);
+	}
+
+	@Override
+	public void drawbg(GOut g, DecoX decoX) {
+	    ArdHud.ensure();
+	    g.chcolor(ArdHud.FILL);
+	    g.frect(decoX.ca.ul, decoX.ca.sz());
+	    g.chcolor();
+	}
+
+	@Override
+	public void drawframe(GOut g, DecoX decoX) {
+	    ArdHud.ensure();
+	    Window wnd = decoX.wnd();
+	    Coord sz = decoX.sz;
+	    g.chcolor(ArdHud.WNDCOL);
+	    g.image(ArdHud.cl, Coord.z);
+	    g.image(ArdHud.bl, new Coord(0, sz.y - ArdHud.bl.sz().y));
+	    g.image(ArdHud.br, sz.sub(ArdHud.br.sz()));
+	    g.image(ArdHud.cr, new Coord(sz.x - ArdHud.cr.sz().x, 0));
+	    g.rimagev(ArdHud.lm, new Coord(0, ArdHud.cl.sz().y), sz.y - ArdHud.bl.sz().y - ArdHud.cl.sz().y);
+	    g.rimagev(ArdHud.rm, new Coord(sz.x - ArdHud.rm.sz().x, ArdHud.cr.sz().y), sz.y - ArdHud.br.sz().y - ArdHud.cr.sz().y);
+	    g.rimageh(ArdHud.bm, new Coord(ArdHud.bl.sz().x, sz.y - ArdHud.bm.sz().y), sz.x - ArdHud.br.sz().x - ArdHud.bl.sz().x);
+	    g.rimageh(ArdHud.cm, new Coord(ArdHud.cl.sz().x, 0), sz.x - ArdHud.cl.sz().x - ArdHud.cr.sz().x);
+	    g.chcolor();
+
+	    Text cap = decoX.cap;
+	    if((cap == null) || (!Objects.equals(cap.text, wnd.cap))) {
+		if(cap != null)
+		    cap.dispose();
+		cap = (wnd.cap == null) ? null : cf.render(wnd.cap);
+		decoX.cap = cap;
+	    }
+	    if(cap != null)
+		g.image(cap.tex(), UI.scale(ArdHud.capc));
+	    if(decoX.dragsize && !wnd.minimized())
+		g.image(Window.sizer, decoX.ca.br.sub(Window.sizer.sz()));
+	}
+
+	@Override
+	public boolean checkhit(Coord c, DecoX decoX) {
+	    ArdHud.ensure();
+	    if(c.isect(decoX.ca.ul, decoX.ca.sz()))
+		return true;
+	    TexI cl = ArdHud.cl, cr = ArdHud.cr, cm = ArdHud.cm;
+	    Coord cpc = c.sub(cl.sz().x, 0);
+	    Coord cprc = c.sub(decoX.sz.x - cr.sz().x, 0);
+	    if(c.isect(Coord.z, cl.sz()) && sample(cl.back, c.x, c.y) >= 128)
+		return true;
+	    if(c.isect(new Coord(decoX.sz.x - cr.sz().x, 0), cr.sz()) && sample(cr.back, cprc.x, cprc.y) >= 128)
+		return true;
+	    return c.isect(new Coord(cl.sz().x, 0), new Coord(decoX.sz.x - cr.sz().x - cl.sz().x, cm.sz().y))
+		&& sample(cm.back, cpc.x, cpc.y) >= 128;
+	}
+
+	@Override
+	public boolean hitSizer(Coord c, DecoX decoX) {
+	    return (c.x < decoX.ca.br.x) && (c.y < decoX.ca.br.y)
+		&& (c.y >= decoX.ca.br.y - UI.scale(25) + (decoX.ca.br.x - c.x));
+	}
+
+	private static int sample(BufferedImage img, int x, int y) {
+	    x = Utils.floormod(x, img.getWidth());
+	    if((y < 0) || (y >= img.getHeight()) || (img.getRaster().getNumBands() < 4))
+		return 255;
+	    return img.getRaster().getSample(x, y, 3);
+	}
+    }
     
     private static class Pretty implements DecoTheme {
 	@Override
-	public void apply(WindowX wndX, DecoX decoX) {
+	public void apply(Window wnd, DecoX decoX) {
+	    decoX.cbtn.recthit = false;
 	    decoX.cbtn.images(Window.cbtni[0], Window.cbtni[1], Window.cbtni[2]);
-	    DecoTheme.super.apply(wndX, decoX);
+	    DecoTheme.super.apply(wnd, decoX);
 	}
 	
 	@Override
@@ -299,4 +415,5 @@ public class DecoX extends Window.DefaultDeco {
 	    return decoX.shitSizer(c);
 	}
     }
+
 }

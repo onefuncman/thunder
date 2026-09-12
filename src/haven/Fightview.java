@@ -348,7 +348,12 @@ public class Fightview extends Widget {
 	    if(CFG.COMBAT_RE_AGGRO.get()) {Actions.reAggroKritter(ui.gui, rel.gobid);}
             return;
         } else if(msg == "upd") {
-            Relation rel = getrel(Utils.uiv(args[0]));
+            Relation rel;
+	    try {
+		rel = getrel(Utils.uiv(args[0]));
+	    } catch(Notfound e) {
+		return;
+	    }
             int was = rel.gst;
 	    rel.give(Utils.iv(args[1]));
 	    if(was == 2 && rel.gst == 0 && CFG.COMBAT_AUTO_PEACE.get()) {
@@ -361,8 +366,10 @@ public class Fightview extends Widget {
 	    use((args[0] == null) ? null : ui.sess.getresv(args[0]));
 	    return;
 	} else if(msg == "ruse") {
-	    Relation rel = getrel(Utils.uiv(args[0]));
-	    rel.use((args[1] == null) ? null : ui.sess.getresv(args[1]));
+	    try {
+		Relation rel = getrel(Utils.uiv(args[0]));
+		rel.use((args[1] == null) ? null : ui.sess.getresv(args[1]));
+	    } catch(Notfound e) {}
 	    return;
         } else if(msg == "cur") {
             try {

@@ -1,7 +1,7 @@
 Thunder client for Haven & Hearth
 =================================
 
-To play: run Thunder.bat
+To play: run Thunder.bat (or run.bat)
 
 Nothing to install - a Java runtime is bundled in the "jre" folder,
 so this works even if you don't have Java on your computer.

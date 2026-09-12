@@ -112,33 +112,44 @@ public class TextEntry extends Widget implements ReadLine.Owner {
     }
 
     public void draw(GOut g) {
+	boolean ard = CFG.THEME.get().usesArdHud();
+	Tex al = ard ? ArdHud.textedit(0) : lcap;
+	Tex am = ard ? ArdHud.textedit(1) : mext;
+	Tex ar = ard ? ArdHud.textedit(2) : rcap;
+	int capw = al.sz().x;
+	int textoff = capw;
+	int margin = capw + ar.sz().x + UI.scale(1);
 	Text.Line tcache = this.tcache;
 	if(tcache == null)
 	    this.tcache = tcache = fnd.render(dtext(), (dshow && dirty) ? dirtycol : defcol);
 	int point = buf.point(), mark = buf.mark();
-	g.image(mext, Coord.z, sz);
+	if(ard)
+	    g.chcolor(ArdHud.TXBCOL);
+	g.image(am, Coord.of(capw, 0), Coord.of(sz.x - capw - ar.sz().x, am.sz().y));
+	g.image(al, Coord.z);
+	g.image(ar, Coord.of(sz.x - ar.sz().x, 0));
+	if(ard)
+	    g.chcolor();
 	if(mark >= 0) {
 	    int px = tcache.advance(point) - sx, mx = tcache.advance(mark) - sx;
 	    g.chcolor(selcol);
-	    g.frect2(Coord.of(Math.min(px, mx) + toffx, (sz.y - tcache.sz().y) / 2),
-		     Coord.of(Math.max(px, mx) + toffx, (sz.y + tcache.sz().y) / 2));
+	    g.frect2(Coord.of(Math.min(px, mx) + textoff, (sz.y - tcache.sz().y) / 2),
+		     Coord.of(Math.max(px, mx) + textoff, (sz.y + tcache.sz().y) / 2));
 	    g.chcolor();
 	}
-	g.image(tcache.tex(), Coord.of(toffx - sx, (sz.y - tcache.sz().y) / 2));
-	g.image(lcap, Coord.z);
-	g.image(rcap, Coord.of(sz.x - rcap.sz().x, 0));
+	g.image(tcache.tex(), Coord.of(textoff - sx, (sz.y - tcache.sz().y) / 2));
 	if(hasfocus) {
 	    int cx = tcache.advance(point);
 	    if(cx < sx) {sx = cx;}
-	    if(cx > sx + (sz.x - wmarg)) {sx = cx - (sz.x - wmarg);}
+	    if(cx > sx + (sz.x - margin)) {sx = cx - (sz.x - margin);}
 	    int lx = cx - sx;
 	    if(((Utils.rtime() - Math.max(focusstart, buf.mtime())) % 1.0) < 0.5)
-		g.image(caret, coff.add(toffx + lx, (sz.y - tcache.img.getHeight()) / 2));
+		g.image(caret, coff.add(textoff + lx, (sz.y - tcache.img.getHeight()) / 2));
 	}
     }
 
     public TextEntry(int w, String deftext) {
-	super(new Coord(w, mext.sz().y));
+	super(new Coord(w, CFG.THEME.get().usesArdHud() ? ArdHud.textedit(1).sz().y : mext.sz().y));
 	rsettext(deftext);
 	setcanfocus(true);
     }

@@ -2,7 +2,9 @@ package haven;
 
 import auto.Actions;
 import auto.InventorySorter;
+import auto.StackAllItems;
 import auto.Targets;
+import auto.UnstackAllItems;
 import haven.render.Pipe;
 import haven.resutil.Curiosity;
 import haven.rx.Reactor;
@@ -47,6 +49,8 @@ public class ExtInventory extends Widget {
     private final ICheckBox chb_show = new ICheckBox("gfx/hud/btn-extlist", "", "-d", "-h");
     private final ICheckBox chb_repeat = new ICheckBox("gfx/hud/btn-repeat", "", "-d", "-h");
     private final IButton btn_sort = new IButton("gfx/hud/btn-sort", "", "-d", "-h");
+    private final IButton btn_stack = new IButton("gfx/hud/btn-stack", "", "-d", "-h");
+    private final IButton btn_unstack = new IButton("gfx/hud/btn-unstack", "", "-d", "-h");
     
     public ExtInventory(Coord sz) {
 	inv = new Inventory(sz);
@@ -59,6 +63,10 @@ public class ExtInventory extends Widget {
 	    .settip("LClick to toggle extra info\nRClick to hide inventory when info is visible", true);
 	btn_sort.action(() -> InventorySorter.sort(inv));
 	btn_sort.settip("Sort");
+	btn_stack.action(() -> StackAllItems.stack(inv));
+	btn_stack.settip("Stack all matching items in this window");
+	btn_unstack.action(() -> UnstackAllItems.unstack(inv));
+	btn_unstack.settip("Unstack all piles in this window");
 	
 	Composer composer = new Composer(extension).hmrgn(margin).vmrgn(margin);
 	composer.add(0);
@@ -183,7 +191,11 @@ public class ExtInventory extends Widget {
 	    if(!disabled) {
 		chb_show.a = vis;
 		wnd.addtwdg(chb_show);
-		if(!WindowDetector.isWindowType(wnd, InventorySorter.EXCLUDE)) {wnd.addtwdg(btn_sort);}
+		if(!WindowDetector.isWindowType(wnd, InventorySorter.EXCLUDE)) {
+		    wnd.addtwdg(btn_sort);
+		    wnd.addtwdg(btn_stack);
+		    wnd.addtwdg(btn_unstack);
+		}
 		grouping.sel = Grouping.valueOf(wnd.cfg.getValue(CFG_GROUP, Grouping.NONE.name()));
 		needUpdate = true;
 	    }

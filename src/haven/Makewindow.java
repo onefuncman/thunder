@@ -234,6 +234,7 @@ public class Makewindow extends Widget {
 		}
 		this.inputs = wdgs;
 	    }
+	    thunder.cookbook.RecipeCapture.consider(this);
 	} else if(msg == "opop") {
 	    List<Spec> outputs = parsespecs(args, this.outputs.stream().map(w -> w.spec).toArray(Spec[]::new));
 	    List<SpecWidget> wdgs = new ArrayList<>();
@@ -253,6 +254,7 @@ public class Makewindow extends Widget {
 		}
 		this.outputs = wdgs;
 	    }
+	    thunder.cookbook.RecipeCapture.consider(this);
 	} else if(msg == "qmod") {
 	    List<Indir<Resource>> qmod = new ArrayList<Indir<Resource>>();
 	    for(Object arg : args)

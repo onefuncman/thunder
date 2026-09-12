@@ -42,7 +42,6 @@
     </echo>
   </target>
 
-
   <macrodef name="extlib">
     <attribute name="name" />
     <attribute name="path" />
@@ -88,7 +87,6 @@
   <target name="extlib/steamworks" depends="extlib-env" unless="extlib/has-steamworks">
     <extlib name="steamworks" path="lib/ext/steamworks" url="${ext-lib-base}/steamworks/current" />
   </target>
-
 
   <target name="hafen-client" depends="build-env, extlib/jogl, extlib/lwjgl-gl, extlib/steamworks">
     <condition property="explicit-annotations">
@@ -283,6 +281,13 @@
     </copy>
     <copy file="etc/ansgar-config.properties" tofile="bin/haven-config.properties" />
     <chmod file="bin/hafen.jar" perm="a+x" />
+    <copy file="bin/hafen.jar" tofile="bin/hafen-niri.jar" overwrite="true" />
+    <chmod file="bin/hafen-niri.jar" perm="a+x" />
+  </target>
+
+  <target name="niri-bin" depends="bin">
+    <copy file="bin/hafen.jar" tofile="bin/hafen-niri.jar" overwrite="true" />
+    <chmod file="bin/hafen-niri.jar" perm="a+x" />
   </target>
 
   <target name="play" depends="jar, extlib/jogl, extlib/lwjgl-gl, extlib/steamworks, res-jar, resources">
@@ -364,7 +369,6 @@
   <target name="clean" depends="clean-assets, clean-code, clean-tests, clean-bin">
     <delete dir="lib/ext" />
   </target>
-
 
   <target name="clean-code">
     <delete dir="build/classes" />

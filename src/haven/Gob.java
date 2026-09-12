@@ -28,12 +28,14 @@ package haven;
 
 import auto.BotUtil;
 import haven.bot.AutoDrink;
+import haven.bot.AutoEat;
 import haven.render.*;
 import integrations.mapv4.MappingClient;
 import me.ender.*;
 import me.ender.gob.KinInfo;
 import me.ender.gob.GobCombatInfo;
 import me.ender.minimap.AutoMarkers;
+import me.ender.minimap.Minesweeper;
 import java.awt.*;
 import java.util.*;
 import java.util.function.Consumer;
@@ -713,6 +715,7 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 			ProspectingWnd.overlay(this, item);
 		    } else if(res.name.equals("gfx/terobjs/mineout") && !item.old) {
 			thunder.TileQuality.onMineoutOverlay(this);
+			Minesweeper.markMinedOutTile(this);
 		    }
 //		    System.out.printf("overlayAdded: '%s'%n", res.name);
 		}
@@ -1752,6 +1755,10 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
     private void botActions() {
 	// AutoDrink bot
 	AutoDrink.getInstance().tick(this);
+	// AutoEat bot
+	AutoEat.getInstance().tick(this);
+	// MiningBot safety watchdog (threat-flee), no-op unless a mining run is active
+	haven.bot.MiningWatchdog.getInstance().tick(this);
     }
 
     private void updateColor() {

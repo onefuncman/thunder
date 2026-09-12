@@ -644,6 +644,7 @@ public class OptWnd extends WindowX {
 	    y = addbtn(cont, "Options", GameUI.kb_opt, y);
 	    y = addbtn(cont, "Search actions", GameUI.kb_srch, y);
 	    y = addbtn(cont, "Toggle chat", GameUI.kb_chat, y);
+	    y = addbtn(cont, "Toggle floating minimap", GameUI.kb_mmap, y);
 	    y = addbtn(cont, "Quick chat", ChatUI.kb_quick, y);
 	    y = addbtn(cont, "Take screenshot", GameUI.kb_shoot, y);
 	    y = addbtn(cont, "Minimap icons", GameUI.kb_ico, y);
@@ -1515,10 +1516,30 @@ public class OptWnd extends WindowX {
 	    @Override
 	    public void change(Theme item) {
 		super.change(item);
-		if(!item.equals(CFG.THEME.get())) CFG.THEME.set(item, true);
+		Theme previous = CFG.THEME.get();
+		if(!item.equals(previous)) {
+		    CFG.THEME.set(item, true);
+		    if((ui != null) && (ui.gui != null))
+			ui.gui.msg("Theme changes apply after re-login.", GameUI.MsgType.INFO);
+		}
 	    }
 	}, tx, y).change(CFG.THEME.get());
     
+	y += STEP;
+	panel.add(new Label("Theme and floating HUD changes require re-login."), x, y);
+
+	y += STEP;
+	panel.add(new CFGBox("Floating HUD", CFG.FLOATING_HUD,
+		"Chat, minimap, and HUD bars as draggable windows. Works with Pretty, Small, or Ard. Requires re-login.") {
+	    @Override
+	    public void set(boolean a) {
+		boolean prev = cfg.get();
+		super.set(a);
+		if((prev != a) && (ui != null) && (ui.gui != null))
+		    ui.gui.msg("Floating HUD changes apply after re-login.", GameUI.MsgType.INFO);
+	    }
+	}, x, y);
+
 	y += STEP;
 	panel.add(new CFGBox("Always show UI on start", CFG.DISABLE_UI_HIDING), x, y);
 
@@ -1535,10 +1556,19 @@ public class OptWnd extends WindowX {
 	panel.add(new CFGBox("Show pouches and back widget", CFG.UI_SHOW_EQPROXY_POUCH, "Small draggable widget for quick access to pouches and back slots"), x, y);
 
 	y += STEP;
-	panel.add(new CFGBox("Show F-key tool bar", CFG.SHOW_TOOLBELT_0), x, y);
+	panel.add(new CFGBox("Show Ard number-key bar", CFG.SHOW_ARD_NUMBERBELT), x, y);
     
 	y += STEP;
-	panel.add(new CFGBox("Show extra tool bar", CFG.SHOW_TOOLBELT_1), x, y);
+	panel.add(new CFGBox("Show F-key tool bar", CFG.SHOW_TOOLBELT_0), x, y);
+
+	y += STEP;
+	panel.add(new CFGBox("Show extra tool bar 1", CFG.SHOW_TOOLBELT_1), x, y);
+
+	y += STEP;
+	panel.add(new CFGBox("Show extra tool bar 2", CFG.SHOW_TOOLBELT_2), x, y);
+
+	y += STEP;
+	panel.add(new CFGBox("Show extra tool bar 3", CFG.SHOW_TOOLBELT_3), x, y);
 	
 	y += STEP;
 	panel.add(new CFGBox("Show FEP meter", CFG.FEP_METER) {
@@ -1583,10 +1613,22 @@ public class OptWnd extends WindowX {
 	panel.add(new CFGBox("Show queued path on minimap", CFG.MMAP_SHOW_PATH), x, y);
 	
 	y += STEP;
-	panel.add(new CFGBox("Vanilla chat layout", CFG.VANILLA_CHAT), new Coord(x, y));
+	panel.add(new CFGBox("Vanilla chat layout (docked HUD only)", CFG.VANILLA_CHAT,
+		"Only used when Floating HUD is off. Turn Floating HUD off and re-login to use this option.") {
+	    @Override
+	    public boolean mousedown(MouseDownEvent ev) {
+		return CFG.FLOATING_HUD.get() || super.mousedown(ev);
+	    }
+	}, new Coord(x, y));
 	
 	y += STEP;
-	panel.add(new CFGBox("Always show Minimap at start", CFG.SHOW_MINIMAP_ON_START), new Coord(x, y));
+	panel.add(new CFGBox("Always show docked minimap (docked HUD only)", CFG.SHOW_MINIMAP_ON_START,
+		"Only used when Floating HUD is off. The floating Minimap window remembers its own visibility.") {
+	    @Override
+	    public boolean mousedown(MouseDownEvent ev) {
+		return CFG.FLOATING_HUD.get() || super.mousedown(ev);
+	    }
+	}, new Coord(x, y));
     
 	y += 2*STEP;
 	panel.add(new CFGBox("Require SHIFT to show stack inventory", CFG.UI_STACK_SUB_INV_ON_SHIFT, "Show stack hover-inventories only if SHIFT is pressed"), x, y);

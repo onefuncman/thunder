@@ -1,3 +1,8 @@
+$size[14]{$u{update on 11.09.2026:}
+* Eating Helper now plans meals against both hunger and FEP goals, favoring distinct foods before repeat servings when that produces a better plan.
+* Meat varieties are tracked separately, and equivalent FEP event variants are combined by attribute so planning results are more accurate.
+* Feast-mode Auto-Eat now uses table-item clicks, matching the interaction the game expects while dining at a table.
+`
 $size[14]{$u{update on 08.09.2026:}
 * Fixed a crash when clicking an entry in the Tile Quality window to jump the map to that tile.
 * Milking assist: an animal's floating name no longer vanishes after it is milked - the roster checkmark and glow show done vs. pending instead.
@@ -6,6 +11,17 @@ $size[14]{$u{update on 08.09.2026:}
 * Running two clients on the same cache folder no longer corrupts or drops shared map cache entries when both regenerate the same zoom grids.
 * Added Indoor Stairs to the options for "Interact with closest..."
 * A custom map marker whose icon fails to load falls back to the plain flag icon instead of crashing the client on hover.
+`
+$size[14]{$u{update on 02.09.2026:}
+* Inventory and container windows get Stack all / Unstack all buttons next to Sort (Hurricane-style). Stack merges matching items; Unstack unpacks every "stack of" pile. Bindable as "Stack all opened inventories" / "Unstack all opened inventories" in Options -> Shortcuts.
+* Stack all stops when a leftover cannot merge (full or incompatible pile) instead of picking the item up and putting it down.
+`
+$size[14]{$u{update on 30.08.2026:}
+* Ard HUD now uses the real sloth chrome pack (thin dark frames, native-height buttons, iron Inv/Gear/Char/Kin/Opts icons) instead of homemade dark rectangles.
+* Floating HUD stays its own option, so Pretty and Small can undock chat and minimap without taking Ard chrome.
+* Only chat, minimap, and map remember a saved size; other windows pack to their contents.
+* Minesweeper now paints deduced green/red/orange fills on cave walls from Cavedust counts. Ctrl-activate the Minesweeper action to hide the fills if they get noisy (numbers and markers stay). Importing a shared .hems file turns the overlay and colors on so both people see the same map.
+* New Measure action under Xtended: click tiles to mark distances. The overlay stays until you clear it (Shift-click Measure, or Shift-click the map while measuring). Ctrl-click undoes the last mark; right-click leaves measure mode but keeps the lines.
 `
 $size[14]{$u{update on 26.08.2026:}
 * The "Toggle animal warnings" shortcut no longer disturbs player, gem or midge circles - it now touches animal warnings only. A rare case where a gob could permanently lose its warning circle after a toggle is also fixed.

@@ -52,7 +52,7 @@ import haven.render.Render;
 public class UI {
     public static int MOD_SHIFT = KeyMatch.S, MOD_CTRL = KeyMatch.C, MOD_META = KeyMatch.M, MOD_SUPER = KeyMatch.SUPER;
     public static int MOD_CTRL_ALT = MOD_CTRL | MOD_META;
-    enum KeyMod {
+    public enum KeyMod {
 	SHIFT(MOD_SHIFT), CTRL(MOD_CTRL), ALT(MOD_META);
 
 	public final int mod;
@@ -373,6 +373,18 @@ public class UI {
 	    }
 	    for(Command next : ready)
 		execute(next);
+	}
+
+	/* Thunder: current count of uimsg/wdgmsg Commands submitted but not yet
+	 * finished -- every incoming server message and every widget action shares
+	 * this same queue and thread pool (see execute(), which runs each Command
+	 * via loader.defer(...)), and commands targeting the same widget id are
+	 * strictly ordered via the dep/bar mechanism above. A bot driving actions
+	 * back-to-back with no natural pacing can build up a real backlog here;
+	 * lets a caller wait for it to actually clear instead of guessing a fixed
+	 * pause duration. */
+	public synchronized int inflight() {
+	    return inflight;
 	}
 
 	public void drain() {

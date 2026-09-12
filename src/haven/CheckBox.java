@@ -68,9 +68,16 @@ public class CheckBox extends ACheckBox {
     public void draw(GOut g) {
 	if(lbl != null)
 	    g.image(lbl.tex(), loff.add(box.sz().x, (sz.y - lbl.sz().y) / 2));
-        g.image(box, Coord.z.add(0, (sz.y - box.sz().y) / 2));
-        if(state())
-            g.image(mark, Coord.z.add(0, (sz.y - mark.sz().y) / 2));
+	if(CFG.THEME.get().usesArdHud()) {
+	    // Already dark boxes with a white mark. BTNCOL would multiply
+	    // the mark down to the window fill and hide the checked state.
+	    Tex box = ArdHud.chkbox(this.box == lbox, state());
+	    g.image(box, Coord.z.add(0, (sz.y - box.sz().y) / 2));
+	} else {
+	    g.image(box, Coord.z.add(0, (sz.y - box.sz().y) / 2));
+	    if(state())
+		g.image(mark, Coord.z.add(0, (sz.y - mark.sz().y) / 2));
+	}
         super.draw(g);
     }
     public boolean mousedown(MouseDownEvent ev) {

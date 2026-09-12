@@ -48,6 +48,7 @@ public class CFG<T> {
     public static final CFG<Boolean> SHOW_TROUGH_RADIUS = new CFG<>("display.show_trough_radius", false);
     public static final CFG<Boolean> SHOW_MOUNDBED_RADIUS = new CFG<>("display.show_moundbed_radius", false);
     public static final CFG<Boolean> SHOW_MINESWEEPER_OVERLAY = new CFG<>("display.minesweeper_overlay", false);
+    public static final CFG<Boolean> SHOW_MINESWEEPER_COLORS = new CFG<>("display.minesweeper_colors", true);
     public static final CFG<Boolean> SHOW_CONTAINER_FULLNESS = new CFG<>("display.container_status", false);
     public static final CFG<Boolean> SHOW_PROGRESS_COLOR = new CFG<>("display.progress_coloring", true);
     public static final CFG<Boolean> SIMPLE_CROPS = new CFG<>("display.simple_crops", false);
@@ -64,8 +65,11 @@ public class CFG<T> {
     public static final CFG<Boolean> DISPLAY_AURA_RABBIT = new CFG<>("display.aura.rabbit", true);
     public static final CFG<Boolean> DISPLAY_AURA_CRITTERS = new CFG<>("display.aura.critters", true);
     public static final CFG<Boolean> STORE_MAP = new CFG<>("general.storemap", false);
+    public static final CFG<Boolean> SHOW_ARD_NUMBERBELT = new CFG<>("general.toolbelt.number", true);
     public static final CFG<Boolean> SHOW_TOOLBELT_0 = new CFG<>("general.toolbelt0", true);
     public static final CFG<Boolean> SHOW_TOOLBELT_1 = new CFG<>("general.toolbelt1", true);
+    public static final CFG<Boolean> SHOW_TOOLBELT_2 = new CFG<>("general.toolbelt2", true);
+    public static final CFG<Boolean> SHOW_TOOLBELT_3 = new CFG<>("general.toolbelt3", true);
     public static final CFG<Boolean> ITEM_DROP_PROTECTION = new CFG<>("general.item_drop_protection", true);
     public static final CFG<Boolean> DECAL_SHIFT_PICKUP = new CFG<>("general.decal_shift_pickup", true);
     public static final CFG<Boolean> AUTO_PICK_ONLY_RADAR = new CFG<>("general.auto_pick_radar", true);
@@ -74,7 +78,8 @@ public class CFG<T> {
     public static final CFG<Boolean> AUTO_DROP_PARASITES = new CFG<>("general.auto_drop_parasites", false);
     public static final CFG<Boolean> PRESERVE_SYMBEL = new CFG<>("general.preserve_symbel", true);
     
-    public static final CFG<Theme> THEME = new CFG<>("ui.theme", Theme.Pretty);
+    public static final CFG<Theme> THEME = new CFG<>("ui.theme", Theme.Ard);
+    public static final CFG<Boolean> FLOATING_HUD = new CFG<>("ui.floating_hud", true);
     public static final CFG<Boolean> DISABLE_UI_HIDING = new CFG<>("ui.disable_ui_hide", true);
     public static final CFG<Boolean> UI_DISABLE_CONTAINER_POS = new CFG<>("ui.disable_container_pos", true);
     public static final CFG<Boolean> UI_SHOW_EQPROXY_HAND = new CFG<>("ui.eq_proxy.hands", true);
@@ -94,6 +99,7 @@ public class CFG<T> {
     public static final CFG<Boolean> SHOW_FLOATING_STATS_COMBAT = new CFG<>("ui.combat.show_floating_stat_wdgs_combat", true);
     public static final CFG<Boolean> LOCK_FLOATING_STAT_WDGS = new CFG<>("ui.combat.lock_floating_stat_wdgs", false);
     public static final CFG<Boolean> DRAG_COMBAT_UI = new CFG<>("ui.combat.drag_combat_ui", false);
+    public static final CFG<UI.KeyMod> COMBAT_BELT_MOD = new CFG<>("ui.combat.belt_mod", UI.KeyMod.ALT);
     public static final CFG<Boolean> SHOW_COMBAT_DMG = new CFG<>("ui.combat.show_dmg", true);
     public static final CFG<Boolean> CLEAR_PLAYER_DMG_AFTER_COMBAT = new CFG<>("ui.combat.clear_player_damage_after", true);
     public static final CFG<Boolean> CLEAR_ALL_DMG_AFTER_COMBAT = new CFG<>("ui.combat.clear_all_damage_after", false);
@@ -218,6 +224,15 @@ public class CFG<T> {
     public static final CFG<Integer> AUTO_DRINK_THRESHOLD = new CFG<>("automation.autodrink.threshold", 74);
     public static final CFG<Integer> AUTO_DRINK_DELAY = new CFG<>("automation.autodrink.delay", 250);
     public static final CFG<Integer> AUTO_DRINK_FORCED_INTERVAL = new CFG<>("automation.autodrink.forced_interval", 15000);
+    public static final CFG<Boolean> AUTO_EAT_ENABLED = new CFG<>("automation.autoeat.enabled", true);
+    public static final CFG<Integer> AUTO_EAT_THRESHOLD = new CFG<>("automation.autoeat.threshold", 74);
+    public static final CFG<Integer> AUTO_EAT_DELAY = new CFG<>("automation.autoeat.delay", 250);
+    public static final CFG<Integer> AUTO_EAT_FORCED_INTERVAL = new CFG<>("automation.autoeat.forced_interval", 15000);
+    public static final CFG<Integer> MINEBOT_FLEE_RADIUS = new CFG<>("automation.minebot.flee_radius", 150);
+    public static final CFG<Integer> MINEBOT_SUPPORT_RADIUS = new CFG<>("automation.minebot.support_radius", 9);
+    public static final CFG<Integer> MINEBOT_STONE_MIN = new CFG<>("automation.minebot.stone_min", 30);
+    public static final CFG<Integer> MINEBOT_EAT_UNTIL_PERCENT = new CFG<>("automation.minebot.eat_until_percent", 95);
+    public static final CFG<Integer> MINEBOT_BARS_TARGET = new CFG<>("automation.minebot.bars_target", 10);
     public static final CFG<Boolean> ENABLE_PURGE_BUTTON_IN_KIN_LIST = new CFG<>("ui.enable_purge_button_kin_list", false);
     public static final CFG<Boolean> SHOW_FEP_NUMBERS_ON_FOOD = new CFG<>("ui.show_fep_numbers_on_food", true);
     public static final CFG<Boolean> EXTEND_ZOOM_ON_ORTHO = new CFG<>("cam.extend_zoom_on_ortho", false);

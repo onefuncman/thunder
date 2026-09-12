@@ -34,6 +34,7 @@ import me.ender.CustomPagina;
 import me.ender.CustomPaginaAction;
 import me.ender.GobInfoOpts;
 import me.ender.GobInfoOpts.InfoPart;
+import me.ender.TileMeasure;
 import me.ender.minimap.Minesweeper;
 
 import javax.swing.*;
@@ -555,7 +556,13 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
 	for(int y = 0; y < gsz.y; y++) {
 	    for(int x = 0; x < gsz.x; x++) {
 		Coord p = bgsz.mul(new Coord(x, y));
-		g.image(bg, p);
+		if(CFG.THEME.get().usesFloatingHud()) {
+		    g.chcolor(new Color(20, 23, 24, 150));
+		    g.frect(p, bgsz);
+		    g.chcolor();
+		} else {
+		    g.image(bg, p);
+		}
 		PagButton btn = layout[x][y];
 		if(btn != null) {
 		    GSprite spr;
@@ -903,6 +910,8 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
 	makeLocal("paginae/add/quest_help", Action.OPEN_QUEST_HELP);
 	makeLocal("paginae/add/inspect", Action.TOGGLE_INSPECT);
 	makeLocal("paginae/add/track", Action.TRACK_OBJECT);
+	makeLocal("paginae/add/measure", TileMeasure::paginaAction, TileMeasure::isActive);
+	makeLocal("paginae/add/areaexport", Action.AREA_EXPORT);
 	makeLocal("paginae/add/fsmelter9", Action.FUEL_SMELTER_9);
 	makeLocal("paginae/add/fsmelter12", Action.FUEL_SMELTER_12);
 	makeLocal("paginae/add/foven4", Action.FUEL_OVEN_4);
@@ -923,6 +932,7 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
 	makeLocal("paginae/add/info/quality", Action.TOGGLE_GOB_INFO_QUALITY, () -> GobInfoOpts.enabled(InfoPart.QUALITY));
 	makeLocal("paginae/add/info/timer", Action.TOGGLE_GOB_INFO_TIMER, () -> GobInfoOpts.enabled(InfoPart.TIMER));
 	makeLocal("paginae/add/alchemy", Action.OPEN_ALCHEMY_DB);
+	makeLocal("paginae/add/cookbook", Action.OPEN_COOKBOOK);
 	makeLocal("paginae/add/equip/sword-n-board", Action.EQUIP_SWORD_N_BOARD);
 	makeLocal("paginae/add/equip/bow", Action.EQUIP_BOW);
 	makeLocal("paginae/add/equip/spear", Action.EQUIP_SPEAR);

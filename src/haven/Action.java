@@ -3,6 +3,8 @@ package haven;
 import auto.Actions;
 import auto.Equip;
 import auto.InventorySorter;
+import auto.StackAllItems;
+import auto.UnstackAllItems;
 import me.ender.CustomCursors;
 import me.ender.GobInfoOpts;
 
@@ -20,12 +22,15 @@ public enum Action {
     OPEN_QUICK_ACTION(GameUI::toggleActList, "Open actions list", "Opens list of actions you can perform. Start typing to narrow the list. Press Enter or double-click to perform action."),
     OPEN_CRAFT_DB(GameUI::toggleCraftDB, "Open crafting DB"),
     OPEN_ALCHEMY_DB(GameUI::toggleAlchemyDB, "Open alchemy"),
+    OPEN_COOKBOOK(GameUI::toggleCookbook, "Open cookbook", "Browse civ.hearthworld.com's food FEP database in-game. Type to filter (name:/from:/attr comparisons), log in to keep your session."),
     OPEN_QUEST_HELP(GameUI::toggleQuestHelper, "Open quest helper", "Opens window with uncompleted tasks for all active quests."),
     TOGGLE_CURSOR(GameUI::toggleHand, "Toggle cursor item", "Hide/show item on a cursor. Allows you to walk with item on cursor when hidden."),
     TOGGLE_STUDY(GameUI::toggleStudy, "Toggle study window"),
     FILTER(GameUI::toggleFilter, "Show item filter"),
     SEARCH_GOBS(GameUI::toggleGobSearch, "Search gobs by resource ID", "Opens a window that highlights gobs in render distance whose resource ID contains the entered substring."),
     SORT_INVENTORY(InventorySorter::sortAll, "Sort all opened inventories"),
+    STACK_INVENTORIES(StackAllItems::stackOpened, "Stack all opened inventories", "Merges matching items in every open inventory and container, same as the Stack all title-bar button."),
+    UNSTACK_INVENTORIES(UnstackAllItems::unstackOpened, "Unstack all opened inventories", "Unpacks every stack-of pile in open inventories and containers."),
     TOGGLE_GOB_INFO(CFG.DISPLAY_GOB_INFO, "Display info", "Display crop/tree growth and object health overlay."),
     TOGGLE_GOB_HITBOX(Hitbox::toggle, "Display hitboxes"),
     TOGGLE_HIDE_TREES(CFG.HIDE_TREES, "Hide trees"),
@@ -37,6 +42,8 @@ public enum Action {
     }, "Toggle tile centering"),
     TOGGLE_INSPECT(gui -> CustomCursors.toggleInspectMode(gui.map), "Toggle inspect mode"),
     TRACK_OBJECT(gui -> CustomCursors.toggleTrackingMode(gui.map), "Track object"),
+    TOGGLE_MEASURE(gui -> CustomCursors.toggleMeasureMode(gui.map), "Measure tiles", "Click tiles to measure distances. Overlay stays until you clear it (Shift-click this action, or Shift-click the map while measuring)."),
+    AREA_EXPORT(GameUI::toggleAreaExport, "Area export", "Opens the area selection and export window."),
     BOT_PICK_ALL_HERBS(Actions::pickup, "Auto-pick stuff", "Will automatically pickup all herbs/mussels/clay/frogs/grasshoppers etc. in radius that can be changed in Options->General."),
     BOT_MOUNT_HORSE(Actions::mountClosestHorse, "Mount nearest domestic horse", "Whistle at a closest domestic horse and mount it once it is close enough. If it is very close - mount without whistling."),
     BOT_OPEN_GATE(Actions::interactNearest, "Interact with closest ...", "Right-clicks the closest enabled object in 3 tile radius: fence gates, doorways, cellar doors, mineholes/ladders, stairs, milestones. Configure the list in Options->General."),

@@ -500,16 +500,36 @@ public class BAttrWnd extends Widget {
     public void uimsg(String nm, Object... args) {
 	if(nm == "food") {
 	    feps.update(args);
+	    thunder.cookbook.SatiationCapture.markUpdated();
+	    try {
+		StringBuilder sb = new StringBuilder("FOOD cap=" + Utils.fv(args[0]));
+		int a = 1;
+		while(a < args.length) {
+		    Indir<Resource> r = ui.sess.getresv(args[a++]);
+		    double amt = Utils.fv(args[a++]);
+		    String rn;
+		    try {rn = r.get().flayer(FoodMeter.Event.class).nm;} catch(Exception e) {rn = "?";}
+		    sb.append(" | ").append(rn).append("=").append(String.format("%.3f", amt));
+		}
+		thunder.cookbook.SatiationCapture.log(sb.toString());
+	    } catch(Exception ignored) {}
 	} else if(nm == "glut") {
 	    glut.update(args);
 	    ui.sess.character.updateGluttony(glut.gmod);
+	    thunder.cookbook.SatiationCapture.markUpdated();
+	    thunder.cookbook.SatiationCapture.log(String.format("GLUT glut=%.4f lglut=%.4f gmod=%.4f",
+		Utils.dv(args[0]), Utils.dv(args[1]), Utils.dv(args[2])));
 	} else if(nm == "ftrig") {
 	    feps.trig(ui.sess.getresv(args[0]));
+	    try {
+		thunder.cookbook.SatiationCapture.log("FTRIG " + ui.sess.getresv(args[0]).get().flayer(FoodMeter.Event.class).nm);
+	    } catch(Exception ignored) {}
 	} else if(nm == "lvl") {
 	    for(Attr aw : attrs) {
 		if(aw.nm.equals(args[0]))
 		    aw.lvlup();
 	    }
+	    thunder.cookbook.SatiationCapture.log("LVL " + args[0]);
 	} else if(nm == "const") {
 	    int a = 0;
 	    while(a < args.length) {
@@ -517,8 +537,24 @@ public class BAttrWnd extends Widget {
 		if(args[a] instanceof byte[])
 		    t.sdt = new MessageBuf((byte[])args[a++]);
 		double m = Utils.dv(args[a++]);
+		double old = Double.NaN;
+		for(Constipations.El el : cons.els) {
+		    if(Utils.eq(el.t, t)) {old = el.a; break;}
+		}
+		try {
+		    String rn = t.res.get().layer(Resource.tooltip).t;
+		    // id: several distinct tracked categories share the same display tooltip (seen directly
+		    // in earlier capture runs -- up to 4 separate entries all tooltipped "Meat" in one sync),
+		    // so name alone can't tell them apart across log lines. ResData.hashCode() combines the
+		    // resource + its content-based MessageBuf payload (MessageBuf itself has real content
+		    // equals/hashCode, verified directly), giving a stable per-category id to group by instead.
+		    thunder.cookbook.SatiationCapture.log(String.format("CONST %s id=%d gmod=%.4f glut=%.4f old=%s new=%.4f", rn, t.hashCode(),
+			glut.gmod, glut.glut,
+			Double.isNaN(old) ? "(new)" : String.format("%.4f", old), m));
+		} catch(Exception ignored) {}
 		cons.update(t, m);
 		ui.sess.character.constipation.update(t, m);
+		thunder.cookbook.SatiationCapture.markUpdated();
 	    }
 	} else {
 	    super.uimsg(nm, args);

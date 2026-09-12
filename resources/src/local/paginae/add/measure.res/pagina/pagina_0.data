@@ -1,0 +1,3 @@
+#PAGINA LAYER
+#String text
+Click tiles to measure distances. A line and tile count stay on the map until you clear them.\n\n• $b{Click} marks a tile (add as many as you like).\n• $b{$col[255,128,0]{CTRL}+Click} undoes the last mark.\n• $b{$col[255,128,0]{SHIFT}+Click} (on the map, or this action) clears the measurement.\n• $b{Right-click} leaves measure mode but keeps the overlay.\n\nNumbers are tile steps ($b{Chebyshev}: how many tiles away). Diagonal legs also show the straight-line length.

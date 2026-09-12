@@ -4,8 +4,8 @@ Thunder client for Haven & Hearth
 This package needs Java 17 or newer installed (https://adoptium.net).
 
 To play:
-  Windows:     run Thunder.bat
-  Linux/macOS: run thunder.sh
+  Windows:     run Thunder.bat (or run.bat)
+  Linux/macOS: run thunder.sh or ./run
 
 Updates are automatic: each time you launch, the client checks the
 latest Thunder release on GitHub and updates itself before starting.
