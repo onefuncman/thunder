@@ -20,6 +20,7 @@ public enum Action {
     OPEN_QUICK_ACTION(GameUI::toggleActList, "Open actions list", "Opens list of actions you can perform. Start typing to narrow the list. Press Enter or double-click to perform action."),
     OPEN_CRAFT_DB(GameUI::toggleCraftDB, "Open crafting DB"),
     OPEN_ALCHEMY_DB(GameUI::toggleAlchemyDB, "Open alchemy"),
+    OPEN_COOKBOOK(GameUI::toggleCookbook, "Open cookbook", "Browse civ.hearthworld.com's food FEP database in-game. Type to filter (name:/from:/attr comparisons), log in to keep your session."),
     OPEN_QUEST_HELP(GameUI::toggleQuestHelper, "Open quest helper", "Opens window with uncompleted tasks for all active quests."),
     TOGGLE_CURSOR(GameUI::toggleHand, "Toggle cursor item", "Hide/show item on a cursor. Allows you to walk with item on cursor when hidden."),
     TOGGLE_STUDY(GameUI::toggleStudy, "Toggle study window"),

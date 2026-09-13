@@ -91,6 +91,10 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
     public TileHighlight.TileHighlightCFG tileHighlight;
     public thunder.TileQualityWnd tileQualityWnd;
     public thunder.macro.MacroListWnd macroListWnd;
+    public thunder.cookbook.CookbookWnd cookbookwnd;
+    public thunder.cookbook.CookbookLoginWnd cookbookLoginWnd;
+    public thunder.cookbook.CookbookPlanWnd cookbookPlanWnd;
+    public thunder.cookbook.MissingRecipesWnd missingRecipesWnd;
     private Widget qqview;
     public BuddyWnd buddies;
     public EquipProxy eqproxyHandBelt, eqproxyPouchBack;
@@ -748,7 +752,11 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	    craftwnd.close();
 	}
     }
-    
+
+    public void toggleCookbook() {
+	thunder.cookbook.CookbookWnd.toggle(ui);
+    }
+
     public void toggleAlchemyDB() {
 	if(alchemywnd == null) {
 	    alchemywnd = add(new AlchemyWnd(), ClientUtils.getScreenCenter(ui).sub(AlchemyWnd.WND_SZ.div(2)));
