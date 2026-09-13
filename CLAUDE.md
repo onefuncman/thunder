@@ -69,6 +69,7 @@ Per-feature design notes. Check the relevant file before reading source for an e
 - [docs/bot-setup-prompt-template.md](docs/bot-setup-prompt-template.md) — copy/fill template for kicking off a new bot-building session, points at the right reference files
 - [docs/cattle-roster-feature-batch.md](docs/cattle-roster-feature-batch.md) — original roster feature batch (sort, recolor, milking-assist scaffolding)
 - [docs/changelog-popup.md](docs/changelog-popup.md) — login-screen Changelog window
+- [docs/cookbook-integration.md](docs/cookbook-integration.md) — reverse-engineered civ.hearthworld.com cookbook: login flow, `/food-info.json` data source, derived FEP formulas, filter syntax
 - [docs/dev-iteration-toolkit.md](docs/dev-iteration-toolkit.md) — `DevFeature` / `DebugSnapshot` / `DebugReplay` / `FeatureCapture` infrastructure
 - [docs/game-protocol.md](docs/game-protocol.md) — general protocol notes
 - [docs/layerutil-linux-fix.md](docs/layerutil-linux-fix.md) — LayerUtil.jar listFiles-order patch + release-workflow resource guard

@@ -258,6 +258,7 @@ public class WItem extends Widget implements DTarget {
     }
     
     public void draw(GOut g) {
+	thunder.cookbook.ItemResourceCapture.consider(item);
 	GSprite spr = item.spr();
 	if(spr != null) {
 	    Coord sz = spr.sz();
