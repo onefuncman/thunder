@@ -34,6 +34,7 @@ import me.ender.*;
 import me.ender.gob.KinInfo;
 import me.ender.gob.GobCombatInfo;
 import me.ender.minimap.AutoMarkers;
+import me.ender.minimap.Minesweeper;
 import java.awt.*;
 import java.util.*;
 import java.util.function.Consumer;
@@ -713,6 +714,7 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 			ProspectingWnd.overlay(this, item);
 		    } else if(res.name.equals("gfx/terobjs/mineout") && !item.old) {
 			thunder.TileQuality.onMineoutOverlay(this);
+			Minesweeper.markMinedOutTile(this);
 		    }
 //		    System.out.printf("overlayAdded: '%s'%n", res.name);
 		}
