@@ -21,6 +21,7 @@ public enum Action {
     OPEN_CRAFT_DB(GameUI::toggleCraftDB, "Open crafting DB"),
     OPEN_ALCHEMY_DB(GameUI::toggleAlchemyDB, "Open alchemy"),
     OPEN_COOKBOOK(GameUI::toggleCookbook, "Open cookbook", "Browse civ.hearthworld.com's food FEP database in-game. Type to filter (name:/from:/attr comparisons), log in to keep your session."),
+    OPEN_EATING_HELPER(GameUI::toggleEatingHelper, "Open eating helper", "Plans what to eat from open inventories for a target stat, with optional Auto-Eat. Same as the :eat console command."),
     OPEN_QUEST_HELP(GameUI::toggleQuestHelper, "Open quest helper", "Opens window with uncompleted tasks for all active quests."),
     TOGGLE_CURSOR(GameUI::toggleHand, "Toggle cursor item", "Hide/show item on a cursor. Allows you to walk with item on cursor when hidden."),
     TOGGLE_STUDY(GameUI::toggleStudy, "Toggle study window"),

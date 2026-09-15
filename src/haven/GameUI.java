@@ -758,6 +758,10 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	thunder.cookbook.CookbookWnd.toggle(ui);
     }
 
+    public void toggleEatingHelper() {
+	thunder.cookbook.EatingHelperWnd.toggle(ui);
+    }
+
     public void toggleAlchemyDB() {
 	if(alchemywnd == null) {
 	    alchemywnd = add(new AlchemyWnd(), ClientUtils.getScreenCenter(ui).sub(AlchemyWnd.WND_SZ.div(2)));
@@ -2548,9 +2552,7 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 		    }
 		}
 	    });
-	cmdmap.put("eat", (cons, args) -> {
-	    thunder.cookbook.EatingHelperWnd.toggle(ui);
-	});
+	cmdmap.put("eat", (cons, args) -> toggleEatingHelper());
 	cmdmap.put("gob", new Console.Command() {
 		public void run(Console cons, String[] args) throws Exception {
 		    if(args.length >= 3 && args[1].equals("inspect")) {

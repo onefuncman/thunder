@@ -1,6 +1,7 @@
 # Eating Helper
 
-`:eat` console command, wired via `GameUI.cmdmap`. Opens `thunder.cookbook.EatingHelperWnd`
+`:eat` console command (wired via `GameUI.cmdmap`) or the "Eating Helper" button on the
+Xtended menu tab (`paginae/add/eatinghelper`, `Action.OPEN_EATING_HELPER`, bindable hotkey). Opens `thunder.cookbook.EatingHelperWnd`
 (despite the package name, this isn't tied to the Cookbook feature -- it lives there because
 that's where the food-domain helper code already is).
 
