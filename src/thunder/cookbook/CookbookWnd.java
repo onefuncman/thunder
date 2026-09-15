@@ -13,9 +13,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * In-game reimplementation of the civ.hearthworld.com/cookbook food browser.
- * Data comes from that site's public /food-info.json (see CookbookService);
- * search syntax mirrors the site's own filter language (see CookbookQuery).
+ * In-game reimplementation of the automap site's cookbook food browser.
+ * Data comes from FoodService's cached food-info download for the configured
+ * Mapping URL (see CookbookService); search syntax mirrors the site's own
+ * filter language (see CookbookQuery).
  * See docs/cookbook-integration.md for how this was reverse-engineered.
  */
 public class CookbookWnd extends WindowX {
@@ -242,7 +243,7 @@ public class CookbookWnd extends WindowX {
     }
 
     public CookbookWnd() {
-        super(Coord.z, "Cookbook - civ.hearthworld.com");
+        super(Coord.z, "Cookbook");
         justclose = true;
 
         Widget prev = add(new Label("Filter foods by name, ingredients or FEP:"), 0, 0);
@@ -392,7 +393,7 @@ public class CookbookWnd extends WindowX {
     private void refresh() {
         if(loading) {return;}
         loading = true;
-        status.settext("Loading food data from civ.hearthworld.com...");
+        status.settext("Loading food data...");
         CookbookService.refreshAsync((items, error) -> {
             // Background thread: only touch plain fields here, never widgets --
             // tick() applies the result on the main thread. See the comment

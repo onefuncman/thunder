@@ -10,8 +10,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * One row of the civ.hearthworld.com/cookbook food-info.json dataset, plus
- * the derived fields the website's Angular app computes client-side
+ * One row of the automap site's food-info dataset (see CookbookService), plus
+ * the derived fields the site's own cookbook page computes client-side
  * (see docs/cookbook-integration.md for how these were reverse-engineered
  * from the site's main-es2015 bundle).
  */
@@ -73,40 +73,65 @@ public class CookbookItem {
         this.fepPerHunger = (hunger != 0) ? (total / hunger * 10.0) : 0;
     }
 
-    /** Parses the raw /food-info.json array (as fetched from civ.hearthworld.com). */
+    /**
+     * Parses the hash-keyed /data/food-info.json object that FoodService caches.
+     * The uploader stores one record per (item, ingredients, quality-sample)
+     * hash, so the same dish+ingredient variant can appear several times with
+     * rounding-level FEP differences. The Cookbook wants one row per variant
+     * (what the site's own deduplicated array shows), so collapse on key(),
+     * keeping the lowest hash so the pick is stable run to run.
+     */
+    public static List<CookbookItem> parseAll(JSONObject byHash) {
+        List<String> hashes = new ArrayList<>(byHash.keySet());
+        Collections.sort(hashes);
+        Map<String, CookbookItem> byKey = new LinkedHashMap<>();
+        for(String h : hashes) {
+            JSONObject o = byHash.optJSONObject(h);
+            if(o == null) {continue;}
+            CookbookItem item = parse(o);
+            byKey.putIfAbsent(item.key(), item);
+        }
+        return new ArrayList<>(byKey.values());
+    }
+
+    /** Parses a plain array of records (the site's /food-info.json shape). */
     public static List<CookbookItem> parseAll(JSONArray arr) {
         List<CookbookItem> out = new ArrayList<>(arr.length());
         for(int i = 0; i < arr.length(); i++) {
-            JSONObject o = arr.getJSONObject(i);
-            String name = o.optString("itemName", "");
-            String resourceName = o.optString("resourceName", "");
-            int energy = o.optInt("energy", 0);
-            double hunger = o.optDouble("hunger", 0);
-
-            List<Ingredient> ingredients = new ArrayList<>();
-            JSONArray ja = o.optJSONArray("ingredients");
-            if(ja != null) {
-                for(int j = 0; j < ja.length(); j++) {
-                    JSONObject io = ja.getJSONObject(j);
-                    ingredients.add(new Ingredient(io.optString("name", ""), io.optInt("percentage", 0)));
-                }
-            }
-
-            Map<String, Double> feps = new LinkedHashMap<>();
-            JSONArray fa = o.optJSONArray("feps");
-            if(fa != null) {
-                for(int j = 0; j < fa.length(); j++) {
-                    JSONObject fo = fa.getJSONObject(j);
-                    String key = FEP_MAP.get(fo.optString("name", ""));
-                    if(key != null) {
-                        feps.merge(key, fo.optDouble("value", 0), Double::sum);
-                    }
-                }
-            }
-
-            out.add(new CookbookItem(name, resourceName, energy, hunger, ingredients, feps));
+            out.add(parse(arr.getJSONObject(i)));
         }
         return out;
+    }
+
+    /** One record, in the shape FoodService.ParsedFoodInfo is uploaded as. */
+    public static CookbookItem parse(JSONObject o) {
+        String name = o.optString("itemName", "");
+        String resourceName = o.optString("resourceName", "");
+        int energy = o.optInt("energy", 0);
+        double hunger = o.optDouble("hunger", 0);
+
+        List<Ingredient> ingredients = new ArrayList<>();
+        JSONArray ja = o.optJSONArray("ingredients");
+        if(ja != null) {
+            for(int j = 0; j < ja.length(); j++) {
+                JSONObject io = ja.getJSONObject(j);
+                ingredients.add(new Ingredient(io.optString("name", ""), io.optInt("percentage", 0)));
+            }
+        }
+
+        Map<String, Double> feps = new LinkedHashMap<>();
+        JSONArray fa = o.optJSONArray("feps");
+        if(fa != null) {
+            for(int j = 0; j < fa.length(); j++) {
+                JSONObject fo = fa.getJSONObject(j);
+                String key = FEP_MAP.get(fo.optString("name", ""));
+                if(key != null) {
+                    feps.merge(key, fo.optDouble("value", 0), Double::sum);
+                }
+            }
+        }
+
+        return new CookbookItem(name, resourceName, energy, hunger, ingredients, feps);
     }
 
     public String ingredientSummary() {
@@ -119,14 +144,17 @@ public class CookbookItem {
     }
 
     /**
-     * Stable identifier for this exact ingredient-variant, for saving things
-     * (like a meal plan) across sessions -- object identity isn't stable
-     * since the dataset is re-fetched and re-parsed fresh every time.
+     * Stable identifier for this exact dish+ingredient-variant, for saving
+     * things (like a meal plan) across sessions -- object identity isn't
+     * stable since the dataset is re-fetched and re-parsed fresh every time.
+     * The item name is part of it: every roast/spitroast/dried meat shares
+     * the "gfx/invobjs/meat" resource, so resource+ingredients alone would
+     * make "Roast Bear" and "Sizzling Spitroast Pike" the same key.
      */
     public String key() {
         List<String> parts = new ArrayList<>();
         for(Ingredient ig : ingredients) {parts.add(ig.name + ":" + ig.percentage);}
         Collections.sort(parts);
-        return resourceName + "|" + String.join(",", parts);
+        return name + "|" + resourceName + "|" + String.join(",", parts);
     }
 }

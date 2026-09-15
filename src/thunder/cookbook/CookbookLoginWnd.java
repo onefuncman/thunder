@@ -2,7 +2,7 @@ package thunder.cookbook;
 
 import haven.*;
 
-/** Login popup for civ.hearthworld.com, styled like the site's own /Auth page. */
+/** Login popup for the automap site behind the Mapping URL, styled like its own /Auth page. */
 public class CookbookLoginWnd extends WindowX {
     private final TextEntry user;
     private final TextEntry pass;

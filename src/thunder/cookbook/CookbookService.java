@@ -1,20 +1,20 @@
 package thunder.cookbook;
 
 import haven.Defer;
-import org.json.JSONArray;
+import integrations.food.FoodService;
+import org.json.JSONObject;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 
-/** Fetches the food dataset from civ.hearthworld.com/food-info.json. */
+/**
+ * Supplies the food dataset to the Cookbook windows. Nothing is fetched
+ * here: {@link FoodService} (Kami's food uploader) already downloads
+ * {@code <Mapping URL>/data/food-info.json} and caches it on disk for its
+ * own dedup keys, so a Cookbook refresh just asks it for a fresh copy and
+ * parses that. One endpoint setting, one download path, one cache file.
+ */
 public class CookbookService {
-    private static final String DATA_URL = CookbookAuth.BASE + "/food-info.json";
-
     private static volatile List<CookbookItem> lastGood = Collections.emptyList();
 
     public static List<CookbookItem> lastGood() {return lastGood;}
@@ -38,19 +38,6 @@ public class CookbookService {
     }
 
     private static List<CookbookItem> fetch() throws Exception {
-        HttpURLConnection conn = (HttpURLConnection) new URL(DATA_URL).openConnection();
-        conn.setRequestProperty("User-Agent", "Thunder Client");
-        String cookie = CookbookAuth.cookieHeader();
-        if(cookie != null) {conn.setRequestProperty("Cookie", cookie);}
-        try {
-            StringBuilder sb = new StringBuilder();
-            try(BufferedReader r = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
-                String line;
-                while((line = r.readLine()) != null) {sb.append(line);}
-            }
-            return CookbookItem.parseAll(new JSONArray(sb.toString()));
-        } finally {
-            conn.disconnect();
-        }
+        return CookbookItem.parseAll(new JSONObject(FoodService.foodDataJson(true)));
     }
 }

@@ -2,6 +2,11 @@
 
 In-game reimplementation of the "Haven & Hearth Automap" cookbook
 (https://civ.hearthworld.com/cookbook/), reached via Xtended -> Cookbook.
+The site is **not** hardcoded anywhere in `src/`: every URL derives from the
+"Mapping URL" in Options (`CFG.AUTOMAP_ENDPOINT`), the same endpoint the
+automapper and Kami's `integrations.food.FoodService` uploader use. Data
+comes through `FoodService` (see "Data source" below); only the login form
+talks to the site directly, at the origin of that URL.
 Code: `src/thunder/cookbook/`. Wiring: `Action.OPEN_COOKBOOK` ->
 `GameUI.toggleCookbook()` -> `CookbookWnd.toggle`; paginae button at
 `resources/src/local/paginae/add/cookbook.res` (parent `paginae/act/add` =
@@ -53,7 +58,8 @@ single auto-saved snapshot. Loading a meal *replaces* the current working
 plan, it doesn't merge.
 
 Both the live plan and every saved meal are keyed by `CookbookItem.key()`
-(resourceName + sorted ingredient list), not Java object identity or list
+(itemName + resourceName + sorted ingredient list -- the name matters because
+every roast/spitroast/dried meat shares `gfx/invobjs/meat`), not Java object identity or list
 index -- the food dataset is re-fetched and re-parsed fresh every session,
 so identity/index aren't stable, but the same dish+ingredient-variant
 combination reliably produces the same key run to run. A saved meal
@@ -286,7 +292,10 @@ Plain ASP.NET Core cookie-auth form, not a JS-driven login:
    expiry observed when `persistent=true`). On bad credentials: `200`
    (re-renders the login page).
 
-Implemented in `CookbookAuth.doLogin`. We don't follow the redirect — we
+Implemented in `CookbookAuth.doLogin`, against `CookbookAuth.siteBase()`:
+the scheme+host of the Mapping URL, because the endpoint itself carries a
+per-user client-key path (`.../client/<key>`) that the data and upload routes
+hang off, while `/Auth` lives at the site root. We don't follow the redirect — we
 only need the `Set-Cookie`. The cookie is persisted locally
 (`Config.saveFile`, see `cookbook-session.json` in the client's config dir)
 so login survives client restarts, and replayed as a `Cookie` header on
@@ -300,9 +309,29 @@ window only offers the username/password path.
 
 ## Data source
 
-`GET /food-info.json` — a **public, unauthenticated** static JSON array (no
-login required, confirmed by comparing anonymous vs. authenticated fetches
-byte-for-byte). ~930 entries, one per food+ingredient-combo, shape:
+The client reads `<Mapping URL>/data/food-info.json` -- but never fetches it
+itself. `integrations.food.FoodService` (Kami's food uploader, gated by the
+"autofood.track" option) already downloads that document with gzip, caches it
+as `food_data.json` in the working directory, and re-checks it every 30
+minutes to seed its upload-dedup keys. `FoodService.foodDataJson(force)` is
+the seam the Cookbook uses: a Refresh click forces a re-download, anything
+else gets the cached copy. One endpoint setting, one download path, one
+cache file; nothing to configure for the Cookbook beyond the Mapping URL
+(an empty one surfaces as "No Mapping URL configured" in the status line).
+
+That document is a JSON **object** keyed by the uploader's record hash
+(`md5(itemName;genus;resourceName;ingredients...)`), one entry per upload
+sample, so the same dish+ingredient variant can appear several times with
+rounding-level FEP differences (1872 entries / 1768 distinct variants when
+checked on 2026-09-15). `CookbookItem.parseAll(JSONObject)` collapses those
+on `key()`, keeping the lowest hash so the pick is stable run to run.
+
+The site's own page uses `GET /food-info.json` at the site root instead -- a
+**public, unauthenticated** JSON array (no login required, confirmed by
+comparing anonymous vs. authenticated fetches byte-for-byte) with the same
+record shape, already deduplicated server-side, and a strict subset of the
+`/data/` object (1729 of the 1768 variants on the same day; the rest were
+recent uploads). `parseAll(JSONArray)` still reads that shape. Record shape:
 
 ```json
 {
@@ -325,8 +354,8 @@ percentages (append `%`).
 The site itself has this whole array loaded client-side once and does all
 filtering/sorting in the browser (see `processData()`/`filterPredicate` in
 the Angular bundle) — there is no per-keystroke search API. Our client
-does the same: `CookbookService` fetches once per Refresh click and
-`CookbookWnd` filters the in-memory list live as you type.
+does the same: `CookbookService` re-parses `FoodService`'s copy once per
+Refresh click and `CookbookWnd` filters the in-memory list live as you type.
 
 Even though the underlying data turned out to be public, the login flow
 was still built as asked (matching the site's own UX and leaving room for

@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Re-implementation of the filter syntax parsed by civ.hearthworld.com's
+ * Re-implementation of the filter syntax parsed by the automap site's
  * cookbook page (see its "How-to" help popup, and `filterPredicate` in the
  * site's main-es2015 bundle). Conditions are separated by ';' and all must
  * match (AND):

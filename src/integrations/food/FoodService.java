@@ -32,7 +32,23 @@ import java.util.concurrent.TimeUnit;
 import java.util.zip.GZIPInputStream;
 
 public class FoodService {
-    public static final String API_ENDPOINT = CFG.AUTOMAP_ENDPOINT.get();
+    /**
+     * Base URL for every request: the "Mapping URL" from Options, shared with the
+     * automapper and the Cookbook. Read live (not captured at class-init) so an
+     * endpoint pasted in after startup takes effect without a restart. Never null;
+     * empty when unconfigured.
+     */
+    public static String endpoint() {
+	String ep = CFG.AUTOMAP_ENDPOINT.get();
+	if (ep == null) {
+	    return "";
+	}
+	ep = ep.trim();
+	while (ep.endsWith("/")) {
+	    ep = ep.substring(0, ep.length() - 1);
+	}
+	return ep;
+    }
     private static final String FOOD_DATA_URL = "/data/food-info.json";
     private static final File FOOD_DATA_CACHE_FILE = new File("food_data.json");
     private static String token = "KamiClient";
@@ -73,38 +89,73 @@ public class FoodService {
      * Check last modified for the food_data file and request update from server if too old
      */
     public static void requestFoodDataCache() {
+	requestFoodDataCache(false);
+    }
+
+    /** Same, but {@code force} skips the freshness check. Errors are logged, never thrown. */
+    public static void requestFoodDataCache(boolean force) {
 	try {
-	    long lastModified = 0;
-	    if (FOOD_DATA_CACHE_FILE.exists()) {
-		lastModified = FOOD_DATA_CACHE_FILE.lastModified();
-	    }
-	    if (System.currentTimeMillis() - lastModified > TimeUnit.MINUTES.toMillis(30)) {
-		try {
-		    HttpURLConnection connection = (HttpURLConnection) new URL(API_ENDPOINT + FOOD_DATA_URL).openConnection();
-		    connection.setRequestProperty("Accept-Encoding", "gzip");
-		    connection.setRequestProperty("User-Agent", "H&H Client/" + token);
-		    connection.setRequestProperty("Cache-Control", "no-cache");
-		    StringBuilder stringBuilder = new StringBuilder();
-		    try (BufferedReader reader = new BufferedReader(new InputStreamReader(new GZIPInputStream(connection.getInputStream())))) {
-			stringBuilder.append(reader.readLine());
-		    } finally {
-			connection.disconnect();
-		    }
-		    String content = stringBuilder.toString();
-		    //System.out.println("load from remote: " + content);
-		    
-		    Files.write(FOOD_DATA_CACHE_FILE.toPath(), Collections.singleton(content), StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE);
-		    JSONObject object = new JSONObject(content);
-		    object.keySet().forEach(key -> cachedItems.put(key, new ParsedFoodInfo()));
-		} catch (Exception ex) {
-		    System.err.println("Cannot load remote food data file: " + ex.getMessage());
-		}
-	    }
+	    fetchFoodData(force);
 	} catch (Exception ex) {
-	    System.out.println("Should not happen, but whatever: " + ex.getMessage());
+	    System.err.println("Cannot load remote food data file: " + ex.getMessage());
 	}
     }
-    
+
+    /**
+     * The raw /data/food-info.json document (a JSON object keyed by record hash) --
+     * the same download and on-disk cache the uploader uses for its dedup keys, so
+     * the Cookbook doesn't need a fetch path of its own. Downloads when {@code force}
+     * is set or the cached copy is missing/older than 30 minutes, otherwise returns
+     * the cached copy. Throws instead of logging so a caller with a UI can show why.
+     */
+    public static synchronized String foodDataJson(boolean force) throws IOException {
+	String fresh = fetchFoodData(force);
+	if (fresh != null) {
+	    return fresh;
+	}
+	return String.join("", Files.readAllLines(FOOD_DATA_CACHE_FILE.toPath(), StandardCharsets.UTF_8));
+    }
+
+    /**
+     * Downloads the food data when forced or stale, updating the cache file and the
+     * dedup keys. Returns the downloaded document, or null when the cached copy is
+     * still fresh and nothing was fetched.
+     */
+    private static synchronized String fetchFoodData(boolean force) throws IOException {
+	long lastModified = 0;
+	if (FOOD_DATA_CACHE_FILE.exists()) {
+	    lastModified = FOOD_DATA_CACHE_FILE.lastModified();
+	}
+	if (!force && System.currentTimeMillis() - lastModified <= TimeUnit.MINUTES.toMillis(30)) {
+	    return null;
+	}
+	String ep = endpoint();
+	if (ep.isEmpty()) {
+	    throw new IOException("No Mapping URL configured (Options -> Mapping URL).");
+	}
+	HttpURLConnection connection = (HttpURLConnection) new URL(ep + FOOD_DATA_URL).openConnection();
+	connection.setRequestProperty("Accept-Encoding", "gzip");
+	connection.setRequestProperty("User-Agent", "H&H Client/" + token);
+	connection.setRequestProperty("Cache-Control", "no-cache");
+	StringBuilder stringBuilder = new StringBuilder();
+	try (BufferedReader reader = new BufferedReader(new InputStreamReader(new GZIPInputStream(connection.getInputStream())))) {
+	    stringBuilder.append(reader.readLine());
+	} finally {
+	    connection.disconnect();
+	}
+	String content = stringBuilder.toString();
+	//System.out.println("load from remote: " + content);
+	JSONObject object;
+	try {
+	    object = new JSONObject(content);
+	} catch (RuntimeException ex) {
+	    throw new IOException("Endpoint did not return food data (" + ex.getMessage() + ")");
+	}
+	Files.write(FOOD_DATA_CACHE_FILE.toPath(), Collections.singleton(content), StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE);
+	object.keySet().forEach(key -> cachedItems.put(key, new ParsedFoodInfo()));
+	return content;
+    }
+
     /**
      * Check item info and determine if it is food and we need to send it
      */
@@ -194,7 +245,7 @@ public class FoodService {
 	if (!toSend.isEmpty()) {
 	    try {
 		HttpURLConnection connection =
-		    (HttpURLConnection) new URL(API_ENDPOINT + "/food").openConnection();
+		    (HttpURLConnection) new URL(endpoint() + "/food").openConnection();
 		connection.setRequestMethod("POST");
 		connection.setRequestProperty("Content-Type", "application/json");
 		connection.setRequestProperty("User-Agent", "H&H Client/" + token);

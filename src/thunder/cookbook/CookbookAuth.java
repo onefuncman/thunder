@@ -8,7 +8,10 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import integrations.food.FoodService;
+
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -18,15 +21,31 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Session handling for civ.hearthworld.com (the "Haven & Hearth Automap"
- * site). Standard ASP.NET Core cookie-auth form: GET /Auth for an
+ * Session handling for the automap site behind the Mapping URL (the same
+ * endpoint FoodService uploads to). Standard ASP.NET Core cookie-auth form:
+ * GET /Auth (at the site root, not under the per-user client key) for an
  * antiforgery cookie + hidden __RequestVerificationToken, then POST
  * username/password/persistent/token to /Auth/Login. On success the server
  * sets a `.AspNetCore.Cookies` cookie (14-day expiry when persistent=true)
  * which we keep and replay. See docs/cookbook-integration.md.
  */
 public class CookbookAuth {
-    public static final String BASE = "https://civ.hearthworld.com";
+    /**
+     * Origin (scheme://host) of the site behind the Mapping URL. The endpoint
+     * itself carries a per-user client-key path (".../client/<key>") that the
+     * data and upload routes hang off, but the login form lives at the root.
+     */
+    public static String siteBase() throws IOException {
+        String ep = FoodService.endpoint();
+        if(ep.isEmpty()) {throw new IOException("No Mapping URL configured (Options -> Mapping URL).");}
+        URL u;
+        try {
+            u = new URL(ep);
+        } catch(MalformedURLException e) {
+            throw new IOException("Mapping URL is not a valid URL: " + ep);
+        }
+        return u.getProtocol() + "://" + u.getAuthority();
+    }
     private static final String SESSION_FILE = "cookbook-session.json";
     private static final Pattern TOKEN_RX =
         Pattern.compile("name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]*)\"");
@@ -71,7 +90,8 @@ public class CookbookAuth {
     }
 
     private static void doLogin(String user, String pass, boolean keepLoggedIn) throws IOException {
-        HttpURLConnection get = (HttpURLConnection) new URL(BASE + "/Auth").openConnection();
+        String base = siteBase();
+        HttpURLConnection get = (HttpURLConnection) new URL(base + "/Auth").openConnection();
         get.setRequestProperty("User-Agent", "Thunder Client");
         String antiforgery;
         String html;
@@ -97,7 +117,7 @@ public class CookbookAuth {
         appendField(body, "persistent", keepLoggedIn ? "true" : "false");
         appendField(body, "__RequestVerificationToken", token);
 
-        HttpURLConnection post = (HttpURLConnection) new URL(BASE + "/Auth/Login").openConnection();
+        HttpURLConnection post = (HttpURLConnection) new URL(base + "/Auth/Login").openConnection();
         post.setInstanceFollowRedirects(false);
         post.setRequestMethod("POST");
         post.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
