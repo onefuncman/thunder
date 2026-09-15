@@ -1,6 +1,7 @@
 package haven;
 
 import auto.Actions;
+import auto.ButcherBot;
 import auto.Equip;
 import auto.InventorySorter;
 import me.ender.CustomCursors;
@@ -46,6 +47,7 @@ public enum Action {
     AGGRO_ONE_PVP(Actions::aggroOnePVP, "Aggro closest player to cursor", "Will try to aggro (or switch target to) one player closest to cursor"),
     AGGRO_ALL(Actions::aggroAll, "Aggro all creatures near player", "Will try to aggro all creatures near player that are not in party"),
     FILL_CHEESE_TRAY(Actions::fillCheeseTray, "Fill cheese tray", "Automatically fills an open cheese tray with curds from your inventories."),
+    AUTO_BUTCHER(ButcherBot::run, "Auto-butcher nearby corpses", "Finds dead animal corpses within 10 tiles, equips your best cutting tool (restoring your hand slot afterward), and skins/cleans/butchers/collects bones from each in turn."),
     
     COMBAT_DISTANCE_TOOL(GameUI::toggleCombatDistanceTool, "Combat Distancing Tool", "Open a window that shows the current distance to your combat target and can auto-move you to the perfect distance for the animal/player."),
     COMBAT_DISTANCE_AUTO(gui -> new haven.bot.CombatDistancerLite(gui).run(), "Auto-distance combat target", "One-shot: move to the perfect distance for the current combat target."),
