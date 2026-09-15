@@ -56,7 +56,12 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
     public final Collection<Overlay> ols = new ArrayList<Overlay>();
     public final Collection<RenderTree.Slot> slots = new ArrayList<>(1);
     public int updateseq = 0, lastolid = 0;
-    private final Collection<SetupMod> setupmods = new ArrayList<SetupMod>() {
+    /* Copy-on-write: GobState/Placed iterate this on the tick thread under the
+     * gob lock, but GobHighlight is set/removed from UI code (GobSearchWnd,
+     * CattleRoster) without it, which threw ConcurrentModificationException
+     * from the iterator. Iterating a snapshot can't; the list is tiny and
+     * mutated rarely, so the copy is free. */
+    private final Collection<SetupMod> setupmods = new java.util.concurrent.CopyOnWriteArrayList<SetupMod>() {
 	public boolean add(SetupMod e) { stateDirty = true; if(placed != null) placed.dirty = true; return super.add(e); }
 	public boolean remove(Object o) { stateDirty = true; if(placed != null) placed.dirty = true; return super.remove(o); }
     };

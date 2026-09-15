@@ -1,3 +1,6 @@
+$size[14]{$u{update on 15.09.2026:}
+* Fixed a rare crash in the object tick when a search or cattle-roster highlight was added to or removed from a creature at the same moment its render state was being rebuilt.
+`
 $size[14]{$u{update on 12.09.2026:}
 * Fixed a crash after combat ends when "Clear damage from player" (on by default) or "Clear damage from everyone" cleared a damage record at the same moment a creature came into view, leaving a null record that the object tick then dereferenced.
 `
