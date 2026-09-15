@@ -1,8 +1,9 @@
-# Cookbook integration: what we learned about civ.hearthworld.com
+# Cookbook integration: what we learned about the automap site's cookbook
 
-In-game reimplementation of the "Haven & Hearth Automap" cookbook
-(https://civ.hearthworld.com/cookbook/), reached via Xtended -> Cookbook.
-The site is **not** hardcoded anywhere in `src/`: every URL derives from the
+In-game reimplementation of the cookbook page on the automap site (the
+site behind the "Mapping URL" in Options; its `/cookbook/` page), reached
+via Xtended -> Cookbook.
+The site is **not** hardcoded anywhere: every URL derives from the
 "Mapping URL" in Options (`CFG.AUTOMAP_ENDPOINT`), the same endpoint the
 automapper and Kami's `integrations.food.FoodService` uploader use. Data
 comes through `FoodService` (see "Data source" below); only the login form
@@ -21,7 +22,7 @@ this doc against the live bundle if the site changes and something breaks.
 
 `CookbookPlanWnd` (opened via the "Meal Plan (N)" button in `CookbookWnd`,
 or the Plan column on each row of the browse list) is a from-scratch
-feature, not something civ.hearthworld.com has — it was scoped from a
+feature, not something the site has — it was scoped from a
 Discord thread with the client's users (Flame/raine), who wanted something
 like their own hand-built meal-planning spreadsheet: pick dishes, say how
 many of each, get a shopping list of raw ingredients.
@@ -68,7 +69,7 @@ dropped on load rather than erroring.
 
 ## Base-recipe ingredients (RecipeCapture)
 
-The FEP-percentage ingredients from civ.hearthworld.com (e.g. "Osier: 100%")
+The FEP-percentage ingredients from the dataset (e.g. "Osier: 100%")
 are only the *flavor* input to a recipe -- they don't include the base
 filler (e.g. Smoked Badger Botillo also needs 1 Intestines + 2 Raw Badger,
 which never shows up in that percentage data at all). We looked for a
@@ -181,7 +182,7 @@ degrades gracefully to "no icon for uncaptured ingredients," not a crash
 ### Closing the gap: swept every real ingredient name, user-confirmed the rest
 
 Rather than keep testing a handful of examples, we pulled every distinct
-ingredient name out of the live civ.hearthworld.com dataset (127 of them)
+ingredient name out of the live dataset (127 of them)
 and ran the resolver against all of them for a real coverage number, not a
 guess from a sample. `ROLE_PREFIXES` alone got 100/127. The remaining ones
 mostly needed real domain knowledge no string transform could derive —

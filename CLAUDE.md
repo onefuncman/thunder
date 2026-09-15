@@ -67,7 +67,7 @@ Per-feature design notes. Check the relevant file before reading source for an e
 - [docs/auto-updater.md](docs/auto-updater.md) — release self-updater (updater.jar + launcher integration, GitHub releases)
 - [docs/cattle-roster-feature-batch.md](docs/cattle-roster-feature-batch.md) — original roster feature batch (sort, recolor, milking-assist scaffolding)
 - [docs/changelog-popup.md](docs/changelog-popup.md) — login-screen Changelog window
-- [docs/cookbook-integration.md](docs/cookbook-integration.md) — reverse-engineered civ.hearthworld.com cookbook: login flow, `/food-info.json` data source, derived FEP formulas, filter syntax
+- [docs/cookbook-integration.md](docs/cookbook-integration.md) — reverse-engineered automap-site cookbook (Mapping URL endpoint, via FoodService): login flow, `/food-info.json` data source, derived FEP formulas, filter syntax
 - [docs/dev-iteration-toolkit.md](docs/dev-iteration-toolkit.md) — `DevFeature` / `DebugSnapshot` / `DebugReplay` / `FeatureCapture` infrastructure
 - [docs/eating-helper.md](docs/eating-helper.md) — multi-step FEP eating planner (satiation/variety/table-bonus math) + event-driven Auto-Eat
 - [docs/game-protocol.md](docs/game-protocol.md) — general protocol notes
