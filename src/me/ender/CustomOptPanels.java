@@ -92,6 +92,19 @@ public class CustomOptPanels {
 	y += STEP;
 	panel.add(new CFGColorBtn(CFG.COLOR_CATTLE_HIGHLIGHT, "Highlight", true), tx, y);
 
+	y += STEP;
+	panel.add(new Label("Tile measure:"), x, y);
+	y += STEP;
+	tx = x + H_STEP;
+	tx += panel.add(new CFGColorBtn(CFG.COLOR_MEASURE_LINE, "Line / marks", true), tx, y).sz.x;
+	panel.add(new CFGColorBtn(CFG.COLOR_MEASURE_LABEL, "Labels", true), tx + H_STEP, y);
+	y += STEP;
+	panel.add(new CFGColorBtn(CFG.COLOR_MEASURE_PREVIEW, "Hover preview", true), x + H_STEP, y);
+	y += STEP;
+	Label measureWidth = panel.add(new Label(String.format("Line thickness: %d px", CFG.MEASURE_LINE_WIDTH.get())), x + H_STEP, y);
+	y += UI.scale(15);
+	panel.add(new CFGSlider(UI.scale(150), 1, 8, CFG.MEASURE_LINE_WIDTH, measureWidth, "Line thickness: %d px"), x + H_STEP, y);
+
 	my = Math.max(my, y);
 	
 	w = panel.add(wnd.new PButton(UI.scale(200), "Back", 27, wnd.main), new Coord(0, my + UI.scale(35)));

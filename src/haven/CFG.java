@@ -162,6 +162,10 @@ public class CFG<T> {
     public static final CFG<Color> COLOR_GOB_CRITTERS = new CFG<>("colors.gob.critters", new Color(150, 230, 255, 140));
     public static final CFG<Color> COLOR_GOB_SPEED_BUFF = new CFG<>("colors.gob.speed_buff", new Color(200, 255, 230, 140));
     public static final CFG<Color> COLOR_CATTLE_HIGHLIGHT = new CFG<>("colors.cattle_highlight", new Color(70, 65, 230, 200));
+    public static final CFG<Color> COLOR_MEASURE_LINE = new CFG<>("colors.measure.line", new Color(255, 220, 70, 230));
+    public static final CFG<Color> COLOR_MEASURE_PREVIEW = new CFG<>("colors.measure.preview", new Color(255, 255, 255, 200));
+    public static final CFG<Color> COLOR_MEASURE_LABEL = new CFG<>("colors.measure.label", new Color(255, 245, 180));
+    public static final CFG<Integer> MEASURE_LINE_WIDTH = new CFG<>("display.measure.line_width", 2);
     
     /**Show stack's hover inventory widgets only if SHIFT is pressed*/
     public static final CFG<Boolean> UI_STACK_SUB_INV_ON_SHIFT = new CFG<>("ui.stack.sub_inv_on_shift", false);

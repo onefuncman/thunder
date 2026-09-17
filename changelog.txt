@@ -1,3 +1,8 @@
+$size[14]{$u{update on 17.09.2026:}
+* Measure line/mark, hover-preview, and label colors can now be customized under Options -> Color settings, along with line thickness from 1 to 8 px.
+* Alt-click starts a detached measurement without clearing earlier measurements; normal clicks continue the newest measurement.
+* Ctrl-click on either the map or the Measure action undoes the newest mark. Shift-click still clears all measurements.
+`
 $size[14]{$u{update on 12.09.2026:}
 * Fixed a crash after combat ends when "Clear damage from player" (on by default) or "Clear damage from everyone" cleared a damage record at the same moment a creature came into view, leaving a null record that the object tick then dereferenced.
 `
@@ -9,6 +14,9 @@ $size[14]{$u{update on 08.09.2026:}
 * Running two clients on the same cache folder no longer corrupts or drops shared map cache entries when both regenerate the same zoom grids.
 * Added Indoor Stairs to the options for "Interact with closest..."
 * A custom map marker whose icon fails to load falls back to the plain flag icon instead of crashing the client on hover.
+`
+$size[14]{$u{update on 30.08.2026:}
+* New Measure action under Xtended: click tiles to mark distances. The overlay stays until you clear it (Shift-click Measure, or Shift-click the map while measuring). Ctrl-click undoes the last mark; right-click leaves measure mode but keeps the lines.
 `
 $size[14]{$u{update on 26.08.2026:}
 * The "Toggle animal warnings" shortcut no longer disturbs player, gem or midge circles - it now touches animal warnings only. A rare case where a gob could permanently lose its warning circle after a toggle is also fixed.
