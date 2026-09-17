@@ -134,6 +134,14 @@ public class CFG<T> {
     public static final CFG<Boolean> HUNGER_METER = new CFG<>("ui.hunger_meter", false);
     public static final CFG<Boolean> DRINKS_METER = new CFG<>("ui.drinks_meter", true);
     public static final CFG<Boolean> SHOW_BOT_MESSAGES = new CFG<>("ui.hide_bot_messages", true);
+    /* Off by default: transient notice text (e.g. "Too hard to mine") uses the original
+     * fixed position/size. When on, ERROR_MSG_POS/ERROR_MSG_SIZE below apply instead. */
+    public static final CFG<Boolean> ERROR_MSG_CUSTOM_ENABLED = new CFG<>("ui.error_msg.custom_enabled", false);
+    /* Index into a 5x5 screen-anchor grid (row*5+col, row/col 0..4 top/left..bottom/right)
+     * for where transient notice text (e.g. "Too hard to mine") is drawn. */
+    public static final CFG<Integer> ERROR_MSG_POS = new CFG<>("ui.error_msg.pos", 20);
+    /* Index into me.ender.ui.SizeRow.SIZES. */
+    public static final CFG<Integer> ERROR_MSG_SIZE = new CFG<>("ui.error_msg.size", 2);
     
     public static final CFG<Integer> MINE_SUPPORT_DANGER_THRESHOLD = new CFG<>("display.mine_support_danger_threshold", 50);
 

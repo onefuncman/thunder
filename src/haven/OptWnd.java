@@ -1667,9 +1667,21 @@ public class OptWnd extends WindowX {
 	
 	y += STEP;
 	panel.add(new CFGBox("Enable purge button for kin list. (restart required)", CFG.ENABLE_PURGE_BUTTON_IN_KIN_LIST), x, y);
-	
+
+	y += STEP;
+	panel.add(new Button(UI.scale(200), "Notice message settings", false) {
+	    @Override
+	    public void click() {
+		if(ui.gui != null) {
+		    NoticeMsgCfgWnd.toggle(ui.gui);
+		} else {
+		    NoticeMsgCfgWnd.toggle(ui.root);
+		}
+	    }
+	}, x, y);
+
 	my = Math.max(my, y);
-    
+
 	panel.add(new PButton(UI.scale(200), "Back", 27, main), new Coord(0, my + UI.scale(35)));
 	panel.pack();
 	title.c.x = (panel.sz.x - title.sz.x) / 2;

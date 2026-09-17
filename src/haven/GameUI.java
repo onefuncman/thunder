@@ -81,6 +81,10 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
     private List<Widget> cmeters = new LinkedList<Widget>();
     private Text lastmsg;
     private double msgtime;
+    private static final Map<Integer, Text.Foundry> msgfoundries = new HashMap<>();
+    private static Text.Foundry msgfoundry(int size) {
+	return msgfoundries.computeIfAbsent(size, sz -> new Text.Foundry(Text.dfont, sz));
+    }
     public Window invwnd, equwnd, srchwnd, iconwnd;
     private CraftWindow makewnd;
     public Inventory maininv;
@@ -1694,21 +1698,53 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	    by = Math.min(by, chat.c.y);
 	if(beltwdg.visible())
 	    by = Math.min(by, beltwdg.c.y);
+	if((lastmsg != null) && ((Utils.rtime() - msgtime) > 3.0))
+	    lastmsg = null;
+	boolean custommsg = CFG.ERROR_MSG_CUSTOM_ENABLED.get();
 	if(cmdline != null) {
 	    drawcmd(g, new Coord(blpw + UI.scale(10), by -= UI.scale(20)));
-	} else if(lastmsg != null) {
-	    if((Utils.rtime() - msgtime) > 3.0) {
-		lastmsg = null;
-	    } else {
-		g.chcolor(0, 0, 0, 192);
-		g.frect(new Coord(blpw + UI.scale(8), by - UI.scale(22)), lastmsg.sz().add(UI.scale(4), UI.scale(4)));
-		g.chcolor();
-		g.image(lastmsg.tex(), new Coord(blpw + UI.scale(10), by -= UI.scale(20)));
-	    }
+	} else if(!custommsg && (lastmsg != null)) {
+	    g.chcolor(0, 0, 0, 192);
+	    g.frect(new Coord(blpw + UI.scale(8), by - UI.scale(22)), lastmsg.sz().add(UI.scale(4), UI.scale(4)));
+	    g.chcolor();
+	    g.image(lastmsg.tex(), new Coord(blpw + UI.scale(10), by -= UI.scale(20)));
 	}
 	if(!chat.visible()) {
 	    chat.drawsmall(g, new Coord(blpw + UI.scale(10), by), UI.scale(100));
 	}
+	if(custommsg && (lastmsg != null)) {
+	    drawmsg(g);
+	}
+    }
+
+    /* Draws lastmsg anchored to one of an NxM grid of screen positions (CFG.ERROR_MSG_POS,
+     * row*COLS+col) picked in Settings > UI > Notice message settings. The outer rows/columns
+     * hug that screen edge; inner rows/columns space out evenly between the edges. */
+    private void drawmsg(GOut g) {
+	int cols = me.ender.ui.ScreenPosGrid.COLS, rows = me.ender.ui.ScreenPosGrid.ROWS;
+	int idx = Utils.clip(CFG.ERROR_MSG_POS.get(), 0, (cols * rows) - 1);
+	int col = idx % cols, row = idx / cols;
+	int pad = UI.scale(15);
+	Coord msz = lastmsg.sz().add(UI.scale(4), UI.scale(4));
+	int x;
+	if(col == 0)
+	    x = pad;
+	else if(col == cols - 1)
+	    x = sz.x - pad - msz.x;
+	else
+	    x = pad + Math.round(((float)col / (cols - 1)) * (sz.x - (2 * pad) - msz.x));
+	int y;
+	if(row == 0)
+	    y = pad;
+	else if(row == rows - 1)
+	    y = sz.y - pad - msz.y;
+	else
+	    y = pad + Math.round(((float)row / (rows - 1)) * (sz.y - (2 * pad) - msz.y));
+	Coord ul = new Coord(x, y);
+	g.chcolor(0, 0, 0, 192);
+	g.frect(ul, msz);
+	g.chcolor();
+	g.image(lastmsg.tex(), ul.add(UI.scale(2), UI.scale(2)));
     }
     
     private String iconconfname() {
@@ -2216,7 +2252,10 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	else
 	    logged = new ChatUI.Channel.SimpleMessage(msg.message(), msg.color());
 	msgtime = Utils.rtime();
-	lastmsg = RootWidget.msgfoundry.render(msg.message(), msg.color());
+	int size = CFG.ERROR_MSG_CUSTOM_ENABLED.get()
+	    ? me.ender.ui.SizeRow.SIZES[Utils.clip(CFG.ERROR_MSG_SIZE.get(), 0, me.ender.ui.SizeRow.SIZES.length - 1)]
+	    : 14;
+	lastmsg = msgfoundry(size).render(msg.message(), msg.color());
 	syslog.append(logged);
 	ui.sfxrl(msg.sfx());
 	return(true);
@@ -2568,6 +2607,10 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 		    }
 		}
 	    });
+	cmdmap.put("msgtest", (cons, args) -> {
+	    String text = (args.length > 1) ? String.join(" ", Arrays.copyOfRange(args, 1, args.length)) : "Too hard to mine.";
+	    error(text);
+	});
 	cmdmap.put("gob", new Console.Command() {
 		public void run(Console cons, String[] args) throws Exception {
 		    if(args.length >= 3 && args[1].equals("inspect")) {
