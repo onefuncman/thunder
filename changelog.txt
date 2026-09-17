@@ -1,3 +1,9 @@
+$size[14]{$u{update on 17.09.2026:}
+* Stack all now keeps item qualities as close together as possible, reorganizes existing stacks, and sorts the finished container into a compact layout. Shift-click the Stack button to merge loose items without reorganizing or sorting. Non-stackable liquid containers are ignored, and failed merges stop instead of repeatedly picking items up and putting them down.
+* Large mixed cupboards no longer test every possible pair of full stacks, and stacks already separated into sensible quality bands are left intact on later runs.
+* Full cupboards now reorganize qualities in place by exchanging individual stack contents through one free inventory square. Stack capacity is remembered after the first server rejection, and shorter event-driven waits make large cupboards finish faster.
+* Fixed Stack all treating an item temporarily held on the cursor as a successful merge, which caused endless pick-up/drop retries. Quality organization now executes closed move cycles and stops immediately if a completed plan does not improve the result.
+`
 $size[14]{$u{update on 12.09.2026:}
 * Fixed a crash after combat ends when "Clear damage from player" (on by default) or "Clear damage from everyone" cleared a damage record at the same moment a creature came into view, leaving a null record that the object tick then dereferenced.
 `
@@ -9,6 +15,9 @@ $size[14]{$u{update on 08.09.2026:}
 * Running two clients on the same cache folder no longer corrupts or drops shared map cache entries when both regenerate the same zoom grids.
 * Added Indoor Stairs to the options for "Interact with closest..."
 * A custom map marker whose icon fails to load falls back to the plain flag icon instead of crashing the client on hover.
+`
+$size[14]{$u{update on 02.09.2026:}
+* Inventory and container windows get Stack all / Unstack all buttons next to Sort (Hurricane-style). Stack merges matching items; Unstack unpacks every "stack of" pile. Bindable as "Stack all opened inventories" / "Unstack all opened inventories" in Options -> Shortcuts.
 `
 $size[14]{$u{update on 26.08.2026:}
 * The "Toggle animal warnings" shortcut no longer disturbs player, gem or midge circles - it now touches animal warnings only. A rare case where a gob could permanently lose its warning circle after a toggle is also fixed.
