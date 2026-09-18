@@ -53,7 +53,14 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
     final Map<Class<? extends GAttrib>, GAttrib> attr = new HashMap<Class<? extends GAttrib>, GAttrib>();
     private volatile GAttrib[] attrSnapshot = null;
     private volatile boolean stateDirty = true;
-    public final Collection<Overlay> ols = new ArrayList<Overlay>();
+    /* Copy-on-write: overlays are added and removed from deferred loader
+     * tasks (addol/Overlay.remove) and from ctick, while added(), gtick,
+     * findol and UI code (GeneralGobInfo, GobTag, croster) iterate the list
+     * on other threads. A Plob's placement overlays landed mid-iteration
+     * of added() and threw ConcurrentModificationException out of the
+     * loader. Iterating a snapshot can't; the list is tiny and changes
+     * rarely, so the copy is free. */
+    public final Collection<Overlay> ols = new java.util.concurrent.CopyOnWriteArrayList<Overlay>();
     public final Collection<RenderTree.Slot> slots = new ArrayList<>(1);
     public int updateseq = 0, lastolid = 0;
     /* Copy-on-write: GobState/Placed iterate this on the tick thread under the
@@ -563,8 +570,7 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
     public void ctick(double dt) {
 	for(GAttrib a : getAttrSnapshot())
 	    a.ctick(dt);
-	for(Iterator<Overlay> i = ols.iterator(); i.hasNext();) {
-	    Overlay ol = i.next();
+	for(Overlay ol : ols) {
 	    if(ol.slots == null) {
 		try {
 		    ol.init();
@@ -573,7 +579,7 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 		boolean done = ol.tick(dt);
 		if((!ol.delign || (ol.spr instanceof Sprite.CDel)) && done) {
 		    ol.remove0();
-		    i.remove();
+		    ols.remove(ol);
 		    overlaysUpdated();
 		}
 	    }

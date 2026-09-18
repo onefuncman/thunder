@@ -1,3 +1,6 @@
+$size[14]{$u{update on 17.09.2026:}
+* Fixed a crash when starting to place an object (build/plant/set-down) whose placement preview carries overlays: the overlays were being attached on a second loader thread at the same moment the preview was added to the scene. Placement overlays are now attached before the preview is shown, and the overlay list itself tolerates concurrent readers.
+`
 $size[14]{$u{update on 15.09.2026:}
 * Fixed a rare crash in the object tick when a search or cattle-roster highlight was added to or removed from a creature at the same moment its render state was being rebuilt.
 `

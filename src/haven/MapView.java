@@ -2222,7 +2222,13 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 			    odt = new MessageBuf((byte[])args[a2++]);
 			else
 			    odt = Message.nil;
-			ret.addol(ores, odt);
+			/* Add synchronously: the async path defers onto another
+			 * loader thread, which raced place() -> Gob.added()
+			 * iterating ols, and could land after added() had
+			 * already snapshotted the overlays, leaving the placer
+			 * overlay unrendered. We are the only thread touching
+			 * this Plob until place() runs. */
+			ret.addol(new Gob.Overlay(ret, -1, ores, odt), false);
 			a = a2;
 		    }
 		    ret.place();
