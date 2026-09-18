@@ -1662,7 +1662,12 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	}
 	
 	public void get(Render out, Coord c, Consumer<ClickData> cb) {
-	    out.pget(basic, FragID.fragid, Area.sized(Coord.of(c.x, sz().y - c.y), new Coord(1, 1)), new VectorFormat(1, NumberFormat.SINT32), data -> {
+	    Coord gc = Coord.of(c.x, sz().y - c.y);
+	    if(!Area.sized(Coord.z, sz()).contains(gc)) {
+		cb.accept(null);
+		return;
+	    }
+	    out.pget(basic, FragID.fragid, Area.sized(gc, new Coord(1, 1)), new VectorFormat(1, NumberFormat.SINT32), data -> {
 		int id = data.getInt(0);
 		if(id == 0) {
 		    cb.accept(null);
@@ -1680,10 +1685,19 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	public void fuzzyget(Render out, Coord c, int rad, Consumer<ClickData> cb) {
 	    Coord gc = Coord.of(c.x, sz().y - 1 - c.y);
 	    Area area = new Area(gc.sub(rad, rad), gc.add(rad + 1, rad + 1)).overlap(Area.sized(Coord.z, this.sz()));
+	    /* The cursor can be outside the widget while a mouse grab is held
+	     * (e.g. dragging a selection out of the window). Then the search
+	     * area is clipped away entirely, or gc lies outside what was read
+	     * and ridx() returns -1, which indexed the buffer at -4. */
+	    if(area == null) {
+		cb.accept(null);
+		return;
+	    }
 	    out.pget(basic, FragID.fragid, area, new VectorFormat(1, NumberFormat.SINT32), data -> {
 		Clickslot cs;
-		{
-		    int id = data.getInt(area.ridx(gc) * 4);
+		int ci = area.ridx(gc);
+		if(ci >= 0) {
+		    int id = data.getInt(ci * 4);
 		    if((id != 0) && ((cs = idmap.get(id)) != null)) {
 			cb.accept(new ClickData(cs.bk.state().get(Clickable.slot), (RenderTree.Slot)cs.bk.cast(RenderTree.Node.class)));
 			return;
@@ -2289,6 +2303,10 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	}
 	
 	public void run() {
+	    if(!Area.sized(Coord.z, MapView.this.sz).contains(pc)) {
+		synchronized(ui) {nohit(pc);}
+		return;
+	    }
 	    Environment env = ui.env;
 	    Render out = env.render();
 	    Pipe.Op basic = clickbasic(MapView.this.sz);
@@ -2321,6 +2339,10 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	}
 	
 	public void run() {
+	    if(!Area.sized(Coord.z, MapView.this.sz).contains(pc)) {
+		synchronized(ui) {nohit(pc);}
+		return;
+	    }
 	    Environment env = ui.env;
 	    Render out = env.render();
 	    Pipe.Op basic = clickbasic(MapView.this.sz);
@@ -3233,8 +3255,16 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	    this.bk = bk;
 	}
 	
+	/* While grabbed, the OS keeps delivering mouse events after the cursor
+	 * leaves the window. Clamp to the widget so a drag past the edge keeps
+	 * tracking the edge tile and a release outside still ends the drag
+	 * instead of leaving the grab stuck. */
+	private Coord clamp(Coord cc) {
+	    return(Area.sized(Coord.z, MapView.this.sz).closest(cc));
+	}
+	
 	public boolean mmousedown(Coord cc, final int button) {
-	    new Maptest(cc) {
+	    new Maptest(clamp(cc)) {
 		public void hit(Coord pc, Coord2d mc) {
 		    bk.mmousedown(mc.round(), button);
 		}
@@ -3243,7 +3273,7 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	}
 	
 	public boolean mmouseup(Coord cc, final int button) {
-	    new Maptest(cc) {
+	    new Maptest(clamp(cc)) {
 		public void hit(Coord pc, Coord2d mc) {
 		    bk.mmouseup(mc.round(), button);
 		}
@@ -3262,7 +3292,7 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	
 	public void mmousemove(Coord cc) {
 	    if(mv) {
-		new Maptest(cc) {
+		new Maptest(clamp(cc)) {
 		    public void hit(Coord pc, Coord2d mc) {
 			bk.mmousemove(mc.round());
 		    }
