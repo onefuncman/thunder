@@ -726,6 +726,11 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	disposables.add(CFG.SHOW_MINESWEEPER_OVERLAY.observe(terrain::updateMinesweeper));
 	updateGridMat(null);
     }
+
+    public void refreshMinesweeper() {
+	if(terrain.area != null)
+	    terrain.minesweeper.tick();
+    }
     
     private void updatePlobDrawable(CFG<Boolean> cfg) {
 	if(placing != null && placing.done()) {
