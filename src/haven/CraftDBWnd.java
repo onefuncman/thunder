@@ -117,8 +117,31 @@ public class CraftDBWnd extends WindowX implements ICraftParent {
     @Override
     public void destroy() {
 	subscription.unsubscribe();
+	releaseMakewindow();
 	box.destroy();
 	super.destroy();
+    }
+    
+    /* The server's Makewindow is adopted as our child (setMakewindow), but
+     * it is a server-owned widget: destroying this window with it attached
+     * unmaps its id locally while the server is still sending it messages
+     * ("use" for each input consumed mid-craft), and the next one throws
+     * "Uimsg to non-existent widget" out of the command queue. Hand it back
+     * to GameUI hidden instead, so it lives until the server's own dstwdg. */
+    private void releaseMakewindow() {
+	Widget mk = makewnd;
+	if(mk == null)
+	    return;
+	makewnd = null;
+	if(mk.parent != this)
+	    return;
+	mk.unlink();
+	mk.parent = null;
+	GameUI gui = (ui != null) ? ui.gui : null;
+	if(gui != null) {
+	    gui.add(mk);
+	    mk.hide();
+	}
     }
     
     private void init() {
@@ -290,7 +313,7 @@ public class CraftDBWnd extends WindowX implements ICraftParent {
     public void close() {
 	if(makewnd != null) {
 	    makewnd.wdgmsg("close");
-	    makewnd = null;
+	    releaseMakewindow();
 	}
 	ui.destroy(this);
 	ui.gui.craftwnd = null;
