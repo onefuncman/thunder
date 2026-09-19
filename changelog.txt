@@ -1,3 +1,9 @@
+$size[14]{$u{update on 19.09.2026:}
+* Stack all now keeps item qualities as close together as possible, reorganizes existing stacks, and sorts the finished container into a compact layout. Shift-click the Stack button to merge loose items without reorganizing or sorting. Non-stackable liquid containers are ignored, and failed merges stop instead of repeatedly picking items up and putting them down.
+* Large mixed cupboards no longer test every possible pair of full stacks, and stacks already separated into sensible quality bands are left intact on later runs.
+* Full cupboards now reorganize qualities in place by exchanging individual stack contents through one free inventory square. Stack capacity is remembered after the first server rejection, and shorter event-driven waits make large cupboards finish faster.
+* Fixed Stack all treating an item temporarily held on the cursor as a successful merge, which caused endless pick-up/drop retries. Quality organization now executes closed move cycles and stops immediately if a completed plan does not improve the result.
+`
 $size[14]{$u{update on 18.09.2026:}
 * Fixed a crash when closing the crafting window while a craft was still in progress: the server's recipe widget was being discarded locally while the server was still sending it updates.
 * Fixed a crash when opening the village window if another player's client had set a kin-group number outside the standard 8 colours. Such members now draw in the ungrouped (white) colour instead of crashing; the kin selector still offers the 8 standard colours.
@@ -6,10 +12,6 @@ $size[14]{$u{update on 18.09.2026:}
 `
 $size[14]{$u{update on 17.09.2026:}
 * Fixed a crash when starting to place an object (build/plant/set-down) whose placement preview carries overlays: the overlays were being attached on a second loader thread at the same moment the preview was added to the scene. Placement overlays are now attached before the preview is shown, and the overlay list itself tolerates concurrent readers.
-* Stack all now keeps item qualities as close together as possible, reorganizes existing stacks, and sorts the finished container into a compact layout. Shift-click the Stack button to merge loose items without reorganizing or sorting. Non-stackable liquid containers are ignored, and failed merges stop instead of repeatedly picking items up and putting them down.
-* Large mixed cupboards no longer test every possible pair of full stacks, and stacks already separated into sensible quality bands are left intact on later runs.
-* Full cupboards now reorganize qualities in place by exchanging individual stack contents through one free inventory square. Stack capacity is remembered after the first server rejection, and shorter event-driven waits make large cupboards finish faster.
-* Fixed Stack all treating an item temporarily held on the cursor as a successful merge, which caused endless pick-up/drop retries. Quality organization now executes closed move cycles and stops immediately if a completed plan does not improve the result.
 `
 $size[14]{$u{update on 15.09.2026:}
 * Fixed a rare crash in the object tick when a search or cattle-roster highlight was added to or removed from a creature at the same moment its render state was being rebuilt.
