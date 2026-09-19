@@ -287,15 +287,19 @@ public class InvHelper {
     private static class BeltItem extends ContainedItem {
 	
 	private final WItem belt;
+	private final Widget parent;
+	private final Coord c;
 	
 	BeltItem(WItem item, WItem belt) {
 	    super(item);
 	    this.belt = belt;
+	    this.parent = item.parent;
+	    this.c = item.c.sub(1, 1).div(Inventory.sqsz);
 	}
 	
 	@Override
 	public boolean containerDisposed() {
-	    return belt.disposed();
+	    return belt.disposed() || parent == null || parent.disposed();
 	}
 	
 	@Override
@@ -305,7 +309,7 @@ public class InvHelper {
 	
 	@Override
 	public void putBack() {
-	    belt.itemact(0);
+	    if(parent != null && !parent.disposed()) parent.wdgmsg("drop", c);
 	}
     }
     

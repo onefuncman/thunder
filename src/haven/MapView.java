@@ -3039,6 +3039,29 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	}
     }
     
+    /** True once the server has supplied a live placement preview. */
+    public boolean isPlacing() {
+	Loader.Future<Plob> pending = placing;
+	if(pending == null || !pending.done()) return false;
+	try {return pending.get() != null;}
+	catch(RuntimeException e) {return false;}
+    }
+
+    /** Removes a placement preview while stopping or recovering from failure. */
+    public void cancelPlacement() {
+	Loader.Future<Plob> pending = placing;
+	if(pending != null) {
+	    if(!pending.cancel()) {
+		Plob preview = pending.get();
+		synchronized(preview) {
+		    preview.slot.remove();
+		    preview.removed();
+		}
+	    }
+	    placing = null;
+	}
+    }
+
     public void click(Coord2d c, int button) {
 	click(c, button, ui.mc, c.floor(posres), button, ui.modflags());
     }

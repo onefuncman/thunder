@@ -25,6 +25,7 @@ public enum Action {
     TOGGLE_STUDY(GameUI::toggleStudy, "Toggle study window"),
     FILTER(GameUI::toggleFilter, "Show item filter"),
     SEARCH_GOBS(GameUI::toggleGobSearch, "Search gobs by resource ID", "Opens a window that highlights gobs in render distance whose resource ID contains the entered substring."),
+    CELLAR_DIGGER(gui -> thunder.cellar.CellarDiggerWnd.toggle(gui), "Cellar Digger", "Excavate a cellar, chip each spawned boulder, drop the stone or ore, and enter when complete."),
     SORT_INVENTORY(InventorySorter::sortAll, "Sort all opened inventories"),
     TOGGLE_GOB_INFO(CFG.DISPLAY_GOB_INFO, "Display info", "Display crop/tree growth and object health overlay."),
     TOGGLE_GOB_HITBOX(Hitbox::toggle, "Display hitboxes"),
