@@ -392,7 +392,7 @@ public class MapWnd extends WindowX implements Console.Directory {
 	}
 
 	public void mark(Location loc, boolean onmap) {
-	    Marker nm = new PMarker(file, loc.seg.id, loc.tc, "New marker", BuddyWnd.gc[new Random().nextInt(BuddyWnd.gc.length)], onmap);
+	    Marker nm = new PMarker(file, loc.seg.id, loc.tc, "New marker", BuddyWnd.gc[new Random().nextInt(BuddyWnd.ngroups)], onmap);
 	    file.add(nm);
 	    focus(nm);
 	}
@@ -414,7 +414,7 @@ public class MapWnd extends WindowX implements Console.Directory {
 		    Gob gob = (inf != null) ? Gob.from(inf.ci) : null;
 		    if(gob != null) {
 			Location loc = new Location(sloc.seg, sloc.tc.add(gob.rc.floor(tilesz)));
-			Marker nm = new PMarker(file, loc.seg.id, loc.tc, gob.tooltip(), BuddyWnd.gc[new Random().nextInt(BuddyWnd.gc.length)], false);
+			Marker nm = new PMarker(file, loc.seg.id, loc.tc, gob.tooltip(), BuddyWnd.gc[new Random().nextInt(BuddyWnd.ngroups)], false);
 			file.add(nm);
 			focus(nm);
 			if(ui.modctrl) {
