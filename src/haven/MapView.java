@@ -3038,7 +3038,50 @@ public class MapView extends PView implements DTarget, Console.Directory, Widget
 	    click(mc, clickb, args);
 	}
     }
-    
+
+    /** Sends the normal held-item action at an explicit world point. */
+    public boolean itemactAt(Coord2d world, int modflags) {
+	if(world == null) return false;
+	Coord3f screen;
+	try {
+	    screen = screenxf(glob.map.getzp(world));
+	} catch(RuntimeException e) {
+	    screen = screenxf(world);
+	}
+	if(screen == null) return false;
+	wdgmsg("itemact", Coord.of(Math.round(screen.x), Math.round(screen.y)),
+	    world.floor(posres), modflags);
+	return true;
+    }
+
+    /** True once the server has supplied a live placement preview. */
+    public boolean isPlacing() {
+	Loader.Future<Plob> pending = placing;
+	if(pending == null || !pending.done()) return false;
+	try {return pending.get() != null;}
+	catch(RuntimeException e) {return false;}
+    }
+
+    /** Commits the live placement preview at an exact position and free angle. */
+    public boolean warpAndCommitPlacementExact(Coord2d world, double angle,
+	                                        int button, int modflags) {
+	Loader.Future<Plob> pending = placing;
+	if(pending == null || !pending.done() || world == null) return false;
+	Plob plob;
+	try {plob = pending.get();}
+	catch(RuntimeException e) {return false;}
+	if(plob == null) return false;
+	int fineFlags = modflags | UI.MOD_SHIFT;
+	plob.forceFine = true;
+	plob.adjust.adjust(plob, world.floor(posres), world, fineFlags);
+	plob.move(world, Utils.cangle(angle));
+	plob.lastmc = world.floor(posres);
+	wdgmsg("place", plob.rc.floor(posres),
+	    (int)Math.round(plob.a * 32768 / Math.PI), button, fineFlags);
+	if(ui != null && ui.gui != null) ui.gui.pathQueue.start(plob.rc);
+	return true;
+    }
+
     public void click(Coord2d c, int button) {
 	click(c, button, ui.mc, c.floor(posres), button, ui.modflags());
     }

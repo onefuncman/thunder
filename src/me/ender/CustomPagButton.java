@@ -25,7 +25,7 @@ public class CustomPagButton extends MenuGrid.PagButton {
 	    img_off2 = res.layer(Resource.imgc, 1);
 	}
     }
-    
+
     @Override
     public void drawmain(GOut g, GSprite spr) {
 	super.drawmain(g, spr);
