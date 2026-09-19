@@ -73,11 +73,11 @@ public class InventorySorter implements Defer.Callable<Void> {
 	}
     }
     
-    private static boolean invalidCursor(UI ui) {
+    static boolean invalidCursor(UI ui) {
 	if(ui.isDefaultCursor()) {
 	    return false;
 	}
-	ui.message("Need to have default cursor active to sort inventory!", GameUI.MsgType.ERROR);
+	ui.message("Need to have default cursor active!", GameUI.MsgType.ERROR);
 	return true;
     }
     

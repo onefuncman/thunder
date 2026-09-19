@@ -94,6 +94,8 @@ public class KeyBinder {
 	add(KeyEvent.VK_F, ALT,   FILTER);
 	add(KeyEvent.VK_F, CTRL,  SEARCH_GOBS);
 	add(SORT_INVENTORY);
+	add(STACK_INVENTORIES);
+	add(UNSTACK_INVENTORIES);
 	add(TOGGLE_INSPECT);
 	add(TOGGLE_HIDE_TREES);
 	add(KeyEvent.VK_I, ALT,   TOGGLE_GOB_INFO);
