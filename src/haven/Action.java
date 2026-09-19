@@ -25,6 +25,7 @@ public enum Action {
     TOGGLE_STUDY(GameUI::toggleStudy, "Toggle study window"),
     FILTER(GameUI::toggleFilter, "Show item filter"),
     SEARCH_GOBS(GameUI::toggleGobSearch, "Search gobs by resource ID", "Opens a window that highlights gobs in render distance whose resource ID contains the entered substring."),
+    RIVER_MUSSELER(gui -> thunder.MusselBotWnd.toggle(gui), "River Musseler", "Plan a long saved-map water route, follow it by boat, and collect visible River Pearl Mussels."),
     SORT_INVENTORY(InventorySorter::sortAll, "Sort all opened inventories"),
     TOGGLE_GOB_INFO(CFG.DISPLAY_GOB_INFO, "Display info", "Display crop/tree growth and object health overlay."),
     TOGGLE_GOB_HITBOX(Hitbox::toggle, "Display hitboxes"),

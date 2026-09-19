@@ -116,27 +116,167 @@ public class Hitbox extends SlottedNode implements Rendered {
 	}
     }
     
-    private boolean passable() {
+    public boolean passable() {
+	return passable(gob);
+    }
+
+    public static boolean passable(Gob gob) {
 	try {
 	    String name = gob.resid();
 	    if(name == null) {return false;}
 	    ResDrawable rd = (gob.drawable instanceof ResDrawable) ? (ResDrawable) gob.drawable : null;
-	    
 	    if(rd == null) {return false;}
 	    int state = gob.sdt();
-	    if(gob.is(GobTag.GATE)) {//gates
-		if(state != 1) {return false;}// gate is not open 
-		return !gob.isVisitorGate() // not visitor gate or not in combat 
+	    if(gob.is(GobTag.GATE)) {
+		if(state != 1) {return false;}
+		return !gob.isVisitorGate()
 		    || !gob.contextopt(GameUI.class).map(GameUI::isInCombat).orElse(false);
 	    } else if(name.contains("/dng/") && (name.endsWith("door") || name.endsWith("gate"))) {
 		return (state & 1) != 0;
-	    } else if(name.endsWith("/pow[hearth]")) {//hearth fire
+	    } else if(name.endsWith("/pow[hearth]")) {
 		return true;
 	    } else if(name.equals("gfx/terobjs/arch/cellardoor") || name.equals("gfx/terobjs/fishingnet")) {
 		return true;
 	    }
 	} catch (Loading ignored) {}
 	return false;
+    }
+
+    public static List<Coord2d[]> worldPolygons(Gob gob) {
+	return worldPolygons(gob, false);
+    }
+
+    public static List<Coord2d[]> worldPolygons(Gob gob, boolean includeBuild) {
+	return collectPolygons(gob, includeBuild, true, true, false);
+    }
+
+    public static List<Coord2d[]> movementPolygons(Gob gob) {
+	return collectPolygons(gob, false, true, true, true);
+    }
+
+    public static List<Coord2d[]> obstaclePolygons(Gob gob) {
+	return collectPolygons(gob, false, false, true, false);
+    }
+
+    public static List<Coord2d[]> placementPolygons(Gob gob) {
+	return collectPolygons(gob, false, true, false, false);
+    }
+
+    public static List<Coord2d[]> selectMovementLayers(List<Coord2d[]> neg, List<Coord2d[]> obst) {
+	if(obst != null && !obst.isEmpty())
+	    return obst;
+	return neg == null ? Collections.emptyList() : neg;
+    }
+
+    private static List<Coord2d[]> collectPolygons(Gob gob, boolean includeBuild, boolean includeNeg, boolean includeObst, boolean movementFallback) {
+	if(gob == null)
+	    return Collections.emptyList();
+	Resource res = gob.getres();
+	if(res == null)
+	    throw new Loading();
+	Set<Resource> seen = new LinkedHashSet<>();
+	collectResources(fix(gob, res), seen);
+	try {
+	    Resource drawn = getResource(gob);
+	    if(drawn != null)
+		collectResources(drawn, seen);
+	} catch(Loading l) {}
+	if(gob.drawable instanceof ResDrawable) {
+	    Sprite spr = ((ResDrawable)gob.drawable).spr;
+	    if(spr != null && spr.res != null)
+		collectResources(spr.res, seen);
+	}
+	addOverlayResources(gob, seen);
+	double cs = Math.cos(gob.a);
+	double sn = Math.sin(gob.a);
+	List<Coord2d[]> neg = new ArrayList<>();
+	List<Coord2d[]> obst = new ArrayList<>();
+	for(Resource src : seen)
+	    addLayers(src, gob, cs, sn, includeBuild, includeNeg, includeObst, neg, obst);
+	if(movementFallback)
+	    return selectMovementLayers(neg, obst);
+	List<Coord2d[]> ret = new ArrayList<>();
+	if(includeNeg)
+	    ret.addAll(neg);
+	if(includeObst)
+	    ret.addAll(obst);
+	return ret;
+    }
+
+    private static void collectResources(Resource res, Set<Resource> out) {
+	if(res == null || !out.add(res))
+	    return;
+	Collection<RenderLink.Res> links = res.layers(RenderLink.Res.class);
+	if(links == null)
+	    return;
+	for(RenderLink.Res link : links) {
+	    try {
+		if(link.l instanceof RenderLink.MeshMat)
+		    collectResources(((RenderLink.MeshMat)link.l).mesh.get(), out);
+		else if(link.l instanceof RenderLink.Collect)
+		    collectResources(((RenderLink.Collect)link.l).from.get(), out);
+		else if(link.l instanceof RenderLink.ResSprite)
+		    collectResources(((RenderLink.ResSprite)link.l).res.get(), out);
+	    } catch(Loading l) {}
+	}
+    }
+
+    private static void addOverlayResources(Gob gob, Set<Resource> out) {
+	List<Gob.Overlay> snapshot;
+	synchronized(gob.ols) {
+	    snapshot = new ArrayList<>(gob.ols);
+	}
+	for(Gob.Overlay ol : snapshot) {
+	    try {
+		if(ol.spr != null && ol.spr.res != null)
+		    collectResources(ol.spr.res, out);
+		else if(ol.sm instanceof Sprite.Mill.FromRes)
+		    collectResources(((Sprite.Mill.FromRes)ol.sm).res.get(), out);
+	    } catch(Loading l) {}
+	}
+    }
+
+    private static void addLayers(Resource res, Gob gob, double cs, double sn, boolean includeBuild, boolean includeNeg, boolean includeObst, List<Coord2d[]> neg, List<Coord2d[]> obst) {
+	if(res == null)
+	    return;
+	if(includeNeg) {
+	    Collection<Resource.Neg> negs = res.layers(Resource.Neg.class);
+	    if(negs != null) {
+		for(Resource.Neg n : negs) {
+		    Coord2d[] box = {
+			Coord2d.of(n.ac.x, -n.ac.y),
+			Coord2d.of(n.bc.x, -n.ac.y),
+			Coord2d.of(n.bc.x, -n.bc.y),
+			Coord2d.of(n.ac.x, -n.bc.y)
+		    };
+		    neg.add(toWorld(gob, box, cs, sn));
+		}
+	    }
+	}
+	if(includeObst) {
+	    Collection<Resource.Obstacle> obstacles = res.layers(Resource.Obstacle.class);
+	    if(obstacles != null) {
+		for(Resource.Obstacle obstacle : obstacles) {
+		    if(includeBuild || !"build".equals(obstacle.id)) {
+			for(Coord2d[] polygon : obstacle.p) {
+			    Coord2d[] local = new Coord2d[polygon.length];
+			    for(int i = 0; i < polygon.length; i++)
+				local[i] = Coord2d.of(polygon[i].x, -polygon[i].y);
+			    obst.add(toWorld(gob, local, cs, sn));
+			}
+		    }
+		}
+	    }
+	}
+    }
+
+    private static Coord2d[] toWorld(Gob gob, Coord2d[] local, double cs, double sn) {
+	Coord2d[] world = new Coord2d[local.length];
+	for(int i = 0; i < local.length; i++) {
+	    Coord2d p = local[i];
+	    world[i] = Coord2d.of(gob.rc.x + p.x * cs - p.y * sn, gob.rc.y + p.x * sn + p.y * cs);
+	}
+	return world;
     }
     
     private static VertexArray getMesh(Gob gob) {

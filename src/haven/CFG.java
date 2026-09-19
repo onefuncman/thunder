@@ -240,6 +240,8 @@ public class CFG<T> {
     public static final CFG<Boolean> DEBUG_TILE_QUALITY = new CFG<>("debug.tile_quality", false);
     public static final CFG<Boolean> DEBUG_WARN = new CFG<>("debug.warn", false);
     public static final CFG<Boolean> DEBUG_PLOB_SNAP = new CFG<>("debug.plob_snap", false);
+    public static final CFG<Boolean> DEBUG_PATHFIND = new CFG<>("debug.pathfind", false);
+    public static final CFG<Boolean> MUSSEL_ROUTE_OVERLAY = new CFG<>("debug.mussel_route_overlay", true);
 
     public static final CFG<Integer> ANIM_FRAME_SKIP = new CFG<>("perf.anim_frame_skip", 0);
     public static final CFG<Double> GOB_INFO_TICK_INTERVAL = new CFG<>("perf.gob_info_tick_interval", 0.25, new com.google.gson.reflect.TypeToken<Double>(){});

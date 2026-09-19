@@ -45,6 +45,7 @@ import me.ender.ClientUtils;
 import me.ender.QuestCondition;
 import me.ender.gob.KinInfo;
 import me.ender.minimap.*;
+import thunder.MusselRouteOverlay;
 import haven.MapFile.TileInfo;
 
 import static haven.MCache.cmaps;
@@ -371,6 +372,14 @@ public class MiniMap extends Widget {
 	if((dloc == null) || (dloc.seg != loc.seg))
 	    return(null);
 	return(l2dscale(loc.tc.sub(dloc.tc)).add(sz.div(2)));
+    }
+
+    /** Converts one saved-map tile to this map widget's current screen position. */
+    public Coord savedTileToScreen(long segment, Coord tile) {
+	Location dloc = this.dloc;
+	if((dloc == null) || (tile == null) || (dloc.seg.id != segment))
+	    return(null);
+	return(l2dscale(tile.sub(dloc.tc)).add(sz.div(2)));
     }
 
     public Location xlate(Coord sc) {
@@ -1150,6 +1159,7 @@ public class MiniMap extends Widget {
     
     public void drawparts(GOut g){
 	drawmap(g);
+	MusselRouteOverlay.paintMiniMap(g, this);
 	drawmarkers(g);
 	boolean playerSegment = (sessloc != null) && ((curloc == null) || (sessloc.seg.id == curloc.seg.id));
 	if(zoomlevel <= 2 && CFG.MMAP_GRID.get()) {drawgrid(g);}
