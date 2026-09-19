@@ -45,6 +45,19 @@ public class Actions {
 	    (target, bot) -> Targets.gob(target).waitRemoval()
 	).start(gui.ui);
     }
+
+    /** Runs the native Auto-pick Stuff interaction inside an existing bot. */
+    public static boolean pickupTarget(ITarget target, Bot bot, long timeoutMs) throws InterruptedException {
+	if(target == null || bot == null) return false;
+	if(target.disposed()) return true;
+	target.rclick_shift(bot);
+	long deadline = System.currentTimeMillis() + Math.max(0L, timeoutMs);
+	while(!target.disposed() && System.currentTimeMillis() < deadline) {
+	    bot.checkCancelled();
+	    Thread.sleep(50L);
+	}
+	return target.disposed();
+    }
     
     public static void pickup(GameUI gui) {
 	pickup(gui, gobIs(GobTag.PICKUP), false);

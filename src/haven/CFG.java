@@ -70,6 +70,13 @@ public class CFG<T> {
     public static final CFG<Boolean> DECAL_SHIFT_PICKUP = new CFG<>("general.decal_shift_pickup", true);
     public static final CFG<Boolean> AUTO_PICK_ONLY_RADAR = new CFG<>("general.auto_pick_radar", true);
     public static final CFG<Integer> AUTO_PICK_RADIUS = new CFG<>("general.auto_pick_radius", 55);
+    public static final CFG<Set<String>> DIRECTIONAL_FORAGER_WHITELIST = new CFG<>(
+        "automation.directional_forager.whitelist", new HashSet<>(), new TypeToken<Set<String>>(){}
+    );
+    public static final CFG<Set<String>> DIRECTIONAL_FORAGER_DISCOVERED = new CFG<>(
+        "automation.directional_forager.discovered", new HashSet<>(), new TypeToken<Set<String>>(){}
+    );
+    public static final CFG<Boolean> DIRECTIONAL_FORAGER_CAVE_MODE = new CFG<>("automation.directional_forager.cave_mode", false);
     public static final CFG<Boolean> AUTO_DROP_RESPECT_FILTER = new CFG<>("general.auto_drop.filter", true);
     public static final CFG<Boolean> AUTO_DROP_PARASITES = new CFG<>("general.auto_drop_parasites", false);
     public static final CFG<Boolean> PRESERVE_SYMBEL = new CFG<>("general.preserve_symbel", true);
@@ -240,6 +247,8 @@ public class CFG<T> {
     public static final CFG<Boolean> DEBUG_TILE_QUALITY = new CFG<>("debug.tile_quality", false);
     public static final CFG<Boolean> DEBUG_WARN = new CFG<>("debug.warn", false);
     public static final CFG<Boolean> DEBUG_PLOB_SNAP = new CFG<>("debug.plob_snap", false);
+    public static final CFG<Boolean> DEBUG_PATHFIND = new CFG<>("debug.pathfind", false);
+    public static final CFG<Boolean> MUSSEL_ROUTE_OVERLAY = new CFG<>("debug.mussel_route_overlay", true);
 
     public static final CFG<Integer> ANIM_FRAME_SKIP = new CFG<>("perf.anim_frame_skip", 0);
     public static final CFG<Double> GOB_INFO_TICK_INTERVAL = new CFG<>("perf.gob_info_tick_interval", 0.25, new com.google.gson.reflect.TypeToken<Double>(){});

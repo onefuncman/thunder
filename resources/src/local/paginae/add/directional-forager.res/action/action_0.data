@@ -1,0 +1,17 @@
+#ABUTTON LAYER FOR RES local/paginae/add/directional-forager.res
+#String pr
+paginae/act/add
+#uint16 pver
+2
+#String name
+Directional Forager
+#String preq
+
+#uint16 hk
+0
+#uint16 ad length
+2
+#String ad[0]
+@
+#String ad[1]
+directional-forager
