@@ -74,6 +74,7 @@ Per-feature design notes. Check the relevant file before reading source for an e
 - [docs/milking-assistant.md](docs/milking-assistant.md) — sfx-driven cattle deselect after milking; movement-probe for no-milk rejection
 - [docs/plob-snap-design.md](docs/plob-snap-design.md) — placeable-object snap geometry
 - [docs/tile-quality-tracker.md](docs/tile-quality-tracker.md) — per-tile quality observations for mining/digging/water
+- [docs/ui-land-adoption.md](docs/ui-land-adoption.md) — pinned local copy of the claim window (`ui/land`) for the 255-slot kin-group permission table
 - [docs/upstream-sync.md](docs/upstream-sync.md) — log of kami merges (which commits were no-op duplicates vs intentionally skipped)
 
 ## Remotes & Upstream Strategy

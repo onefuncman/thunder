@@ -63,34 +63,28 @@ public class BuddyWnd extends Widget implements Iterable<BuddyWnd.Buddy> {
 	Group.Orange.col,
     };
     public static final int ngroups = basegc.length;
-    /* Kin-group colour table. Entries 0..ngroups-1 are the real kin colours.
-     * Some third-party clients send kin-group numbers past that (extra data
-     * packed into the field; a village member arrived as group 37), and the
-     * server stores and rebroadcasts whatever number was set. Server-sent
-     * resource code such as ui/vlg indexes BuddyWnd.gc[grp] directly, so the
-     * table is padded with derived colours to keep any plausible number in
-     * range. Client code should go through color(), which never throws. */
-    public static final Color[] gc = mkgc(256);
+    /* Kin-group colour table covering the whole group space the server
+     * accepts (0..254). Entries 0..ngroups-1 are the real kin colours; the
+     * rest are the ungrouped colour (white). Third-party clients assign
+     * groups past 8 and the server stores and rebroadcasts whatever number
+     * was set, while server-sent resource code such as ui/vlg and ui/realm
+     * indexes BuddyWnd.gc[grp] bare, so the table itself has to answer for
+     * every group rather than each reader guarding. A group without a colour
+     * of its own draws as ungrouped; the number is what tells them apart.
+     * Client code should go through color(), which never throws. */
+    public static final Color[] gc = mkgc(255);
 
     private static Color[] mkgc(int n) {
 	Color[] ret = new Color[Math.max(n, basegc.length)];
 	System.arraycopy(basegc, 0, ret, 0, basegc.length);
-	for(int i = basegc.length; i < ret.length; i++)
-	    ret[i] = derived(i);
+	Arrays.fill(ret, basegc.length, ret.length, basegc[0]);
 	return(ret);
-    }
-
-    /* Stable, reasonably distinct colour for a group number outside the real
-     * palette: golden-angle hue spread, full brightness. */
-    private static Color derived(int group) {
-	float hue = (float)((Math.floorMod(group, 1 << 20) * 0.618033988749895) % 1.0);
-	return(Color.getHSBColor(hue, 0.8f, 1.0f));
     }
 
     public static Color color(int group) {
 	if((group >= 0) && (group < gc.length))
 	    return(gc[group]);
-	return(derived(group));
+	return(basegc[0]);
     }
     
     public static int defaultGroup = 0;

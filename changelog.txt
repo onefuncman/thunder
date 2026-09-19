@@ -1,6 +1,7 @@
 $size[14]{$u{update on 18.09.2026:}
 * Fixed a crash when closing the crafting window while a craft was still in progress: the server's recipe widget was being discarded locally while the server was still sending it updates.
-* Fixed a crash when opening the village window if another player's client had set a kin-group number outside the standard 8 colours. Such members now get a stable extra colour instead of crashing; the kin selector still offers the 8 standard colours.
+* Fixed a crash when opening the village window if another player's client had set a kin-group number outside the standard 8 colours. Such members now draw in the ungrouped (white) colour instead of crashing; the kin selector still offers the 8 standard colours.
+* Fixed a crash opening a claim window whose permissions had been granted to a kin group outside the standard 8 by another client.
 * Fixed a crash when the cursor left the game window while dragging an area selection (e.g. mining) with the tile tooltip active. Dragging past the window edge now keeps tracking the edge tile, and releasing outside the window finishes the selection instead of leaving it stuck.
 `
 $size[14]{$u{update on 17.09.2026:}
