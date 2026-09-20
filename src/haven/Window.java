@@ -157,10 +157,27 @@ public class Window extends Widget {
 
     protected void initCfg() {
 	if(cfg != null && cfg.c != null) {
-	    if(!skipInitPos) {c = xlate(cfg.c, false);}
+	    if(!skipInitPos) {c = fitToParent(xlate(cfg.c, false));}
 	} else {
 	    updateCfg();
 	}
+    }
+
+    /* A position remembered in windows.json may lie outside the current
+     * client area (the client was resized, or moved to a smaller screen),
+     * which leaves the window open but invisible. Keep at least a grab
+     * margin of it inside the parent, like GameUI.fitwdg does for its own
+     * windows. */
+    private static final int fitmarg = UI.scale(100);
+    protected Coord fitToParent(Coord c) {
+	if(parent == null || parent.sz == null || parent.sz.x <= 0 || parent.sz.y <= 0)
+	    return(c);
+	Coord ret = new Coord(c);
+	ret.x = Math.max(ret.x, Math.min(0, fitmarg - sz.x));
+	ret.y = Math.max(ret.y, Math.min(0, fitmarg - sz.y));
+	ret.x = Math.min(ret.x, parent.sz.x - Math.min(fitmarg, sz.x));
+	ret.y = Math.min(ret.y, parent.sz.y - Math.min(fitmarg, sz.y));
+	return(ret);
     }
 
     protected void updateCfg(){
@@ -726,8 +743,10 @@ public class Window extends Widget {
 	    super.show();
 	    return;
 	}
-	if(!visible)
+	if(!visible) {
+	    c = fitToParent(c);
 	    super.show();
+	}
 	if(animst == null) {
 	    anim = trans.show(this, null);
 	    animst = "show";
