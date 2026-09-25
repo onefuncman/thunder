@@ -1,4 +1,5 @@
-$size[14]{$u{update on 19.09.2026:}
+$size[14]{$u{update on 25.09.2026:}
+* Updated to the latest game client code from loftar (rendering stats, audio and platform improvements).
 * Stack all now keeps item qualities as close together as possible, reorganizes existing stacks, and sorts the finished container into a compact layout. Shift-click the Stack button to merge loose items without reorganizing or sorting. Non-stackable liquid containers are ignored, and failed merges stop instead of repeatedly picking items up and putting them down.
 * Large mixed cupboards no longer test every possible pair of full stacks, and stacks already separated into sensible quality bands are left intact on later runs.
 * Full cupboards now reorganize qualities in place by exchanging individual stack contents through one free inventory square. Stack capacity is remembered after the first server rejection, and shorter event-driven waits make large cupboards finish faster.
