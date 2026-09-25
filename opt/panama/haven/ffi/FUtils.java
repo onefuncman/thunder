@@ -127,6 +127,31 @@ public class FUtils {
 	    return(ABI.ld.upcallStub(h, FunctionDescriptor.of(rtype, ptypes), alloc));
     }
 
+    public static <T> T upcallwrap(Supplier<T> task, T eret) {
+	try {
+	    return(task.get());
+	} catch(Throwable t) {
+	    Thread.UncaughtExceptionHandler h = Thread.currentThread().getUncaughtExceptionHandler();
+	    if(h == null)
+		new Warning(t, "Uncaught exception in upcall").issue();
+	    else
+		h.uncaughtException(Thread.currentThread(), t);
+	    return(eret);
+	}
+    }
+
+    public static void upcallwrap(Runnable task) {
+	try {
+	    task.run();
+	} catch(Throwable t) {
+	    Thread.UncaughtExceptionHandler h = Thread.currentThread().getUncaughtExceptionHandler();
+	    if(h == null)
+		new Warning(t, "Uncaught exception in upcall").issue();
+	    else
+		h.uncaughtException(Thread.currentThread(), t);
+	}
+    }
+
     public static String fmtstruct(String name, MemorySegment mem, StructLayout desc) {
 	StringBuilder buf = new StringBuilder();
 	buf.append("(" + name + ") {");
@@ -296,8 +321,24 @@ public class FUtils {
 	return(ret);
     }
 
-    private static Collection<Path> libpath = null;
+    public static SymbolLookup loadlib(Path name, Arena arena) {
+	try {
+	    return(SymbolLookup.libraryLookup(name, arena));
+	} catch(IllegalArgumentException e) {
+	    throw(new MissingLibrary(String.valueOf(name), e));
+	}
+    }
+
     public static SymbolLookup loadlib(String name, Arena arena) {
+	try {
+	    return(SymbolLookup.libraryLookup(name, arena));
+	} catch(IllegalArgumentException e) {
+	    throw(new MissingLibrary(name, e));
+	}
+    }
+
+    private static Collection<Path> libpath = null;
+    public static SymbolLookup jloadlib(String name, Arena arena) {
 	Collection<Path> libpath;
 	synchronized(FUtils.class) {
 	    if(FUtils.libpath == null) {
@@ -333,12 +374,32 @@ public class FUtils {
 	if(libpath != null) {
 	    for(Path p : libpath) {
 		try {
-		    return(SymbolLookup.libraryLookup(p.resolve(name), arena));
-		} catch(IllegalArgumentException e) {
-		    e.printStackTrace();
-		}
+		    return(loadlib(p.resolve(name), arena));
+		} catch(MissingLibrary e) {}
 	    }
 	}
-	return(SymbolLookup.libraryLookup(name, arena));
+	return(loadlib(name, arena));
+    }
+
+    @SafeVarargs
+    public static <T> T tryload(String name, Supplier<? extends T>... libraries) {
+	List<MissingLibrary> missing = new ArrayList<>();
+	for(Supplier<? extends T> lib : libraries) {
+	    try {
+		return(lib.get());
+	    } catch(MissingLibrary e) {
+		missing.add(e);
+	    } catch(LibraryLoadException e) {
+		throw(e);
+	    } catch(RuntimeException e) {
+		new Warning(e, "unexpected error when loading " + name).issue();
+		throw(new LibraryLoadException("unexpected error when loading " + name, e));
+	    }
+	}
+	if(missing.size() == 1)
+	    throw(missing.get(0));
+	MissingLibrary e = new MissingLibrary("found no implementation of " + name);
+	missing.forEach(e::addSuppressed);
+	throw(e);
     }
 }

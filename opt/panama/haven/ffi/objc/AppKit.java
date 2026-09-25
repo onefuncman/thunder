@@ -78,12 +78,29 @@ public abstract class AppKit {
     public static final int NSHelpKeyMask       = 1 << 22;
     public static final int NSFunctionKeyMask   = 1 << 23;
 
+    public static final int NSModalResponseCancel = 0;
+    public static final int NSModalResponseOK     = 1;
+
+    public static final int NSDragOperationNone    =  0;
+    public static final int NSDragOperationCopy    =  1;
+    public static final int NSDragOperationLink    =  2;
+    public static final int NSDragOperationGeneric =  4;
+    public static final int NSDragOperationPrivate =  8;
+    public static final int NSDragOperationMove    = 16;
+    public static final int NSDragOperationDelete  = 32;
+
     public interface NSApplication extends Runtime.NSObject {
 	public ID id();
 	public void run();
 	public void finishLaunching();
 	public void setActivationPolicy(int policy);
 	public boolean isActive();
+	public void setApplicationIconImage(NSImage img);
+    }
+
+    public interface NSWorkspace extends Runtime.NSObject {
+	public ID id();
+	public boolean openURL(NSURL url);
     }
 
     public interface NSNotification extends Runtime.NSObject {
@@ -193,6 +210,8 @@ public abstract class AppKit {
 	public void toggleFullScreen();
 	public boolean isKeyWindow();
 	public int occlusionState();
+	public void close();
+	public void setReleasedWhenClosed(boolean value);
     }
 
     public interface WindowDelegate {
@@ -203,6 +222,13 @@ public abstract class AppKit {
 	public default void windowDidDeminiaturize(NSNotification notification) {}
 	public default void windowDidBecomeKey(NSNotification notification) {}
 	public default void windowDidResignKey(NSNotification notification) {}
+    }
+
+    public interface NSDraggingInfo extends Runtime.NSObject {
+	public NSPasteboard draggingPasteboard();
+	public int draggingSequenceNumber();
+	public int draggingSourceOperationMask();
+	public CGPoint draggingLocation();
     }
 
     public interface NSView extends Runtime.NSObject {
@@ -216,9 +242,11 @@ public abstract class AppKit {
 	public CGSize convertSizeFromBacking(CGSize size);
 	public CGPoint convertPointToBacking(CGPoint point);
 	public CGPoint convertPointFromBacking(CGPoint point);
+	public CGPoint convertPointFromView(CGPoint point, NSView view);
 	public void setWantsBestResolutionOpenGLSurface(boolean val);
 	public void addCursorRect(CGRect rect, NSCursor cursor);
 	public void discardCursorRects();
+	public void registerForDraggedTypes(String... types);
     }
 
     public static class NSViewDelegate {
@@ -241,9 +269,44 @@ public abstract class AppKit {
 	public void insertText(String string) {}
 	public void doCommandBySelector(SEL selector) {}
 	public void resetCursorRects() {}
+
+	public int draggingEntered(NSDraggingInfo sender) {return(NSDragOperationNone);}
+	public int draggingUpdated(NSDraggingInfo sender) {return(NSDragOperationNone);}
+	public boolean wantsPeriodicDraggingUpdates() {return(false);}
+	public boolean performDragOperation(NSDraggingInfo sender) {return(false);}
     }
 
+    public interface NSPasteboardItem extends Runtime.NSObject {
+	public List<String> types();
+	public NSData dataForType(String type);
+	public String stringForType(String type);
+	public boolean setData(NSData data, String type);
+    }
+    public abstract NSPasteboardItem NSPasteboardItem();
+
+    public interface NSPasteboard extends Runtime.NSObject {
+	public int clearContents();
+	public boolean writeObjects(NSObject... objects);
+	public List<String> types();
+	public List<NSPasteboardItem> pasteboardItems();
+    }
+    public abstract NSPasteboard NSPasteboard_generalPasteboard();
+
+    public interface NSSavePanel extends Runtime.NSObject {
+	public NSURL URL();
+	public void beginSheetModal(NSWindow window, Consumer<Integer> handler);
+	public void begin(Consumer<Integer> handler);
+	public void setAllowedFileTypes(String... types);
+	public void setAllowsOtherFileTypes(boolean allowed);
+    }
+    public abstract NSSavePanel NSSavePanel();
+
+    public interface NSOpenPanel extends NSSavePanel {
+    }
+    public abstract NSOpenPanel NSOpenPanel();
+
     public abstract NSApplication NSApplication_sharedApplication();
+    public abstract NSWorkspace NSWorkspace_sharedWorkspace();
     public abstract int NSEvent_pressedMouseButtons();
     public abstract List<AppKit.NSScreen> NSScreen_screens();
     public abstract NSWindow NSWindow(CGRect contentRect, int style, int backingStoreType, boolean defer);
@@ -254,7 +317,8 @@ public abstract class AppKit {
 	private static final MemoryLayout C_SEL = Runtime.objc4.C_SEL;
 	private static final MemoryLayout OC_BOOL = Runtime.objc4.OC_BOOL;
 	private static final MemoryLayout NSUInteger = Runtime.objc4.NSUInteger;
-	private final SymbolLookup dylib = SymbolLookup.libraryLookup("/System/Library/Frameworks/AppKit.framework/AppKit", Arena.global());
+	private static final MemoryLayout NSInteger = Runtime.objc4.NSInteger;
+	private final SymbolLookup dylib = loadlib("/System/Library/Frameworks/AppKit.framework/AppKit", Arena.global());
 	private final Arena localarena = Arena.ofAuto();
 	final Runtime rt = Runtime.get();
 	final CoreGraphics cg = CoreGraphics.get();
@@ -267,6 +331,7 @@ public abstract class AppKit {
 	private final SEL sel_finishLaunching = rt.sel_registerName("finishLaunching");
 	private final SEL sel_setActivationPolicy = rt.sel_registerName("setActivationPolicy:");
 	private final SEL sel_isActive = rt.sel_registerName("isActive");
+	private final SEL sel_setApplicationIconImage = rt.sel_registerName("setApplicationIconImage:");
 	class NSApplication implements AppKit.NSApplication {
 	    public final ID id;
 
@@ -283,6 +348,10 @@ public abstract class AppKit {
 	    public boolean isActive() {
 		return(rt.objc_msgSend_bool(id, sel_isActive));
 	    }
+
+	    public void setApplicationIconImage(AppKit.NSImage img) {
+		rt.objc_msgSend_void(id, sel_setApplicationIconImage, (img == null) ? null : img.id());
+	    }
 	}
 
 	private final SEL sel_sharedApplication = rt.sel_registerName("sharedApplication");
@@ -290,78 +359,73 @@ public abstract class AppKit {
 	    return(new NSApplication(rt.objc_msgSend_id(NSApplication.id(), sel_sharedApplication)));
 	}
 
-	private Class WindowDelegateAdapter = null;
-	class WindowDelegateAdapter {
-	    private static final Map<Integer, WindowDelegateAdapter> reg = new HashMap<>();
-	    private static int nextkey = 0;
+	private final Runtime.Class cls_NSWorkspace = rt.objc_getClass("NSWorkspace");
+	private final SEL sel_openURL = rt.sel_registerName("openURL:");
+	class NSWorkspace implements AppKit.NSWorkspace {
+	    public final ID id;
+
+	    public NSWorkspace(ID id) {
+		this.id = id;
+	    }
+
+	    public ID id() {return(id);}
+
+	    public boolean openURL(NSURL url) {
+		return(rt.objc_msgSend_bool(id, sel_openURL, url.id()));
+	    }
+	}
+
+	private final SEL sel_sharedWorkspace = rt.sel_registerName("sharedWorkspace");
+	public NSWorkspace NSWorkspace_sharedWorkspace() {
+	    return(new NSWorkspace(rt.objc_msgSend_id(cls_NSWorkspace.id(), sel_sharedWorkspace)));
+	}
+
+	private final Class cls_WindowDelegateAdapter;
+	{
+	    cls_WindowDelegateAdapter = rt.objc_allocateClassPair(rt.objc_getClass("NSObject"), "IOSYSWindowDelegateAdapter", 0);
+	    rt.class_addIvar(cls_WindowDelegateAdapter, "java", 4, 2, "i");
+	    rt.class_addMethod(cls_WindowDelegateAdapter, rt.sel_registerName("windowShouldClose:"),
+			       supcall(localarena, MethodHandles.lookup(), WindowDelegateAdapter.class, "windowShouldClose", VersionC.this,
+				       OC_BOOL, C_ID, C_SEL, C_ID), "B@:@");
+	    rt.class_addMethod(cls_WindowDelegateAdapter, rt.sel_registerName("windowWillClose:"),
+			       supcall(localarena, MethodHandles.lookup(), WindowDelegateAdapter.class, "windowWillClose", VersionC.this,
+				       null, C_ID, C_SEL, C_ID), "B@:@");
+	    rt.class_addMethod(cls_WindowDelegateAdapter, rt.sel_registerName("windowDidResize:"),
+			       supcall(localarena, MethodHandles.lookup(), WindowDelegateAdapter.class, "windowDidResize", VersionC.this,
+				       null, C_ID, C_SEL, C_ID), "B@:@");
+	    rt.class_addMethod(cls_WindowDelegateAdapter, rt.sel_registerName("windowDidMiniaturize:"),
+			       supcall(localarena, MethodHandles.lookup(), WindowDelegateAdapter.class, "windowDidMiniaturize", VersionC.this,
+				       null, C_ID, C_SEL, C_ID), "B@:@");
+	    rt.class_addMethod(cls_WindowDelegateAdapter, rt.sel_registerName("windowDidDeminiaturize:"),
+			       supcall(localarena, MethodHandles.lookup(), WindowDelegateAdapter.class, "windowDidDeminiaturize", VersionC.this,
+				       null, C_ID, C_SEL, C_ID), "B@:@");
+	    rt.class_addMethod(cls_WindowDelegateAdapter, rt.sel_registerName("windowDidBecomeKey:"),
+			       supcall(localarena, MethodHandles.lookup(), WindowDelegateAdapter.class, "windowDidBecomeKey", VersionC.this,
+				       null, C_ID, C_SEL, C_ID), "B@:@");
+	    rt.class_addMethod(cls_WindowDelegateAdapter, rt.sel_registerName("windowDidResignKey:"),
+			       supcall(localarena, MethodHandles.lookup(), WindowDelegateAdapter.class, "windowDidResignKey", VersionC.this,
+				       null, C_ID, C_SEL, C_ID), "B@:@");
+	    rt.objc_registerClassPair(cls_WindowDelegateAdapter);
+	}
+	private final ObjectTracker<WindowDelegateAdapter> cur_WindowDelegateAdapter = new ObjectTracker<>(cls_WindowDelegateAdapter);
+	class WindowDelegateAdapter implements NSObject {
 	    public final ID id;
 	    public final WindowDelegate callback;
 
 	    public WindowDelegateAdapter(WindowDelegate callback) {
-		synchronized(WindowDelegateAdapter.class) {
-		    if(WindowDelegateAdapter == null) {
-			WindowDelegateAdapter = rt.objc_allocateClassPair(rt.objc_getClass("NSObject"), "IOSYSWindowDelegateAdapter", 0);
-			rt.class_addIvar(WindowDelegateAdapter, "java", 4, 2, "i");
-			rt.class_addMethod(WindowDelegateAdapter, rt.sel_registerName("windowShouldClose:"),
-					   supcall(localarena, MethodHandles.lookup(), WindowDelegateAdapter.class, "windowShouldClose", VersionC.this,
-						   OC_BOOL, C_ID, C_SEL, C_ID), "B@:@");
-			rt.class_addMethod(WindowDelegateAdapter, rt.sel_registerName("windowWillClose:"),
-					   supcall(localarena, MethodHandles.lookup(), WindowDelegateAdapter.class, "windowWillClose", VersionC.this,
-						   null, C_ID, C_SEL, C_ID), "B@:@");
-			rt.class_addMethod(WindowDelegateAdapter, rt.sel_registerName("windowDidResize:"),
-					   supcall(localarena, MethodHandles.lookup(), WindowDelegateAdapter.class, "windowDidResize", VersionC.this,
-						   null, C_ID, C_SEL, C_ID), "B@:@");
-			rt.class_addMethod(WindowDelegateAdapter, rt.sel_registerName("windowDidMiniaturize:"),
-					   supcall(localarena, MethodHandles.lookup(), WindowDelegateAdapter.class, "windowDidMiniaturize", VersionC.this,
-						   null, C_ID, C_SEL, C_ID), "B@:@");
-			rt.class_addMethod(WindowDelegateAdapter, rt.sel_registerName("windowDidDeminiaturize:"),
-					   supcall(localarena, MethodHandles.lookup(), WindowDelegateAdapter.class, "windowDidDeminiaturize", VersionC.this,
-						   null, C_ID, C_SEL, C_ID), "B@:@");
-			rt.class_addMethod(WindowDelegateAdapter, rt.sel_registerName("windowDidBecomeKey:"),
-					   supcall(localarena, MethodHandles.lookup(), WindowDelegateAdapter.class, "windowDidBecomeKey", VersionC.this,
-						   null, C_ID, C_SEL, C_ID), "B@:@");
-			rt.class_addMethod(WindowDelegateAdapter, rt.sel_registerName("windowDidResignKey:"),
-					   supcall(localarena, MethodHandles.lookup(), WindowDelegateAdapter.class, "windowDidResignKey", VersionC.this,
-						   null, C_ID, C_SEL, C_ID), "B@:@");
-			rt.objc_registerClassPair(WindowDelegateAdapter);
-		    }
-		    int key = nextkey++;
-		    ID id = this.id = rt.objc_msgSend_id(rt.objc_msgSend_id(WindowDelegateAdapter.id(), sel_alloc), sel_init);
-		    rt.object_getIvar(id, WindowDelegateAdapter, "java", ValueLayout.JAVA_INT).set(ValueLayout.JAVA_INT, 0, key);
-		    this.callback = callback;
-		    reg.put(key, this);
-		    Runtime rt = VersionC.this.rt;
-		    Finalizer.finalize(this, () -> {
-			synchronized(reg) {
-			    reg.remove(key);
-			    rt.release(id);
-			}
-		    });
-		}
+		this.callback = callback;
+		this.id = rt.objc_msgSend_id(rt.objc_msgSend_id(cls_WindowDelegateAdapter.id(), sel_alloc), sel_init);
+		cur_WindowDelegateAdapter.reg(this);
 	    }
 
+	    public ID id() {return(id);}
+
 	    private static <R> R callback(VersionC ak, MemorySegment objp, Function<WindowDelegate, R> fun, R eret) {
-		try {
-		    Runtime rt = ak.rt;
-		    ID obj = rt.id(objp);
-		    int key = rt.object_getIvar(obj, ak.WindowDelegateAdapter, "java", ValueLayout.JAVA_INT).get(ValueLayout.JAVA_INT, 0);
-		    WindowDelegateAdapter java;
-		    synchronized(reg) {
-			java = reg.get(key);
-		    }
-		    return(fun.apply(java.callback));
-		} catch(Throwable t) {
-		    Thread.UncaughtExceptionHandler h = Thread.currentThread().getUncaughtExceptionHandler();
-		    if(h == null)
-			new Warning(t, "Uncaught exception in window delegate").issue();
-		    else
-			h.uncaughtException(Thread.currentThread(), t);
-		    return(eret);
-		}
+		return(ak.cur_WindowDelegateAdapter.<R>wrap(objp, a -> fun.apply(a.callback), eret));
 	    }
 
 	    private static void callback(VersionC ak, MemorySegment objp, Consumer<WindowDelegate> fun) {
-		callback(ak, objp, dlg -> {fun.accept(dlg); return(null);}, null);
+		ak.cur_WindowDelegateAdapter.wrap(objp, a -> fun.accept(a.callback));
 	    }
 
 	    private static byte windowShouldClose(VersionC ak, MemorySegment objp, MemorySegment sel, MemorySegment sender) {
@@ -411,17 +475,15 @@ public abstract class AppKit {
 	class NSBitmapImageRep implements AppKit.NSBitmapImageRep {
 	    public final ID id;
 
-	    public NSBitmapImageRep(ID id, boolean release) {
+	    public NSBitmapImageRep(ID id) {
 		this.id = id;
-		if(release)
-		    rt.gcrelease(this, id);
 	    }
 
 	    public ID id() {return(id);}
 	}
 	private final SEL sel_initWithCGImage = rt.sel_registerName("initWithCGImage:");
 	public NSBitmapImageRep NSBitmapImageRep(CGImage image) {
-	    return(new NSBitmapImageRep(rt.objc_msgSend_id(rt.objc_msgSend_id(cls_NSBitmapImageRep.id(), sel_alloc), sel_initWithCGImage, image.ref()), true));
+	    return(rt.wrap(rt.objc_msgSend_id(rt.objc_msgSend_id(cls_NSBitmapImageRep.id(), sel_alloc), sel_initWithCGImage, image.ref()), NSBitmapImageRep::new, false, true));
 	}
 
 	private final Class cls_NSImage = rt.objc_getClass("NSImage");
@@ -432,10 +494,8 @@ public abstract class AppKit {
 	class NSImage implements AppKit.NSImage {
 	    public final ID id;
 
-	    public NSImage(ID id, boolean release) {
+	    public NSImage(ID id) {
 		this.id = id;
-		if(release)
-		    rt.gcrelease(this, id);
 	    }
 
 	    public ID id() {return(id);}
@@ -446,27 +506,25 @@ public abstract class AppKit {
 		rt.objc_msgSend_void(id, sel_addRepresentation, rep.id());
 	    }
 	    public NSData TIFFRepresentation() {
-		return(fnd.NSData(rt.objc_msgSend_id(id, sel_TIFFRepresentation), true));
+		return(fnd.NSData(rt.objc_msgSend_id(id, sel_TIFFRepresentation), true, true));
 	    }
 	}
 
 	private final SEL sel_initWithSize = rt.sel_registerName("initWithSize:");
 	public NSImage NSImage(CGSize size) {
-	    return(new NSImage(cg.objc_msgSend_id(rt.objc_msgSend_id(cls_NSImage.id(), sel_alloc), sel_initWithSize, size), true));
+	    return(rt.wrap(cg.objc_msgSend_id(rt.objc_msgSend_id(cls_NSImage.id(), sel_alloc), sel_initWithSize, size), NSImage::new, false, true));
 	}
 	private final SEL sel_initWithCGImage_size = rt.sel_registerName("initWithCGImage:size:");
 	public NSImage NSImage(CGImage image, CGSize size) {
-	    return(new NSImage(cg.objc_msgSend_id(rt.objc_msgSend_id(cls_NSImage.id(), sel_alloc), sel_initWithSize, image.ref(), size), true));
+	    return(rt.wrap(cg.objc_msgSend_id(rt.objc_msgSend_id(cls_NSImage.id(), sel_alloc), sel_initWithSize, image.ref(), size), NSImage::new, false, true));
 	}
 
 	private final Class cls_NSCursor = rt.objc_getClass("NSCursor");
 	class NSCursor implements AppKit.NSCursor {
 	    public final ID id;
 
-	    public NSCursor(ID id, boolean release) {
+	    public NSCursor(ID id) {
 		this.id = id;
-		if(release)
-		    rt.gcrelease(this, id);
 	    }
 
 	    public ID id() {return(id);}
@@ -474,7 +532,7 @@ public abstract class AppKit {
 
 	private final SEL sel_initWithImage_hotSpot = rt.sel_registerName("initWithImage:hotSpot:");
 	public NSCursor NSCursor(AppKit.NSImage image, CGPoint hotspot) {
-	    return(new NSCursor(cg.objc_msgSend_id(rt.objc_msgSend_id(cls_NSCursor.id(), sel_alloc), sel_initWithImage_hotSpot, image.id(), hotspot), true));
+	    return(rt.wrap(cg.objc_msgSend_id(rt.objc_msgSend_id(cls_NSCursor.id(), sel_alloc), sel_initWithImage_hotSpot, image.id(), hotspot), NSCursor::new, false, true));
 	}
 
 	private final SEL sel_arrowCursor = rt.sel_registerName("arrowCursor");
@@ -486,15 +544,15 @@ public abstract class AppKit {
 	private final SEL sel_resizeUpCursor = rt.sel_registerName("resizeUpCursor");
 	private final SEL sel_resizeRightCursor = rt.sel_registerName("resizeRightCursor");
 	private final SEL sel_resizeDownCursor = rt.sel_registerName("resizeDownCursor");
-	public NSCursor NSCursor_arrowCursor() {return(new NSCursor(rt.objc_msgSend_id(cls_NSCursor.id(), sel_arrowCursor), false));}
-	public NSCursor NSCursor_IBeamCursor() {return(new NSCursor(rt.objc_msgSend_id(cls_NSCursor.id(), sel_IBeamCursor), false));}
-	public NSCursor NSCursor_crosshairCursor() {return(new NSCursor(rt.objc_msgSend_id(cls_NSCursor.id(), sel_crosshairCursor), false));}
-	public NSCursor NSCursor_closedHandCursor() {return(new NSCursor(rt.objc_msgSend_id(cls_NSCursor.id(), sel_closedHandCursor), false));}
-	public NSCursor NSCursor_pointingHandCursor() {return(new NSCursor(rt.objc_msgSend_id(cls_NSCursor.id(), sel_pointingHandCursor), false));}
-	public NSCursor NSCursor_resizeLeftCursor() {return(new NSCursor(rt.objc_msgSend_id(cls_NSCursor.id(), sel_resizeLeftCursor), false));}
-	public NSCursor NSCursor_resizeUpCursor() {return(new NSCursor(rt.objc_msgSend_id(cls_NSCursor.id(), sel_resizeUpCursor), false));}
-	public NSCursor NSCursor_resizeRightCursor() {return(new NSCursor(rt.objc_msgSend_id(cls_NSCursor.id(), sel_resizeRightCursor), false));}
-	public NSCursor NSCursor_resizeDownCursor() {return(new NSCursor(rt.objc_msgSend_id(cls_NSCursor.id(), sel_resizeDownCursor), false));}
+	public NSCursor NSCursor_arrowCursor() {return(rt.wrap(rt.objc_msgSend_id(cls_NSCursor.id(), sel_arrowCursor), NSCursor::new, false, false));}
+	public NSCursor NSCursor_IBeamCursor() {return(rt.wrap(rt.objc_msgSend_id(cls_NSCursor.id(), sel_IBeamCursor), NSCursor::new, false, false));}
+	public NSCursor NSCursor_crosshairCursor() {return(rt.wrap(rt.objc_msgSend_id(cls_NSCursor.id(), sel_crosshairCursor), NSCursor::new, false, false));}
+	public NSCursor NSCursor_closedHandCursor() {return(rt.wrap(rt.objc_msgSend_id(cls_NSCursor.id(), sel_closedHandCursor), NSCursor::new, false, false));}
+	public NSCursor NSCursor_pointingHandCursor() {return(rt.wrap(rt.objc_msgSend_id(cls_NSCursor.id(), sel_pointingHandCursor), NSCursor::new, false, false));}
+	public NSCursor NSCursor_resizeLeftCursor() {return(rt.wrap(rt.objc_msgSend_id(cls_NSCursor.id(), sel_resizeLeftCursor), NSCursor::new, false, false));}
+	public NSCursor NSCursor_resizeUpCursor() {return(rt.wrap(rt.objc_msgSend_id(cls_NSCursor.id(), sel_resizeUpCursor), NSCursor::new, false, false));}
+	public NSCursor NSCursor_resizeRightCursor() {return(rt.wrap(rt.objc_msgSend_id(cls_NSCursor.id(), sel_resizeRightCursor), NSCursor::new, false, false));}
+	public NSCursor NSCursor_resizeDownCursor() {return(rt.wrap(rt.objc_msgSend_id(cls_NSCursor.id(), sel_resizeDownCursor), NSCursor::new, false, false));}
 
 	private final Class cls_NSEvent = rt.objc_getClass("NSEvent");
 	private final SEL sel_type = rt.sel_registerName("type");
@@ -586,13 +644,13 @@ public abstract class AppKit {
 	public int objc_msgSend_NSUInt(Runtime.ID self, Runtime.SEL sel) {
 	    try {
 		return((int)(long)objc_msgSend_NSUInt.invoke(self.mem(), sel.mem()));
-	    } catch(Throwable e) {throw(new RuntimeException(e));}
+	    } catch(Throwable e) {throw(new InvocationException(e));}
 	}
 	private final MethodHandle objc_msgSend_void_NSUInt = rt.msgtype(null, NSUInteger);
 	public void objc_msgSend_void_NSUInt(Runtime.ID self, Runtime.SEL sel, int arg1) {
 	    try {
 		objc_msgSend_void_NSUInt.invoke(self.mem(), sel.mem(), arg1);
-	    } catch(Throwable e) {throw(new RuntimeException(e));}
+	    } catch(Throwable e) {throw(new InvocationException(e));}
 	}
 
 	private final Runtime.Class cls_NSScreen = rt.objc_getClass("NSScreen");
@@ -604,16 +662,14 @@ public abstract class AppKit {
 	private final SEL sel_minimumRefreshInterval = rt.sel_registerName("minimumRefreshInterval");
 	private final SEL sel_maximumRefreshInterval = rt.sel_registerName("maximumRefreshInterval");
 	private final SEL sel_deviceDescription = rt.sel_registerName("deviceDescription");
-	private final NSString NSDeviceColorSpaceName = fnd.NSString(rt.id(dylib.find("NSDeviceColorSpaceName").get().reinterpret(ADDRESS.byteSize()).get(ADDRESS, 0)));
-	private final NSString NSDeviceResolution = fnd.NSString(rt.id(dylib.find("NSDeviceResolution").get().reinterpret(ADDRESS.byteSize()).get(ADDRESS, 0)));
-	private final NSString NSDeviceSize = fnd.NSString(rt.id(dylib.find("NSDeviceSize").get().reinterpret(ADDRESS.byteSize()).get(ADDRESS, 0)));
+	private final NSString NSDeviceColorSpaceName = fnd.NSString(rt.constobj(dylib, "NSDeviceColorSpaceName"), false, false);
+	private final NSString NSDeviceResolution = fnd.NSString(rt.constobj(dylib, "NSDeviceResolution"), false, false);
+	private final NSString NSDeviceSize = fnd.NSString(rt.constobj(dylib, "NSDeviceSize"), false, false);
 	class NSScreen implements AppKit.NSScreen {
 	    public final ID id;
 
-	    public NSScreen(ID id, boolean release) {
+	    public NSScreen(ID id) {
 		this.id = id;
-		if(release)
-		    rt.gcrelease(this, id);
 	    }
 
 	    public ID id() {return(id);}
@@ -637,28 +693,28 @@ public abstract class AppKit {
 	    public double maximumRefreshInterval() {return(rt.objc_msgSend_double(id, sel_maximumRefreshInterval));}
 
 	    public NSDictionary deviceDescription() {
-		return(fnd.NSDictionary(rt.objc_msgSend_id(id, sel_deviceDescription)));
+		return(fnd.NSDictionary(rt.objc_msgSend_id(id, sel_deviceDescription), true, true));
 	    }
 
 	    public String deviceColorSpaceName() {
 		return(fnd.fromNSString(deviceDescription().valueForKey(NSDeviceColorSpaceName)));
 	    }
 	    public CGSize deviceResolution() {
-		return(fnd.NSValue(deviceDescription().valueForKey(NSDeviceResolution)).sizeValue());
+		return(fnd.NSValue(deviceDescription().valueForKey(NSDeviceResolution), false, false).sizeValue());
 	    }
 	    public CGSize deviceSize() {
-		return(fnd.NSValue(deviceDescription().valueForKey(NSDeviceSize)).sizeValue());
+		return(fnd.NSValue(deviceDescription().valueForKey(NSDeviceSize), false, false).sizeValue());
 	    }
 	    public int screenNumber() {
-		return(fnd.NSNumber(deviceDescription().valueForKey("NSScreenNumber")).intValue());
+		return(fnd.NSNumber(deviceDescription().valueForKey("NSScreenNumber"), false, false).intValue());
 	    }
 	}
 
 	private final SEL sel_screens = rt.sel_registerName("screens");
 	public List<AppKit.NSScreen> NSScreen_screens() {
 	    List<AppKit.NSScreen> ret = new ArrayList<>();
-	    for(ID id : fnd.NSArray(rt.objc_msgSend_id(cls_NSScreen.id(), sel_screens)))
-		ret.add(rt.retain(new NSScreen(id, true)));
+	    for(ID id : fnd.NSArray(rt.objc_msgSend_id(cls_NSScreen.id(), sel_screens), false, false))
+		ret.add(rt.wrap(id, NSScreen::new, true, true));
 	    return(ret);
 	}
 
@@ -688,6 +744,8 @@ public abstract class AppKit {
 	private final SEL sel_toggleFullScreen = rt.sel_registerName("toggleFullScreen:");
 	private final SEL sel_isKeyWindow = rt.sel_registerName("isKeyWindow");
 	private final SEL sel_occlusionState = rt.sel_registerName("occlusionState");
+	private final SEL sel_close = rt.sel_registerName("close");
+	private final SEL sel_setReleasedWhenClosed = rt.sel_registerName("setReleasedWhenClosed:");
 	class NSWindow implements AppKit.NSWindow {
 	    public final ID id;
 
@@ -779,6 +837,12 @@ public abstract class AppKit {
 	    public int occlusionState() {
 		return(rt.objc_msgSend_NSUInt(id, sel_occlusionState));
 	    }
+	    public void close() {
+		rt.objc_msgSend_void(id, sel_close);
+	    }
+	    public void setReleasedWhenClosed(boolean value) {
+		rt.objc_msgSend_void(id, sel_setReleasedWhenClosed, value);
+	    }
 	}
 	private final SEL sel_initWithContentRect_styleMask_backing_defer = rt.sel_registerName("initWithContentRect:styleMask:backing:defer:");
 	private final MethodHandle sendmsg_id_CGRect_int_int_bool = rt.msgtype(C_ID, cg.C_CGRect(), NSUInteger, NSUInteger, OC_BOOL);
@@ -789,103 +853,135 @@ public abstract class AppKit {
 										sel_initWithContentRect_styleMask_backing_defer.mem(),
 										contentRect.mem(), style, backingStoreType, defer ? (byte)1 : (byte)0));
 	    } catch(Throwable t) {
-		throw(new RuntimeException(t));
+		throw(new InvocationException(t));
 	    }
 	    return(new NSWindow(id));
 	}
 
-	private final Class IOSYSView;
+	private final SEL sel_draggingPasteboard = rt.sel_registerName("draggingPasteboard");
+	private final SEL sel_draggingSequenceNumber = rt.sel_registerName("draggingSequenceNumber");
+	private final SEL sel_draggingSourceOperationMask = rt.sel_registerName("draggingSourceOperationMask");
+	private final SEL sel_draggingLocation = rt.sel_registerName("draggingLocation");
+	class NSDraggingInfo implements AppKit.NSDraggingInfo {
+	    public final ID id;
+
+	    public NSDraggingInfo(ID id) {
+		this.id = id;
+	    }
+
+	    public ID id() {return(id);}
+
+	    public NSPasteboard draggingPasteboard() {
+		return(rt.wrap(rt.objc_msgSend_id(id, sel_draggingPasteboard), NSPasteboard::new, true, true));
+	    }
+	    public int draggingSequenceNumber() {
+		return(rt.objc_msgSend_NSUInt(id, sel_draggingSequenceNumber));
+	    }
+	    public int draggingSourceOperationMask() {
+		return(rt.objc_msgSend_NSUInt(id, sel_draggingSourceOperationMask));
+	    }
+	    public CGPoint draggingLocation() {
+		return(cg.objc_msgSend_CGPoint(id, sel_draggingLocation));
+	    }
+	}
+
+	private final Class cls_IOSYSView;
 	{
-	    IOSYSView = rt.objc_allocateClassPair(rt.objc_getClass("NSView"), "IOSYSView", 0);
-	    rt.class_addIvar(IOSYSView, "java", 4, 2, "i");
-	    rt.class_addMethod(IOSYSView, rt.sel_registerName("acceptsFirstResponder"),
+	    cls_IOSYSView = rt.objc_allocateClassPair(rt.objc_getClass("NSView"), "IOSYSView", 0);
+	    rt.class_addProtocol(cls_IOSYSView, rt.objc_getProtocol("NSDraggingDestination"));
+	    rt.class_addIvar(cls_IOSYSView, "java", 4, 2, "i");
+	    rt.class_addMethod(cls_IOSYSView, rt.sel_registerName("acceptsFirstResponder"),
 			       supcall(localarena, MethodHandles.lookup(), IOSYSView.class, "acceptsFirstResponder", this,
 				       OC_BOOL, C_ID, C_SEL), "B@:");
-	    rt.class_addMethod(IOSYSView, rt.sel_registerName("mouseDown:"),
+	    rt.class_addMethod(cls_IOSYSView, rt.sel_registerName("mouseDown:"),
 			       supcall(localarena, MethodHandles.lookup(), IOSYSView.class, "mouseDown", this,
 				       null, C_ID, C_SEL, C_ID), "v@:@");
-	    rt.class_addMethod(IOSYSView, rt.sel_registerName("mouseDragged:"),
+	    rt.class_addMethod(cls_IOSYSView, rt.sel_registerName("mouseDragged:"),
 			       supcall(localarena, MethodHandles.lookup(), IOSYSView.class, "mouseDragged", this,
 				       null, C_ID, C_SEL, C_ID), "v@:@");
-	    rt.class_addMethod(IOSYSView, rt.sel_registerName("mouseUp:"),
+	    rt.class_addMethod(cls_IOSYSView, rt.sel_registerName("mouseUp:"),
 			       supcall(localarena, MethodHandles.lookup(), IOSYSView.class, "mouseUp", this,
 				       null, C_ID, C_SEL, C_ID), "v@:@");
-	    rt.class_addMethod(IOSYSView, rt.sel_registerName("rightMouseDown:"),
+	    rt.class_addMethod(cls_IOSYSView, rt.sel_registerName("rightMouseDown:"),
 			       supcall(localarena, MethodHandles.lookup(), IOSYSView.class, "rightMouseDown", this,
 				       null, C_ID, C_SEL, C_ID), "v@:@");
-	    rt.class_addMethod(IOSYSView, rt.sel_registerName("rightMouseDragged:"),
+	    rt.class_addMethod(cls_IOSYSView, rt.sel_registerName("rightMouseDragged:"),
 			       supcall(localarena, MethodHandles.lookup(), IOSYSView.class, "rightMouseDragged", this,
 				       null, C_ID, C_SEL, C_ID), "v@:@");
-	    rt.class_addMethod(IOSYSView, rt.sel_registerName("rightMouseUp:"),
+	    rt.class_addMethod(cls_IOSYSView, rt.sel_registerName("rightMouseUp:"),
 			       supcall(localarena, MethodHandles.lookup(), IOSYSView.class, "rightMouseUp", this,
 				       null, C_ID, C_SEL, C_ID), "v@:@");
-	    rt.class_addMethod(IOSYSView, rt.sel_registerName("otherMouseDown:"),
+	    rt.class_addMethod(cls_IOSYSView, rt.sel_registerName("otherMouseDown:"),
 			       supcall(localarena, MethodHandles.lookup(), IOSYSView.class, "otherMouseDown", this,
 				       null, C_ID, C_SEL, C_ID), "v@:@");
-	    rt.class_addMethod(IOSYSView, rt.sel_registerName("otherMouseDragged:"),
+	    rt.class_addMethod(cls_IOSYSView, rt.sel_registerName("otherMouseDragged:"),
 			       supcall(localarena, MethodHandles.lookup(), IOSYSView.class, "otherMouseDragged", this,
 				       null, C_ID, C_SEL, C_ID), "v@:@");
-	    rt.class_addMethod(IOSYSView, rt.sel_registerName("otherMouseUp:"),
+	    rt.class_addMethod(cls_IOSYSView, rt.sel_registerName("otherMouseUp:"),
 			       supcall(localarena, MethodHandles.lookup(), IOSYSView.class, "otherMouseUp", this,
 				       null, C_ID, C_SEL, C_ID), "v@:@");
-	    rt.class_addMethod(IOSYSView, rt.sel_registerName("scrollWheel:"),
+	    rt.class_addMethod(cls_IOSYSView, rt.sel_registerName("scrollWheel:"),
 			       supcall(localarena, MethodHandles.lookup(), IOSYSView.class, "scrollWheel", this,
 				       null, C_ID, C_SEL, C_ID), "v@:@");
-	    rt.class_addMethod(IOSYSView, rt.sel_registerName("mouseMoved:"),
+	    rt.class_addMethod(cls_IOSYSView, rt.sel_registerName("mouseMoved:"),
 			       supcall(localarena, MethodHandles.lookup(), IOSYSView.class, "mouseMoved", this,
 				       null, C_ID, C_SEL, C_ID), "v@:@");
-	    rt.class_addMethod(IOSYSView, rt.sel_registerName("mouseEntered:"),
+	    rt.class_addMethod(cls_IOSYSView, rt.sel_registerName("mouseEntered:"),
 			       supcall(localarena, MethodHandles.lookup(), IOSYSView.class, "mouseEntered", this,
 				       null, C_ID, C_SEL, C_ID), "v@:@");
-	    rt.class_addMethod(IOSYSView, rt.sel_registerName("mouseExited:"),
+	    rt.class_addMethod(cls_IOSYSView, rt.sel_registerName("mouseExited:"),
 			       supcall(localarena, MethodHandles.lookup(), IOSYSView.class, "mouseExited", this,
 				       null, C_ID, C_SEL, C_ID), "v@:@");
-	    rt.class_addMethod(IOSYSView, rt.sel_registerName("keyDown:"),
+	    rt.class_addMethod(cls_IOSYSView, rt.sel_registerName("keyDown:"),
 			       supcall(localarena, MethodHandles.lookup(), IOSYSView.class, "keyDown", this,
 				       null, C_ID, C_SEL, C_ID), "v@:@");
-	    rt.class_addMethod(IOSYSView, rt.sel_registerName("keyUp:"),
+	    rt.class_addMethod(cls_IOSYSView, rt.sel_registerName("keyUp:"),
 			       supcall(localarena, MethodHandles.lookup(), IOSYSView.class, "keyUp", this,
 				       null, C_ID, C_SEL, C_ID), "v@:@");
-	    rt.class_addMethod(IOSYSView, rt.sel_registerName("insertText:"),
+	    rt.class_addMethod(cls_IOSYSView, rt.sel_registerName("insertText:"),
 			       supcall(localarena, MethodHandles.lookup(), IOSYSView.class, "insertText", this,
 				       null, C_ID, C_SEL, C_ID), "v@:@");
-	    rt.class_addMethod(IOSYSView, rt.sel_registerName("doCommandBySelector:"),
+	    rt.class_addMethod(cls_IOSYSView, rt.sel_registerName("doCommandBySelector:"),
 			       supcall(localarena, MethodHandles.lookup(), IOSYSView.class, "doCommandBySelector", this,
 				       null, C_ID, C_SEL, C_SEL), "v@::");
-	    rt.class_addMethod(IOSYSView, rt.sel_registerName("resetCursorRects"),
+	    rt.class_addMethod(cls_IOSYSView, rt.sel_registerName("resetCursorRects"),
 			       supcall(localarena, MethodHandles.lookup(), IOSYSView.class, "resetCursorRects", this,
 				       null, C_ID, C_SEL), "v@:");
-	    rt.objc_registerClassPair(IOSYSView);
+
+	    rt.class_addMethod(cls_IOSYSView, rt.sel_registerName("draggingEntered:"),
+			       supcall(localarena, MethodHandles.lookup(), IOSYSView.class, "draggingEntered", this,
+				       NSUInteger, C_ID, C_SEL, C_ID), "l@:@");
+	    rt.class_addMethod(cls_IOSYSView, rt.sel_registerName("draggingUpdated:"),
+			       supcall(localarena, MethodHandles.lookup(), IOSYSView.class, "draggingUpdated", this,
+				       NSUInteger, C_ID, C_SEL, C_ID), "l@:@");
+	    rt.class_addMethod(cls_IOSYSView, rt.sel_registerName("wantsPeriodicDraggingUpdates"),
+			       supcall(localarena, MethodHandles.lookup(), IOSYSView.class, "wantsPeriodicDraggingUpdates", this,
+				       OC_BOOL, C_ID, C_SEL), "b@:");
+	    rt.class_addMethod(cls_IOSYSView, rt.sel_registerName("performDragOperation:"),
+			       supcall(localarena, MethodHandles.lookup(), IOSYSView.class, "performDragOperation", this,
+				       OC_BOOL, C_ID, C_SEL, C_ID), "b@:@");
+	    rt.objc_registerClassPair(cls_IOSYSView);
 	}
+	private final ObjectTracker<IOSYSView> cur_IOSYSView = new ObjectTracker<>(cls_IOSYSView);
 	private final SEL sel_interpretKeyEvents = rt.sel_registerName("interpretKeyEvents:");
 	private final SEL sel_bounds = rt.sel_registerName("bounds");
 	private final SEL sel_convertSizeToBacking = rt.sel_registerName("convertSizeToBacking:");
 	private final SEL sel_convertSizeFromBacking = rt.sel_registerName("convertSizeFromBacking:");
 	private final SEL sel_convertPointToBacking = rt.sel_registerName("convertPointToBacking:");
 	private final SEL sel_convertPointFromBacking = rt.sel_registerName("convertPointFromBacking:");
+	private final SEL sel_convertPoint_fromView = rt.sel_registerName("convertPoint:fromView:");
 	private final SEL sel_setWantsBestResolutionOpenGLSurface = rt.sel_registerName("setWantsBestResolutionOpenGLSurface:");
 	private final SEL sel_addCursorRect_cursor = rt.sel_registerName("addCursorRect:cursor:");
 	private final SEL sel_discardCursorRects = rt.sel_registerName("discardCursorRects");
+	private final SEL sel_registerForDraggedTypes = rt.sel_registerName("registerForDraggedTypes:");
 	class IOSYSView implements NSView {
-	    private static final Map<Integer, IOSYSView> reg = new HashMap<>();
-	    private static int nextkey = 0;
 	    private final ID id;
 	    private final NSViewDelegate dg;
 
 	    IOSYSView(NSViewDelegate dg) {
-		synchronized(IOSYSView.class) {
-		    this.dg = dg;
-		    int key = nextkey++;
-		    ID id = this.id = rt.objc_msgSend_id(IOSYSView.id(), sel_alloc);
-		    reg.put(key, this);
-		    Runtime rt = VersionC.this.rt;
-		    Finalizer.finalize(this, () -> {
-			    synchronized(reg) {
-				reg.remove(key);
-				rt.release(id);
-			    }
-			});
-		}
+		this.dg = dg;
+		this.id = rt.objc_msgSend_id(cls_IOSYSView.id(), sel_alloc);
+		cur_IOSYSView.reg(this);
 	    }
 
 	    public ID id() {
@@ -904,6 +1000,7 @@ public abstract class AppKit {
 	    public CGSize convertSizeFromBacking(CGSize size) {return(cg.objc_msgSend_CGSize(id, sel_convertSizeFromBacking, size));}
 	    public CGPoint convertPointToBacking(CGPoint point) {return(cg.objc_msgSend_CGPoint(id, sel_convertPointToBacking, point));}
 	    public CGPoint convertPointFromBacking(CGPoint point) {return(cg.objc_msgSend_CGPoint(id, sel_convertPointFromBacking, point));}
+	    public CGPoint convertPointFromView(CGPoint point, NSView view) {return(cg.objc_msgSend_CGPoint(id, sel_convertPoint_fromView, point, (view == null) ? null : view.id()));}
 
 	    public void addCursorRect(CGRect rect, AppKit.NSCursor cursor) {
 		cg.objc_msgSend_void(id, sel_addCursorRect_cursor, rect, cursor.id());
@@ -916,28 +1013,20 @@ public abstract class AppKit {
 		rt.objc_msgSend_void(id, sel_setWantsBestResolutionOpenGLSurface, val);
 	    }
 
+	    public void registerForDraggedTypes(String... types) {
+		NSString[] buf = new NSString[types.length];
+		for(int i = 0; i < types.length; i++)
+		    buf[i] = fnd.NSString(types[i]);
+		NSArray ary = fnd.NSArray(buf);
+		rt.objc_msgSend_void(id, sel_registerForDraggedTypes, ary.id());
+	    }
+
 	    private static <R> R callback(VersionC ak, MemorySegment objp, Function<IOSYSView, R> fun, R eret) {
-		try {
-		    Runtime rt = ak.rt;
-		    ID obj = rt.id(objp);
-		    int key = rt.object_getIvar(obj, ak.IOSYSView, "java", ValueLayout.JAVA_INT).get(ValueLayout.JAVA_INT, 0);
-		    IOSYSView java;
-		    synchronized(reg) {
-			java = reg.get(key);
-		    }
-		    return(fun.apply(java));
-		} catch(Throwable t) {
-		    Thread.UncaughtExceptionHandler h = Thread.currentThread().getUncaughtExceptionHandler();
-		    if(h == null)
-			new Warning(t, "Uncaught exception in window delegate").issue();
-		    else
-			h.uncaughtException(Thread.currentThread(), t);
-		    return(eret);
-		}
+		return(ak.cur_IOSYSView.wrap(objp, fun, eret));
 	    }
 
 	    private static void callback(VersionC ak, MemorySegment objp, Consumer<IOSYSView> fun) {
-		callback(ak, objp, view -> {fun.accept(view); return(null);}, null);
+		ak.cur_IOSYSView.wrap(objp, fun);
 	    }
 
 	    private static byte acceptsFirstResponder(VersionC ak, MemorySegment objp, MemorySegment sel) {
@@ -997,6 +1086,19 @@ public abstract class AppKit {
 	    private static void resetCursorRects(VersionC ak, MemorySegment objp, MemorySegment sel) {
 		callback(ak, objp, view -> view.dg.resetCursorRects());
 	    }
+
+	    private static long draggingEntered(VersionC ak, MemorySegment objp, MemorySegment sel, MemorySegment sender) {
+		return(callback(ak, objp, view -> view.dg.draggingEntered(ak.rt.wrap(ak.rt.id(sender), id -> ak.new NSDraggingInfo(id), true, true)), NSDragOperationNone));
+	    }
+	    private static long draggingUpdated(VersionC ak, MemorySegment objp, MemorySegment sel, MemorySegment sender) {
+		return(callback(ak, objp, view -> view.dg.draggingUpdated(ak.rt.wrap(ak.rt.id(sender), id -> ak.new NSDraggingInfo(id), true, true)), NSDragOperationNone));
+	    }
+	    private static byte wantsPeriodicDraggingUpdates(VersionC ak, MemorySegment objp, MemorySegment sel) {
+		return((byte)callback(ak, objp, view -> (byte)(view.dg.wantsPeriodicDraggingUpdates() ? 1 : 0), 0));
+	    }
+	    private static byte performDragOperation(VersionC ak, MemorySegment objp, MemorySegment sel, MemorySegment sender) {
+		return((byte)callback(ak, objp, view -> (byte)(view.dg.performDragOperation(ak.rt.wrap(ak.rt.id(sender), id -> ak.new NSDraggingInfo(id), true, true)) ? 1 : 0), 0));
+	    }
 	}
 
 	private final SEL sel_initWithFrame = rt.sel_registerName("initWithFrame:");
@@ -1006,9 +1108,174 @@ public abstract class AppKit {
 	    try {
 		sendmsg_id_CGRect.invoke(view.id.mem(), sel_initWithFrame.mem(), frameRect.mem());
 	    } catch(Throwable t) {
-		throw(new RuntimeException(t));
+		throw(new InvocationException(t));
 	    }
 	    return(view);
+	}
+
+	private final Class cls_NSPasteboardItem = rt.objc_getClass("NSPasteboardItem");
+	private final SEL sel_types = rt.sel_registerName("types");
+	private final SEL sel_dataForType = rt.sel_registerName("dataForType:");
+	private final SEL sel_stringForType = rt.sel_registerName("stringForType:");
+	private final SEL sel_setData_forType = rt.sel_registerName("setData:forType:");
+	class NSPasteboardItem implements AppKit.NSPasteboardItem {
+	    public final ID id;
+
+	    NSPasteboardItem(ID id) {
+		this.id = id;
+	    }
+
+	    public ID id() {return(id);}
+
+	    public List<String> types() {
+		ID types = rt.objc_msgSend_id(id, sel_types);
+		if(types == null)
+		    return(null);
+		List<String> ret = new ArrayList<>();
+		for(ID typ : fnd.NSArray(types, false, false))
+		    ret.add(fnd.fromNSString(typ));
+		return(ret);
+	    }
+
+	    public NSData dataForType(String type) {
+		return(fnd.NSData(rt.objc_msgSend_id(id, sel_dataForType, fnd.NSString(type).id()), true, true));
+	    }
+
+	    public String stringForType(String type) {
+		return(fnd.fromNSString(rt.objc_msgSend_id(id, sel_stringForType, fnd.NSString(type).id())));
+	    }
+
+	    public boolean setData(NSData data, String type) {
+		return(rt.objc_msgSend_bool(id, sel_setData_forType, data.id(), fnd.NSString(type).id()));
+	    }
+	}
+	public NSPasteboardItem NSPasteboardItem() {
+	    return(rt.wrap(rt.objc_msgSend_id(rt.objc_msgSend_id(cls_NSPasteboardItem.id(), sel_alloc), sel_init), NSPasteboardItem::new, false, true));
+	}
+
+	private final Class cls_NSPasteboard = rt.objc_getClass("NSPasteboard");
+	private final SEL sel_clearContents = rt.sel_registerName("clearContents");
+	private final SEL sel_writeObjects = rt.sel_registerName("writeObjects:");
+	private final SEL sel_pasteboardItems = rt.sel_registerName("pasteboardItems");
+	class NSPasteboard implements AppKit.NSPasteboard {
+	    public final ID id;
+
+	    NSPasteboard(ID id) {
+		this.id = id;
+	    }
+
+	    public ID id() {return(id);}
+
+	    public int clearContents() {
+		return(rt.objc_msgSend_NSUInt(id, sel_clearContents));
+	    }
+
+	    public boolean writeObjects(NSObject... objects) {
+		return(rt.objc_msgSend_bool(id, sel_writeObjects, fnd.NSArray(objects).id()));
+	    }
+
+	    public List<String> types() {
+		ID types = rt.objc_msgSend_id(id, sel_types);
+		if(types == null)
+		    return(null);
+		List<String> ret = new ArrayList<>();
+		for(ID typ : fnd.NSArray(types, false, false))
+		    ret.add(fnd.fromNSString(typ));
+		return(ret);
+	    }
+
+	    public List<AppKit.NSPasteboardItem> pasteboardItems() {
+		ID items = rt.objc_msgSend_id(id, sel_pasteboardItems);
+		if(items == null)
+		    return(null);
+		List<AppKit.NSPasteboardItem> ret = new ArrayList<>();
+		for(ID item : fnd.NSArray(items, false, false))
+		    ret.add(rt.wrap(item, NSPasteboardItem::new, true, true));
+		return(ret);
+	    }
+	}
+
+	private final SEL sel_generalPasteboard = rt.sel_registerName("generalPasteboard");
+	public NSPasteboard NSPasteboard_generalPasteboard() {
+	    return(new NSPasteboard(rt.objc_msgSend_id(cls_NSPasteboard.id(), sel_generalPasteboard)));
+	}
+
+	private static void handlecompletion(Consumer<Integer> handler, MemorySegment blk, long result) {
+	    Runtime.Block.wrap(() -> handler.accept((int)result));
+	}
+	private final BlockDescriptor blk_handlecompletion = rt.blockdesc(slookup(MethodHandles.lookup(), VersionC.class, "handlecompletion",
+										  Void.TYPE, Consumer.class, MemorySegment.class, Long.TYPE),
+									  FunctionDescriptor.ofVoid(ADDRESS, NSInteger),
+									  "vl");
+
+	private final Class cls_NSSavePanel = rt.objc_getClass("NSSavePanel");
+	private final SEL sel_beginSheetModalForWindow_completionHandler = rt.sel_registerName("beginSheetModalForWindow:completionHandler:");
+	private final SEL sel_beginWithCompletionHandler = rt.sel_registerName("beginWithCompletionHandler:");
+	private final SEL sel_URL = rt.sel_registerName("URL");
+	private final SEL sel_setAllowedFileTypes = rt.sel_registerName("setAllowedFileTypes:");
+	private final SEL sel_setAllowsOtherFileTypes = rt.sel_registerName("setAllowsOtherFileTypes:");
+	class NSSavePanel implements AppKit.NSSavePanel {
+	    private static Collection<Block> active = new HashSet<>();
+	    public final ID id;
+
+	    NSSavePanel(ID id) {
+		this.id = id;
+	    }
+
+	    public ID id() {return(id);}
+
+	    public NSURL URL() {
+		return(fnd.NSURL(rt.objc_msgSend_id(id, sel_URL), true, true));
+	    }
+
+	    public void beginSheetModal(AppKit.NSWindow window, Consumer<Integer> handler) {
+		Block[] blk = {null};
+		blk[0] = rt.block(blk_handlecompletion, (Consumer<Integer>)val -> {
+		    active.remove(blk[0]);
+		    handler.accept(val);
+		});
+		rt.objc_msgSend_void(id, sel_beginSheetModalForWindow_completionHandler, window.id(), blk[0].id());
+		active.add(blk[0]);
+	    }
+
+	    public void begin(Consumer<Integer> handler) {
+		Block[] blk = {null};
+		blk[0] = rt.block(blk_handlecompletion, (Consumer<Integer>)val -> {
+		    active.remove(blk[0]);
+		    handler.accept(val);
+		});
+		rt.objc_msgSend_void(id, sel_beginWithCompletionHandler, blk[0].id());
+		active.add(blk[0]);
+	    }
+
+	    public void setAllowedFileTypes(String... types) {
+		NSString[] buf = new NSString[types.length];
+		for(int i = 0; i < types.length; i++)
+		    buf[i] = fnd.NSString(types[i]);
+		NSArray arg = fnd.NSArray(buf);
+		rt.objc_msgSend_void(id, sel_setAllowedFileTypes, arg.id());
+	    }
+
+	    public void setAllowsOtherFileTypes(boolean allow) {
+		rt.objc_msgSend_void(id, sel_setAllowsOtherFileTypes, allow);
+	    }
+	}
+
+	private final SEL sel_savePanel = rt.sel_registerName("savePanel");
+	public NSSavePanel NSSavePanel() {
+	    return(rt.wrap(rt.objc_msgSend_id(cls_NSSavePanel.id(), sel_savePanel), NSSavePanel::new, true, true));
+	}
+
+	private final Class cls_NSOpenPanel = rt.objc_getClass("NSOpenPanel");
+	class NSOpenPanel extends NSSavePanel implements AppKit.NSOpenPanel {
+	    NSOpenPanel(ID id) {
+		super(id);
+	    }
+	}
+
+	private final SEL sel_openPanel = rt.sel_registerName("openPanel");
+	public NSOpenPanel NSOpenPanel() {
+	    return(rt.wrap(rt.objc_msgSend_id(cls_NSOpenPanel.id(), sel_openPanel), NSOpenPanel::new, true, true));
 	}
     }
 
@@ -1016,9 +1283,8 @@ public abstract class AppKit {
     public static AppKit get() {
 	if(instance == null) {
 	    synchronized(AppKit.class) {
-		if(instance == null) {
-		    instance = new VersionC();
-		}
+		if(instance == null)
+		    instance = tryload("AppKit", VersionC::new);
 	    }
 	}
 	return(instance);

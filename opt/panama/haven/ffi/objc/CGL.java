@@ -56,11 +56,11 @@ public abstract class CGL {
 
     public static final int NSOpenGLCPSwapInterval = 222;
 
-    public interface NSOpenGLPixelFormat {
+    public interface NSOpenGLPixelFormat extends Runtime.NSObject {
 	public ID id();
     }
 
-    public interface NSOpenGLContext {
+    public interface NSOpenGLContext extends Runtime.NSObject {
 	public ID id();
 	public void makeCurrentContext();
 	public void clearCurrentContext();
@@ -77,7 +77,7 @@ public abstract class CGL {
 
     static class VersionA extends CGL {
 	private static final MemoryLayout NSOpenGLPixelFormatAttribute = ValueLayout.JAVA_INT;
-	private final SymbolLookup dylib = SymbolLookup.libraryLookup("/System/Library/Frameworks/OpenGL.framework/OpenGL", Arena.global());
+	private final SymbolLookup dylib = loadlib("/System/Library/Frameworks/OpenGL.framework/OpenGL", Arena.global());
 	private final Runtime rt = Runtime.get();
 	private final SEL sel_alloc = rt.sel_registerName("alloc");
 
@@ -88,7 +88,6 @@ public abstract class CGL {
 
 	    NSOpenGLPixelFormat(ID id) {
 		this.id = id;
-		rt.gcrelease(this, id);
 	    }
 
 	    public ID id() {return(id);}
@@ -102,7 +101,7 @@ public abstract class CGL {
 		MemorySegment acopy = memcpy(st.allocate(NSOpenGLPixelFormatAttribute, attribs.length), attribs);
 		if((id = rt.objc_msgSend_id(id, sel_initWithAttributes, acopy)) == null)
 		    return(null);
-		return(new NSOpenGLPixelFormat(id));
+		return(rt.wrap(id, NSOpenGLPixelFormat::new, false, true));
 	    }
 	}
 
@@ -120,7 +119,6 @@ public abstract class CGL {
 
 	    NSOpenGLContext(ID id) {
 		this.id = id;
-		rt.gcrelease(this, id);
 	    }
 
 	    public ID id() {return(id);}
@@ -161,7 +159,7 @@ public abstract class CGL {
 	    ID id = rt.objc_msgSend_id(cls_NSOpenGLContext.id(), sel_alloc);
 	    if((id = rt.objc_msgSend_id(id, sel_initWithFormat_shareContext, fmt.id(), (share == null) ? null : share.id())) == null)
 		return(null);
-	    return(new NSOpenGLContext(id));
+	    return(rt.wrap(id, NSOpenGLContext::new, false, true));
 	}
 
 	class Resolved extends OpenGL.Base {
@@ -182,9 +180,8 @@ public abstract class CGL {
     public static CGL get() {
 	if(instance == null) {
 	    synchronized(CGL.class) {
-		if(instance == null) {
-		    instance = new VersionA();
-		}
+		if(instance == null)
+		    instance = tryload("CGL", VersionA::new);
 	    }
 	}
 	return(instance);
