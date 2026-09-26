@@ -1139,7 +1139,7 @@ public class MiniMap extends Widget {
 	
 	Tex tex;
 	if(style == 2) {
-	    g.chcolor(BuddyWnd.gc[ki.group]);
+	    g.chcolor(BuddyWnd.color(ki.group));
 	} else if(style != 1) {
 	    g.chcolor();
 	}

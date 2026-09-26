@@ -593,6 +593,7 @@ public class Config {
     }
     
     static {
+	Utils.useragent.put("conf.id", confid);
 	Console.setscmd("par", (cons, args) -> {
 	    par.set(Utils.parsebool(args[1]));
 	});

@@ -62,24 +62,12 @@ public class RemoteUI implements UI.Receiver, UI.Runner {
     }
 
     private void sendua(UI ui) {
+	for(Map.Entry<String, Object> part : Utils.useragent.entrySet()) {
+	    if(part.getValue() instanceof String)
+		sendua(part.getKey(), (String)part.getValue());
+	}
 	try {
-	    sendua("conf.id", Config.confid);
-	    sendua("java.vm", Utils.getprop("java.vm.name", ""));
-	    sendua("java.version", Utils.getprop("java.version", ""));
-	    sendua("os.name", Utils.getprop("os.name", ""));
-	    sendua("os.arch", Utils.getprop("os.arch", ""));
-	    sendua("os.version", Utils.getprop("os.version", ""));
-	    sendua("mem.heap", String.valueOf(Runtime.getRuntime().maxMemory()));
-	    sendua("cpu.num", String.valueOf(Runtime.getRuntime().availableProcessors()));
 	    sendua("ui.scale", String.format("%.2f", UI.scale(1.0)));
-	    haven.render.Environment env = ui.getenv();
-	    if(env != null) {
-		sendua("tk.name", ui.wnd.toolkit().getClass().getSimpleName());
-		sendua("tk.desc", ui.wnd.toolkit().description());
-		sendua("render.vendor", env.caps().vendor());
-		sendua("render.device", env.caps().device());
-		sendua("render.driver", env.caps().driver());
-	    }
 	    sendua("ender.client", Config.confid); // KamiClient: I don't differenciate between Steam/Beta/Standalone
 	    sendua("ender.theme", CFG.THEME.get().name());
 	    sendua("ender.lang", L10N.language);

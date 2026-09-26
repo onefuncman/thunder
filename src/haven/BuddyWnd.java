@@ -51,7 +51,8 @@ public class BuddyWnd extends Widget implements Iterable<BuddyWnd.Buddy> {
     public static final int offset = UI.scale(35);
     public static final Tex online = Resource.loadtex("gfx/hud/online");
     public static final Tex offline = Resource.loadtex("gfx/hud/offline");
-    public static final Color[] gc = new Color[]{
+    /* The kin colours the group selector offers. */
+    public static final Color[] basegc = new Color[]{
 	Group.White.col,
 	Group.Green.col,
 	Group.Red.col,
@@ -61,6 +62,30 @@ public class BuddyWnd extends Widget implements Iterable<BuddyWnd.Buddy> {
 	Group.Purple.col,
 	Group.Orange.col,
     };
+    public static final int ngroups = basegc.length;
+    /* Kin-group colour table covering the whole group space the server
+     * accepts (0..254). Entries 0..ngroups-1 are the real kin colours; the
+     * rest are the ungrouped colour (white). Third-party clients assign
+     * groups past 8 and the server stores and rebroadcasts whatever number
+     * was set, while server-sent resource code such as ui/vlg and ui/realm
+     * indexes BuddyWnd.gc[grp] bare, so the table itself has to answer for
+     * every group rather than each reader guarding. A group without a colour
+     * of its own draws as ungrouped; the number is what tells them apart.
+     * Client code should go through color(), which never throws. */
+    public static final Color[] gc = mkgc(255);
+
+    private static Color[] mkgc(int n) {
+	Color[] ret = new Color[Math.max(n, basegc.length)];
+	System.arraycopy(basegc, 0, ret, 0, basegc.length);
+	Arrays.fill(ret, basegc.length, ret.length, basegc[0]);
+	return(ret);
+    }
+
+    public static Color color(int group) {
+	if((group >= 0) && (group < gc.length))
+	    return(gc[group]);
+	return(basegc[0]);
+    }
     
     public static int defaultGroup = 0;
     public static boolean addingKinFromList = false;
@@ -164,7 +189,7 @@ public class BuddyWnd extends Widget implements Iterable<BuddyWnd.Buddy> {
 
 	private void chstatus(int status) {
 	    online = status;
-	    ui.message(String.format("%s is %s now.", name, online > 0 ? "ONLINE" : "OFFLINE"), gc[group], CFG.DISPLAY_KINSFX.get());
+	    ui.message(String.format("%s is %s now.", name, online > 0 ? "ONLINE" : "OFFLINE"), color(group), CFG.DISPLAY_KINSFX.get());
 	}
 
 	private Text rname = null;
@@ -222,7 +247,7 @@ public class BuddyWnd extends Widget implements Iterable<BuddyWnd.Buddy> {
 		g.chcolor(Color.LIGHT_GRAY);
 		g.frect(Coord.z, selsz);
 	    }
-	    g.chcolor(gc[group]);
+	    g.chcolor(color(group));
 	    g.frect(offset, colsz);
 	    g.chcolor();
 	}
@@ -245,12 +270,12 @@ public class BuddyWnd extends Widget implements Iterable<BuddyWnd.Buddy> {
 
     public static class GroupSelector extends Widget {
 	public int group;
-	public GroupRect[] groups = new GroupRect[gc.length];
+	public GroupRect[] groups = new GroupRect[ngroups];
 
 	public GroupSelector(int group) {
-	    super(new Coord(gc.length * margin3, margin3));
+	    super(new Coord(ngroups * margin3, margin3));
 	    this.group = group;
-	    for (int i = 0; i < gc.length; ++i) {
+	    for (int i = 0; i < ngroups; ++i) {
 		groups[i] = new GroupRect(this, i, group == i);
 		add(groups[i], new Coord(i * margin3, 0));
 	    }
@@ -262,10 +287,11 @@ public class BuddyWnd extends Widget implements Iterable<BuddyWnd.Buddy> {
 	public void update(int group) {
 	    if(group == this.group)
 		return;
-	    if(this.group >= 0)
+	    /* A group past the palette (set by another client) has no swatch. */
+	    if((this.group >= 0) && (this.group < groups.length))
 		groups[this.group].unselect();
 	    this.group = group;
-	    if(group >= 0)
+	    if((group >= 0) && (group < groups.length))
 		groups[group].select();
 	}
 
@@ -410,7 +436,7 @@ public class BuddyWnd extends Widget implements Iterable<BuddyWnd.Buddy> {
 			    g.aimage(online, Coord.of(sz.y / 2), 0.5, 0.5);
 			else if(item.online == 0)
 			    g.aimage(offline, Coord.of(sz.y / 2), 0.5, 0.5);
-			g.chcolor(gc[b.group]);
+			g.chcolor(color(b.group));
 			g.aimage(b.rname().tex(), Coord.of(sz.y + margin1, sz.y / 2), 0.0, 0.5);
 			g.chcolor();
 		    }

@@ -378,7 +378,7 @@ public class Client implements Console.Directory {
 	Utils.initlocale();
 	initfullscreen.set(CFG.VIDEO_FULL_SCREEN.get());
 	Config.cmdline(args);
-	haven.error.ErrorHandler.setprop("jar.config", Config.confid);
+	haven.error.ErrorHandler.addiprops(Utils.useragent);
 	me.ender.LegacyBGM.onGameStart();
 	setupres();
 	initfullscreen.set(CFG.VIDEO_FULL_SCREEN.get());

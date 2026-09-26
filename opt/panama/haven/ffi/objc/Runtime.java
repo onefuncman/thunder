@@ -38,7 +38,18 @@ import static haven.ffi.FUtils.*;
 import static java.lang.foreign.ValueLayout.ADDRESS;
 
 public abstract class Runtime {
+    public static final int BLOCK_IS_NOESCAPE      = 1 << 23;
+    public static final int BLOCK_HAS_COPY_DISPOSE = 1 << 25;
+    public static final int BLOCK_HAS_CTOR         = 1 << 26;
+    public static final int BLOCK_IS_GLOBAL        = 1 << 28;
+    public static final int BLOCK_HAS_STRET        = 1 << 29;
+    public static final int BLOCK_HAS_SIGNATURE    = 1 << 30;
+
     public static interface Class {
+	public ID id();
+    }
+
+    public static interface Protocol {
 	public ID id();
     }
 
@@ -59,6 +70,9 @@ public abstract class Runtime {
 
     public abstract Class objc_getClass(String name);
     public abstract String object_getClassName(ID id);
+    public abstract Protocol objc_getProtocol(String name);
+    public abstract String protocol_getName(Protocol id);
+    public abstract boolean class_addProtocol(Class cls, Protocol protocol);
     public abstract Ivar class_getInstanceVariable(Runtime.Class cls, String name);
     public abstract String ivar_getName(Runtime.Ivar v);
     public abstract long ivar_getOffset(Runtime.Ivar v);
@@ -79,6 +93,7 @@ public abstract class Runtime {
     public abstract void objc_msgSend_void(ID self, SEL sel, MemorySegment arg1, int arg2);
     public abstract void objc_msgSend_void(ID self, SEL sel, ID arg1);
     public abstract void objc_msgSend_void(ID self, SEL sel, ID arg1, boolean arg2);
+    public abstract void objc_msgSend_void(ID self, SEL sel, ID arg1, ID arg2);
     public abstract void objc_msgSend_void(ID self, SEL sel, SEL arg1, ID arg2, boolean arg3);
     public abstract ID objc_msgSend_id(ID self, SEL sel);
     public abstract ID objc_msgSend_id(ID self, SEL sel, int arg1);
@@ -89,6 +104,8 @@ public abstract class Runtime {
     abstract MemorySegment objc_msgSend_ptr(ID self, SEL sel);
     public abstract boolean objc_msgSend_bool(ID self, SEL sel);
     public abstract boolean objc_msgSend_bool(ID self, SEL sel, int arg1);
+    public abstract boolean objc_msgSend_bool(ID self, SEL sel, ID arg1);
+    public abstract boolean objc_msgSend_bool(ID self, SEL sel, ID arg1, ID arg2);
     public abstract int objc_msgSend_int(ID self, SEL sel);
     public abstract int objc_msgSend_NSUInt(ID self, SEL sel);
     public abstract double objc_msgSend_double(ID self, SEL sel);
@@ -105,6 +122,39 @@ public abstract class Runtime {
     private final Arena localarena = Arena.ofAuto();
     private int maintaskid = 0;
     private Class runnable = null;
+
+    public static interface Block extends NSObject {
+	public static <T> T wrap(Supplier<T> task, T eret) {
+	    try {
+		return(task.get());
+	    } catch(Throwable t) {
+		Thread.UncaughtExceptionHandler h = Thread.currentThread().getUncaughtExceptionHandler();
+		if(h == null)
+		    new Warning(t, "Uncaught exception in block invocation").issue();
+		else
+		    h.uncaughtException(Thread.currentThread(), t);
+		return(eret);
+	    }
+	}
+
+	public static void wrap(Runnable task) {
+	    try {
+		task.run();
+	    } catch(Throwable t) {
+		Thread.UncaughtExceptionHandler h = Thread.currentThread().getUncaughtExceptionHandler();
+		if(h == null)
+		    new Warning(t, "Uncaught exception in block invocation").issue();
+		else
+		    h.uncaughtException(Thread.currentThread(), t);
+	    }
+	}
+    }
+
+    public static interface BlockDescriptor {
+    }
+
+    public abstract Block block(BlockDescriptor desc, Object arg1);
+    public abstract BlockDescriptor blockdesc(MethodHandle invoke, FunctionDescriptor sig, String objcsig);
 
     private static void mainrun_handle(Runtime rt, MemorySegment objp, MemorySegment sel) {
 	try {
@@ -164,16 +214,31 @@ public abstract class Runtime {
 	gcrelease(obj);
 	return(obj);
     }
+    public <T extends NSObject> T wrap(ID id, Function<ID, T> wrapper, boolean retain, boolean release) {
+	if(id == null)
+	    return(null);
+	T ret = wrapper.apply(id);
+	if(retain)
+	    objc_msgSend_id(id, sel_retain.get());
+	if(release)
+	    gcrelease(ret);
+	return(ret);
+    }
+
+    ID constobj(SymbolLookup lib, String name) {
+	return(id(lib.find(name).get().reinterpret(ADDRESS.byteSize()).get(ADDRESS, 0)));
+    }
 
     static class objc4 extends Runtime {
 	static final MemoryLayout C_Class = ADDRESS;
+	static final MemoryLayout C_Protocol = ADDRESS;
 	static final MemoryLayout C_SEL = ADDRESS;
 	static final MemoryLayout C_ID = ADDRESS;
 	static final MemoryLayout C_Ivar = ADDRESS;
 	static final MemoryLayout OC_BOOL = C_CHAR;
 	static final MemoryLayout NSInteger = C_LONG;
 	static final MemoryLayout NSUInteger = C_LONG;
-	private final SymbolLookup rt = SymbolLookup.libraryLookup("libobjc.A.dylib", Arena.global());
+	private final SymbolLookup rt = loadlib("libobjc.A.dylib", Arena.global());
 
 	objc4() {
 	    /* x86-64 support would require eg. snd_msgSend_stret and such */
@@ -207,6 +272,25 @@ public abstract class Runtime {
 
 	    public String toString() {
 		return(lib.object_getClassName(this));
+	    }
+	}
+
+	static class Protocol extends StructInstance implements Runtime.Protocol {
+	    public final objc4 lib;
+
+	    Protocol(objc4 lib, MemorySegment mem) {
+		super(mem);
+		this.lib = lib;
+	    }
+
+	    protected StructLayout $layout() {return(_ID);}
+	    MemorySegment mem() {return(mem);}
+
+	    private final ID id = new ID(mem);
+	    public ID id() {return(id);}
+
+	    public String toString() {
+		return(lib.protocol_getName(this));
 	    }
 	}
 
@@ -283,7 +367,7 @@ public abstract class Runtime {
 		try {
 		    rv = (MemorySegment)objc_getClass.invoke(st.allocateFrom(name, Utils.utf8));
 		} catch(Throwable e) {
-		    throw(new RuntimeException(e));
+		    throw(new InvocationException(e));
 		}
 		return(nullp(rv) ? null : new Class(this, rv));
 	    }
@@ -295,9 +379,44 @@ public abstract class Runtime {
 	    try {
 		rv = (MemorySegment)object_getClassName.invoke(((ID)id).mem());
 	    } catch(Throwable e) {
-		throw(new RuntimeException(e));
+		throw(new InvocationException(e));
 	    }
 	    return(nullp(rv) ? null : rv.reinterpret(Long.MAX_VALUE).getString(0, Utils.utf8));
+	}
+
+	private final MethodHandle objc_getProtocol = ld.downcallHandle(rt.find("objc_getProtocol").get(), FunctionDescriptor.of(C_Protocol, ADDRESS));
+	public Protocol objc_getProtocol(String name) {
+	    try(Arena st = Arena.ofConfined()) {
+		MemorySegment rv;
+		try {
+		    rv = (MemorySegment)objc_getProtocol.invoke(st.allocateFrom(name, Utils.utf8));
+		} catch(Throwable e) {
+		    throw(new InvocationException(e));
+		}
+		return(nullp(rv) ? null : new Protocol(this, rv));
+	    }
+	}
+
+	private final MethodHandle protocol_getName = ld.downcallHandle(rt.find("protocol_getName").get(), FunctionDescriptor.of(ADDRESS, C_Protocol));
+	public String protocol_getName(Runtime.Protocol p) {
+	    MemorySegment rv;
+	    try {
+		rv = (MemorySegment)protocol_getName.invoke(((Protocol)p).mem());
+	    } catch(Throwable e) {
+		throw(new InvocationException(e));
+	    }
+	    return(nullp(rv) ? null : rv.reinterpret(Long.MAX_VALUE).getString(0, Utils.utf8));
+	}
+
+	private final MethodHandle class_addProtocol = ld.downcallHandle(rt.find("class_addProtocol").get(), FunctionDescriptor.of(OC_BOOL, C_Class, C_Protocol));
+	public boolean class_addProtocol(Runtime.Class cls, Runtime.Protocol protocol) {
+	    int rv;
+	    try {
+		rv = (int)class_addProtocol.invoke(((Class)cls).mem(), ((Protocol)protocol).mem());
+	    } catch(Throwable e) {
+		throw(new InvocationException(e));
+	    }
+	    return((rv == 0) ? false : true);
 	}
 
 	private final MethodHandle class_getInstanceVariable = ld.downcallHandle(rt.find("class_getInstanceVariable").get(), FunctionDescriptor.of(C_Ivar, C_Class, ADDRESS));
@@ -307,7 +426,7 @@ public abstract class Runtime {
 		try {
 		    rv = (MemorySegment)class_getInstanceVariable.invoke(((Class)cls).mem(), st.allocateFrom(name, Utils.utf8));
 		} catch(Throwable e) {
-		    throw(new RuntimeException(e));
+		    throw(new InvocationException(e));
 		}
 		return(nullp(rv) ? null : new Ivar(this, rv));
 	    }
@@ -319,7 +438,7 @@ public abstract class Runtime {
 	    try {
 		rv = (MemorySegment)ivar_getName.invoke(((Ivar)v).mem());
 	    } catch(Throwable e) {
-		throw(new RuntimeException(e));
+		throw(new InvocationException(e));
 	    }
 	    return(nullp(rv) ? null : rv.reinterpret(Long.MAX_VALUE).getString(0, Utils.utf8));
 	}
@@ -330,7 +449,7 @@ public abstract class Runtime {
 	    try {
 		rv = (long)ivar_getOffset.invoke(((Ivar)v).mem());
 	    } catch(Throwable e) {
-		throw(new RuntimeException(e));
+		throw(new InvocationException(e));
 	    }
 	    return(rv);
 	}
@@ -342,7 +461,7 @@ public abstract class Runtime {
 		try {
 		    rv = (MemorySegment)objc_allocateClassPair.invoke(((Class)superclass).mem(), st.allocateFrom(name, Utils.utf8), extraBytes);
 		} catch(Throwable e) {
-		    throw(new RuntimeException(e));
+		    throw(new InvocationException(e));
 		}
 		if(nullp(rv))
 		    throw(new RuntimeException("failed to allocate class pair: " + name));
@@ -355,7 +474,7 @@ public abstract class Runtime {
 	    try {
 		objc_registerClassPair.invoke(((Class)cls).mem());
 	    } catch(Throwable e) {
-		throw(new RuntimeException(e));
+		throw(new InvocationException(e));
 	    }
 	}
 
@@ -366,7 +485,7 @@ public abstract class Runtime {
 		try {
 		    rv = (int)class_addIvar.invoke(((Class)cls).mem(), st.allocateFrom(name, Utils.utf8), size, (byte)alignment, st.allocateFrom(types, Utils.utf8));
 		} catch(Throwable e) {
-		    throw(new RuntimeException(e));
+		    throw(new InvocationException(e));
 		}
 		if(rv == 0)
 		    throw(new RuntimeException("failed to add ivar"));
@@ -380,7 +499,7 @@ public abstract class Runtime {
 		try {
 		    rv = (int)class_addMethod.invoke(((Class)cls).mem(), ((SEL)name).mem(), imp, st.allocateFrom(types, Utils.utf8));
 		} catch(Throwable e) {
-		    throw(new RuntimeException(e));
+		    throw(new InvocationException(e));
 		}
 		if(rv == 0)
 		    throw(new RuntimeException("failed to add method"));
@@ -394,7 +513,7 @@ public abstract class Runtime {
 		try {
 		    rv = (MemorySegment)sel_registerName.invoke(st.allocateFrom(name, Utils.utf8));
 		} catch(Throwable e) {
-		    throw(new RuntimeException(e));
+		    throw(new InvocationException(e));
 		}
 		return(nullp(rv) ? null : new SEL(this, rv));
 	    }
@@ -406,7 +525,7 @@ public abstract class Runtime {
 	    try {
 		rv = (MemorySegment)sel_getName.invoke(sel.mem());
 	    } catch(Throwable e) {
-		throw(new RuntimeException(e));
+		throw(new InvocationException(e));
 	    }
 	    return(nullp(rv) ? null : rv.reinterpret(Long.MAX_VALUE).getString(0, Utils.utf8));
 	}
@@ -427,7 +546,7 @@ public abstract class Runtime {
 	    try {
 		objc_msgSend_void.invoke(self.mem(), sel.mem());
 	    } catch(Throwable e) {
-		throw(new RuntimeException(e));
+		throw(new InvocationException(e));
 	    }
 	}
 
@@ -436,7 +555,7 @@ public abstract class Runtime {
 	    try {
 		objc_msgSend_void_bool.invoke(self.mem(), sel.mem(), arg1 ? (byte)1 : (byte)0);
 	    } catch(Throwable e) {
-		throw(new RuntimeException(e));
+		throw(new InvocationException(e));
 	    }
 	}
 
@@ -445,7 +564,7 @@ public abstract class Runtime {
 	    try {
 		objc_msgSend_void_ptr_int.invoke(self.mem(), sel.mem(), arg1, arg2);
 	    } catch(Throwable e) {
-		throw(new RuntimeException(e));
+		throw(new InvocationException(e));
 	    }
 	}
 
@@ -454,7 +573,7 @@ public abstract class Runtime {
 	    try {
 		objc_msgSend_void_id.invoke(self.mem(), sel.mem(), nid(arg1));
 	    } catch(Throwable e) {
-		throw(new RuntimeException(e));
+		throw(new InvocationException(e));
 	    }
 	}
 
@@ -463,7 +582,16 @@ public abstract class Runtime {
 	    try {
 		objc_msgSend_void_id_bool.invoke(self.mem(), sel.mem(), nid(arg1), arg2 ? (byte)1 : (byte)0);
 	    } catch(Throwable e) {
-		throw(new RuntimeException(e));
+		throw(new InvocationException(e));
+	    }
+	}
+
+	private final MethodHandle objc_msgSend_void_id_id = msgtype(null, C_ID, C_ID);
+	public void objc_msgSend_void(Runtime.ID self, Runtime.SEL sel, Runtime.ID arg1, Runtime.ID arg2) {
+	    try {
+		objc_msgSend_void_id_id.invoke(self.mem(), sel.mem(), nid(arg1), nid(arg2));
+	    } catch(Throwable e) {
+		throw(new InvocationException(e));
 	    }
 	}
 
@@ -472,7 +600,7 @@ public abstract class Runtime {
 	    try {
 		objc_msgSend_void_SEL_id_bool.invoke(self.mem(), sel.mem(), ((SEL)arg1).mem(), nid(arg2), arg3 ? (byte)1 : (byte)0);
 	    } catch(Throwable e) {
-		throw(new RuntimeException(e));
+		throw(new InvocationException(e));
 	    }
 	}
 
@@ -481,7 +609,7 @@ public abstract class Runtime {
 	    try {
 		return(id((MemorySegment)objc_msgSend_id.invoke(self.mem(), sel.mem())));
 	    } catch(Throwable e) {
-		throw(new RuntimeException(e));
+		throw(new InvocationException(e));
 	    }
 	}
 
@@ -490,7 +618,7 @@ public abstract class Runtime {
 	    try {
 		return(id((MemorySegment)objc_msgSend_id_NSUInt.invoke(self.mem(), sel.mem(), arg1)));
 	    } catch(Throwable e) {
-		throw(new RuntimeException(e));
+		throw(new InvocationException(e));
 	    }
 	}
 
@@ -499,7 +627,7 @@ public abstract class Runtime {
 	    try {
 		return(id((MemorySegment)objc_msgSend_id_ptr.invoke(self.mem(), sel.mem(), arg1)));
 	    } catch(Throwable e) {
-		throw(new RuntimeException(e));
+		throw(new InvocationException(e));
 	    }
 	}
 
@@ -508,7 +636,7 @@ public abstract class Runtime {
 	    try {
 		return(id((MemorySegment)objc_msgSend_id_ptr_NSUInt.invoke(self.mem(), sel.mem(), arg1, arg2)));
 	    } catch(Throwable e) {
-		throw(new RuntimeException(e));
+		throw(new InvocationException(e));
 	    }
 	}
 
@@ -517,7 +645,7 @@ public abstract class Runtime {
 	    try {
 		return(id((MemorySegment)objc_msgSend_id_id.invoke(self.mem(), sel.mem(), nid(arg1))));
 	    } catch(Throwable e) {
-		throw(new RuntimeException(e));
+		throw(new InvocationException(e));
 	    }
 	}
 
@@ -526,7 +654,7 @@ public abstract class Runtime {
 	    try {
 		return(id((MemorySegment)objc_msgSend_id_id_id.invoke(self.mem(), sel.mem(), nid(arg1), nid(arg2))));
 	    } catch(Throwable e) {
-		throw(new RuntimeException(e));
+		throw(new InvocationException(e));
 	    }
 	}
 
@@ -535,7 +663,7 @@ public abstract class Runtime {
 	    try {
 		return((MemorySegment)objc_msgSend_id.invoke(self.mem(), sel.mem()));
 	    } catch(Throwable e) {
-		throw(new RuntimeException(e));
+		throw(new InvocationException(e));
 	    }
 	}
 
@@ -544,7 +672,7 @@ public abstract class Runtime {
 	    try {
 		return((int)objc_msgSend_bool.invoke(self.mem(), sel.mem()) != 0);
 	    } catch(Throwable e) {
-		throw(new RuntimeException(e));
+		throw(new InvocationException(e));
 	    }
 	}
 
@@ -553,7 +681,25 @@ public abstract class Runtime {
 	    try {
 		return((int)objc_msgSend_bool_int.invoke(self.mem(), sel.mem(), arg1) != 0);
 	    } catch(Throwable e) {
-		throw(new RuntimeException(e));
+		throw(new InvocationException(e));
+	    }
+	}
+
+	private final MethodHandle objc_msgSend_bool_id = msgtype(OC_BOOL, C_ID);
+	public boolean objc_msgSend_bool(Runtime.ID self, Runtime.SEL sel, Runtime.ID arg1) {
+	    try {
+		return((int)objc_msgSend_bool_id.invoke(self.mem(), sel.mem(), arg1.mem()) != 0);
+	    } catch(Throwable e) {
+		throw(new InvocationException(e));
+	    }
+	}
+
+	private final MethodHandle objc_msgSend_bool_id_id = msgtype(OC_BOOL, C_ID, C_ID);
+	public boolean objc_msgSend_bool(Runtime.ID self, Runtime.SEL sel, Runtime.ID arg1, Runtime.ID arg2) {
+	    try {
+		return((int)objc_msgSend_bool_id_id.invoke(self.mem(), sel.mem(), arg1.mem(), arg2.mem()) != 0);
+	    } catch(Throwable e) {
+		throw(new InvocationException(e));
 	    }
 	}
 
@@ -562,7 +708,7 @@ public abstract class Runtime {
 	    try {
 		return((int)objc_msgSend_int.invoke(self.mem(), sel.mem()));
 	    } catch(Throwable e) {
-		throw(new RuntimeException(e));
+		throw(new InvocationException(e));
 	    }
 	}
 
@@ -571,7 +717,7 @@ public abstract class Runtime {
 	    try {
 		return((int)(long)objc_msgSend_NSUInt.invoke(self.mem(), sel.mem()));
 	    } catch(Throwable e) {
-		throw(new RuntimeException(e));
+		throw(new InvocationException(e));
 	    }
 	}
 
@@ -580,8 +726,72 @@ public abstract class Runtime {
 	    try {
 		return((double)objc_msgSend_double.invoke(self.mem(), sel.mem()));
 	    } catch(Throwable e) {
-		throw(new RuntimeException(e));
+		throw(new InvocationException(e));
 	    }
+	}
+
+	static final StructLayout _block_literal = struct(new MemoryLayout[] {
+	    ADDRESS.withName("isa"),
+	    C_INT.withName("flags"),
+	    C_INT.withName("reserved"),
+	    ADDRESS.withName("invoke"),
+	    ADDRESS.withName("descriptor"),
+	});
+	static final StructLayout _block_descriptor = struct(new MemoryLayout[] {
+	    C_LONG.withName("reserved"),
+	    C_LONG.withName("size"),
+	    ADDRESS.withName("copy_helper"),
+	    ADDRESS.withName("dispose_helper"),
+	    ADDRESS.withName("signature"),
+	});
+
+	private final Class cls_NSConcreteGlobalBlock = new Class(this, rt.find("_NSConcreteGlobalBlock").get().reinterpret(ADDRESS.byteSize()).get(ADDRESS, 0));
+	class BlockDescriptor implements Runtime.BlockDescriptor {
+	    final MethodHandle invoke;
+	    final FunctionDescriptor sig;
+	    final MemorySegment mem;
+
+	    private final VarHandle size = _block_descriptor.varHandle(PathElement.groupElement("size"));
+	    private final VarHandle signature = _block_descriptor.varHandle(PathElement.groupElement("signature"));
+	    BlockDescriptor(MethodHandle invoke, FunctionDescriptor sig, String objcsig) {
+		Arena alloc = Arena.ofAuto();
+		this.invoke = invoke;
+		this.sig = sig;
+		this.mem = alloc.allocate(_block_descriptor);
+		size.set(this.mem, 0, _block_literal.byteSize());
+		signature.set(this.mem, 0, alloc.allocateFrom(objcsig, Utils.ascii));
+	    }
+	}
+
+	class Block implements Runtime.Block {
+	    final ID id;
+
+	    private static final VarHandle isa = _block_literal.varHandle(PathElement.groupElement("isa"));
+	    private static final VarHandle flags = _block_literal.varHandle(PathElement.groupElement("flags"));
+	    private static final VarHandle invoke = _block_literal.varHandle(PathElement.groupElement("invoke"));
+	    private static final VarHandle descriptor = _block_literal.varHandle(PathElement.groupElement("descriptor"));
+	    public Block(Arena alloc, MemorySegment fun, BlockDescriptor desc) {
+		MemorySegment mem = alloc.allocate(_block_literal);
+		this.id = objc4.this.id(mem);
+		isa.set(mem, 0, cls_NSConcreteGlobalBlock.mem());
+		flags.set(mem, 0, BLOCK_IS_GLOBAL | BLOCK_HAS_SIGNATURE);
+		invoke.set(mem, 0, fun);
+		descriptor.set(mem, 0, desc.mem);
+	    }
+
+	    public ID id() {return(id);}
+	}
+
+	public BlockDescriptor blockdesc(MethodHandle invoke, FunctionDescriptor sig, String objcsig) {
+	    return(new BlockDescriptor(invoke, sig, objcsig));
+	}
+
+	public Block block(Runtime.BlockDescriptor gdesc, Object arg1) {
+	    Arena alloc = Arena.ofAuto();
+	    BlockDescriptor desc = (BlockDescriptor)gdesc;
+	    MemorySegment fun = ld.upcallStub(MethodHandles.insertArguments(desc.invoke, 0, arg1),
+					      desc.sig, alloc);
+	    return(new Block(alloc, fun, desc));
 	}
     }
 
@@ -589,9 +799,8 @@ public abstract class Runtime {
     public static Runtime get() {
 	if(instance == null) {
 	    synchronized(Runtime.class) {
-		if(instance == null) {
-		    instance = new objc4();
-		}
+		if(instance == null)
+		    instance = tryload("obj-c runtime", objc4::new);
 	    }
 	}
 	return(instance);

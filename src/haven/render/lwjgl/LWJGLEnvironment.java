@@ -33,8 +33,8 @@ import org.lwjgl.opengl.awt.*;
 import haven.render.gl.GL;
 
 public class LWJGLEnvironment extends GLEnvironment {
-    public LWJGLEnvironment(Area wnd) {
-	super(LWJGLWrap.instance, wnd);
+    public LWJGLEnvironment() {
+	super(LWJGLWrap.instance);
     }
 
     public static class LWJGLCaps extends Caps {

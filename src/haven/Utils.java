@@ -1009,6 +1009,44 @@ public class Utils {
     public static String byte2hex(byte[] in) {return(hex.enc(in));}
     public static byte[] hex2byte(String in) {return(hex.dec(in));}
     
+
+    public static String strsafe(CharSequence text, boolean space) {
+	StringBuilder buf = new StringBuilder();
+	for(int i = 0; i < text.length(); i++) {
+	    char c = text.charAt(i);
+	    switch(c) {
+	    case ' ':
+		if(space)
+		    buf.append(' ');
+		else
+		    buf.append("\\u0020");
+		break;
+	    case '\n': buf.append("\\n"); break;
+	    case '\r': buf.append("\\r"); break;
+	    case '\"': buf.append("\\\""); break;
+	    case '\'': buf.append("\\\'"); break;
+	    default:
+		switch(Character.getType(c)) {
+		case Character.LOWERCASE_LETTER:     case Character.OTHER_LETTER:    case Character.TITLECASE_LETTER: case Character.UPPERCASE_LETTER:
+		case Character.DECIMAL_DIGIT_NUMBER: case Character.LETTER_NUMBER:   case Character.OTHER_NUMBER:
+		case Character.OTHER_SYMBOL:         case Character.MODIFIER_SYMBOL: case Character.MATH_SYMBOL:      case Character.CURRENCY_SYMBOL:
+		case Character.CONNECTOR_PUNCTUATION:   case Character.DASH_PUNCTUATION:          case Character.END_PUNCTUATION:
+		case Character.FINAL_QUOTE_PUNCTUATION: case Character.INITIAL_QUOTE_PUNCTUATION: case Character.OTHER_PUNCTUATION: case Character.START_PUNCTUATION:
+		    buf.append(c);
+		    break;
+		default:
+		    buf.append(String.format("\\u%04x", (int)c));
+		    break;
+		}
+	    }
+	}
+	return(buf.toString());
+    }
+
+    public static String strsafe(CharSequence text) {
+	return(strsafe(text, true));
+    }
+
     public static String[] splitwords(String text) {
 	ArrayList<String> words = new ArrayList<String>();
 	StringBuilder buf = new StringBuilder();
@@ -2788,4 +2826,31 @@ public class Utils {
     }
     
     public static final List<String> WALLS_TO_RESIZE = Arrays.asList("gfx/terobjs/arch/palisadeseg", "gfx/terobjs/arch/palisadecp", "gfx/terobjs/arch/brickwallseg", "gfx/terobjs/arch/brickwallcp" );
+
+    public static final Map<String, Object> useragent = new HashMap<>();
+    static {
+	useragent.put("java.version", getprop("java.version", null));
+	useragent.put("java.vendor", getprop("java.vendor", null));
+	useragent.put("java.vm", getprop("java.vm.name", null));
+	useragent.put("os.name", getprop("os.name", null));
+	useragent.put("os.arch", getprop("os.arch", null));
+	useragent.put("os.version", getprop("os.version", null));
+	useragent.put("mem.heap", String.valueOf(Runtime.getRuntime().maxMemory()));
+	useragent.put("cpu.num", String.valueOf(Runtime.getRuntime().availableProcessors()));
+	try {
+	    InputStream in = Utils.class.getResourceAsStream("/buildinfo");
+	    if(in != null) {
+		try {
+		    Properties info = new Properties();
+		    info.load(in);
+		    for(Map.Entry<Object, Object> e : info.entrySet())
+			useragent.put("jar." + e.getKey(), e.getValue());
+		} finally {
+		    in.close();
+		}
+	    }
+	} catch(IOException e) {
+	    throw(new Error(e));
+	}
+    }
 }

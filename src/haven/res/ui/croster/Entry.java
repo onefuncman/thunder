@@ -18,7 +18,7 @@ public class Entry extends Widget {
     public static final Function<Integer, String> percent = v -> String.format("%d%%", v);
     public static final Function<Number, String> quality = v -> Long.toString(Math.round(v.doubleValue()));
     public static final Function<Entry, Tex> namerend = e -> {
-	return(CharWnd.attrf.render(e.name, BuddyWnd.gc[e.grp]).tex());
+	return(CharWnd.attrf.render(e.name, BuddyWnd.color(e.grp)).tex());
     };
     public static final Tex male   = Loading.waitfor(Resource.classres(Entry.class).pool.load("gfx/hud/rosters/male", 2)::get).layer(Resource.imgc).tex();
     public static final Tex female = Loading.waitfor(Resource.classres(Entry.class).pool.load("gfx/hud/rosters/female", 2)::get).layer(Resource.imgc).tex();
